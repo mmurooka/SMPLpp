@@ -24,166 +24,156 @@
 //=============================================================================
 
 #ifndef TESTER_H
-#define TESTER_H
+#  define TESTER_H
 
 //===== EXTERNAL MACROS =======================================================
 
-
 //===== INCLUDES ==============================================================
 
-#include <torch/torch.h>
+#  include <torch/torch.h>
 
 //===== EXTERNAL FORWARD DECLARATIONS =========================================
 
-
 //===== NAMESPACES ============================================================
 
-namespace smpl {
+namespace smpl
+{
 
 //===== INTERNAL MACROS =======================================================
 
-
 //===== INTERNAL FORWARD DECLARATIONS =========================================
-
 
 //===== CLASS DEFINITIONS =====================================================
 
 /**
  * DESCRIPTIONS:
- * 
+ *
  *      Test module aims to test other modules to ensure correctness and
  *      robustness.
- * 
+ *
  *      This class is a tool for the whole system.
- * 
+ *
  * INHERITANCE:
- * 
- * 
+ *
+ *
  * ATTRIBUTES:
- * 
- * 
+ *
+ *
  * METHODS:
- * 
+ *
  *      %
  *          Constructor and Destructor
  *      %
  *      - Tester: <public>
  *          Default constructor.
- * 
+ *
  *      - Tester: <public>
  *          Constructor to initialize torch device.
- * 
+ *
  *      - Tester: (overload) <public>
  *          Copy constructor.
- * 
+ *
  *      - ~Tester: <public>
  *          ~Destructor.
  *      %%
- * 
+ *
  *      %
  *          Operators
  *      %
  *      - operator=: <public>
  *          Assignment operator is used to copy an tester.
- * 
+ *
  *      %%
- * 
+ *
  *      %
  *          Setter and Getter
  *      %
  *      - setDevice: <public>
  *          Set the torch device.
- * 
+ *
  *      %
  *          Singleton pattern
  *      %
  *      - singleton: <public>
  *          Test the <Singleton> module.
  *      %%
- * 
+ *
  *      %
  *          File reading
  *      %
  *      - import: <public>
  *          Test file reading module.
  *      %%
- * 
+ *
  *      %
  *          Shape blend shape and pose blend shape
  *      %
  *      - blendShape: <publc>
  *          Test the <BlendShape> module.
  *      %%
- * 
+ *
  *      %
  *          Joint regressor
  *      %
  *      - jointRegression: <public>
  *          Test the <JointRegression> module.
  *      %%
- * 
+ *
  *      %
  *          Linear blend shape
  *      %
  *      - linearBlendSkinng: <public>
  *          Test the <LinearBlendSkinng> module.
  *      %%
- * 
+ *
  *      %
  *          World transformation
  *      %
  *      - worldTransformation: <public>
  *          Test the <WorldTransformation> module.
  *      %%
- * 
+ *
  */
 
 class Tester final
 {
 
 private: // PRIVATE ATTRIBUTES
-
-    torch::Device m__device;
+  torch::Device m__device;
 
 protected: // PROTECTED ATTRIBUTES
-
 public: // PUBLIC ATTRIBUTES
-
 private: // PRIVATE METHODS
-
 protected: // PROTECTED METHODS
-
 public: // PUBLIC METHODS
+  // %% Constructor and Destructor %%
+  Tester() noexcept(true);
+  Tester(const Tester & tester) noexcept(true);
+  ~Tester() noexcept(true);
 
-    // %% Constructor and Destructor %%
-    Tester() noexcept(true);
-    Tester(const Tester &tester) noexcept(true);
-    ~Tester() noexcept(true);
+  // %% Operators %%
+  Tester & operator=(const Tester & tester) noexcept(false);
 
-    // %% Operators %%
-    Tester &operator=(const Tester &tester) noexcept(false);
+  // %% Setter and Getter %%
+  void setDevice(const torch::Device & device) noexcept(false);
 
-    // %% Setter and Getter %%
-    void setDevice(const torch::Device &device) noexcept(false);
+  // %% Singleton pattern %%
+  void singleton() noexcept(true);
 
-    // %% Singleton pattern %%
-    void singleton() noexcept(true);
+  // %% File reading %%
+  void import() noexcept(true);
 
-    // %% File reading %%
-    void import() noexcept(true);
+  // %% Shape blend shape and pose blend shape %%
+  void blendShape() noexcept(true);
 
-    // %% Shape blend shape and pose blend shape %%
-    void blendShape() noexcept(true);
+  // %% Joint regressor %%
+  void jointRegression() noexcept(true);
 
-    // %% Joint regressor %%
-    void jointRegression() noexcept(true);
+  // %% Linear blend shape %%
+  void linearBlendSkinning() noexcept(true);
 
-    // %% Linear blend shape %%
-    void linearBlendSkinning() noexcept(true);
-
-    // %% World transformation %%
-    void worldTransformation() noexcept(true);
-
+  // %% World transformation %%
+  void worldTransformation() noexcept(true);
 };
 
 //=============================================================================

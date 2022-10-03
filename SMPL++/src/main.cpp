@@ -35,13 +35,12 @@
 #include <torch/torch.h>
 //----------
 #include "definition/def.h"
+#include "smpl/SMPL.h"
 #include "toolbox/Singleton.hpp"
 #include "toolbox/Tester.h"
-#include "smpl/SMPL.h"
 //----------
 
 //===== FORWARD DECLARATIONS ==================================================
-
 
 //===== NAMESPACE =============================================================
 
@@ -50,72 +49,72 @@ using clk = std::chrono::system_clock;
 
 //===== MAIN FUNCTION =========================================================
 
-int main(int argc, char const *argv[])
+int main(int argc, char const * argv[])
 {
-	torch::Device cuda(torch::kCUDA);
-	cuda.set_index(0);
+  torch::Device cuda(torch::kCUDA);
+  cuda.set_index(0);
 
-	// smpl::Tester tester;
-	// tester.setDevice(cuda);
+  // smpl::Tester tester;
+  // tester.setDevice(cuda);
 
-	// tester.singleton();
-	// tester.blendShape();
-	// tester.jointRegression();
-	// tester.worldTransformation();
-	// tester.linearBlendSkinning();
-	// tester.import();
+  // tester.singleton();
+  // tester.blendShape();
+  // tester.jointRegression();
+  // tester.worldTransformation();
+  // tester.linearBlendSkinning();
+  // tester.import();
 
-	std::string modelPath = "../data/smpl_female.json";
-	std::string outputPath = "../out/vertices.obj";
+  std::string modelPath = "../data/smpl_female.json";
+  std::string outputPath = "../out/vertices.obj";
 
-	torch::Tensor beta = 0.03 * torch::rand(
-		{BATCH_SIZE, SHAPE_BASIS_DIM});// (N, 10)
-	torch::Tensor theta = 0.2 * torch::rand(
-		{BATCH_SIZE, JOINT_NUM, 3});// (N, 24, 3)
+  torch::Tensor beta = 0.03 * torch::rand({BATCH_SIZE, SHAPE_BASIS_DIM}); // (N, 10)
+  torch::Tensor theta = 0.2 * torch::rand({BATCH_SIZE, JOINT_NUM, 3}); // (N, 24, 3)
 
-	torch::Tensor vertices;
+  torch::Tensor vertices;
 
-	try {
-		SINGLE_SMPL::get()->setDevice(cuda);
-		SINGLE_SMPL::get()->setModelPath(modelPath);
+  try
+  {
+    SINGLE_SMPL::get()->setDevice(cuda);
+    SINGLE_SMPL::get()->setModelPath(modelPath);
 
-		auto begin = clk::now();
-		SINGLE_SMPL::get()->init();
-		auto end = clk::now();
-		auto duration = std::chrono::duration_cast<ms>(end - begin);
-		std::cout << "Time duration to load SMPL: " 
-			<< (double)duration.count() / 1000 << " s" << std::endl;
+    auto begin = clk::now();
+    SINGLE_SMPL::get()->init();
+    auto end = clk::now();
+    auto duration = std::chrono::duration_cast<ms>(end - begin);
+    std::cout << "Time duration to load SMPL: " << (double)duration.count() / 1000 << " s" << std::endl;
 
-		const int64_t LOOPS = 100;
-		duration = std::chrono::duration_cast<ms>(end - end);// reset duration
-		for (int64_t i = 0; i < LOOPS; i++) {
-			begin = clk::now();
-			SINGLE_SMPL::get()->launch(beta, theta);
-			end = clk::now();
-			duration += std::chrono::duration_cast<ms>(end - begin);
-		}
-		std::cout << "Time duration to run SMPL: " 
-			<< (double)duration.count() / LOOPS << " ms" << std::endl;
+    const int64_t LOOPS = 100;
+    duration = std::chrono::duration_cast<ms>(end - end); // reset duration
+    for(int64_t i = 0; i < LOOPS; i++)
+    {
+      begin = clk::now();
+      SINGLE_SMPL::get()->launch(beta, theta);
+      end = clk::now();
+      duration += std::chrono::duration_cast<ms>(end - begin);
+    }
+    std::cout << "Time duration to run SMPL: " << (double)duration.count() / LOOPS << " ms" << std::endl;
 
-		vertices = SINGLE_SMPL::get()->getVertex();
-	}
-	catch(std::exception &e) {
-		std::cerr << e.what() << std::endl;
-	}
+    vertices = SINGLE_SMPL::get()->getVertex();
+  }
+  catch(std::exception & e)
+  {
+    std::cerr << e.what() << std::endl;
+  }
 
-	try {
-		SINGLE_SMPL::get()->setVertPath(outputPath);
-		SINGLE_SMPL::get()->out(0);
-	}
-	catch(std::exception &e) {
-		std::cerr << e.what() << std::endl;
-	}
+  try
+  {
+    SINGLE_SMPL::get()->setVertPath(outputPath);
+    SINGLE_SMPL::get()->out(0);
+  }
+  catch(std::exception & e)
+  {
+    std::cerr << e.what() << std::endl;
+  }
 
-	SINGLE_SMPL::destroy();
+  SINGLE_SMPL::destroy();
 
-    return 0;
+  return 0;
 }
-
 
 //===== CLEAN AFTERWARD =======================================================
 

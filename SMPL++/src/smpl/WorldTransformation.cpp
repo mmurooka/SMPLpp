@@ -23,488 +23,477 @@
 //
 //=============================================================================
 
-
 //===== EXTERNAL MACROS =======================================================
-
 
 //===== INCLUDES ==============================================================
 
 //----------
+#include "smpl/WorldTransformation.h"
 #include "definition/def.h"
 #include "toolbox/Exception.h"
 #include "toolbox/TorchEx.hpp"
-#include "smpl/WorldTransformation.h"
 //----------
 
 //===== EXTERNAL FORWARD DECLARATIONS =========================================
 
-
 //===== NAMESPACES ============================================================
 
-namespace smpl {
+namespace smpl
+{
 
 //===== INTERNAL MACROS =======================================================
 
-
 //===== INTERNAL FORWARD DECLARATIONS =========================================
-
 
 //===== CLASS IMPLEMENTATIONS =================================================
 
 /**WorldTransformation
- * 
+ *
  * Brief
  * ----------
- * 
+ *
  *      Default constructor.
- * 
+ *
  * Arguments
  * ----------
- * 
- * 
+ *
+ *
  * Return
  * ----------
- * 
- * 
+ *
+ *
  */
-WorldTransformation::WorldTransformation() noexcept(true) :
-    m__device(torch::kCPU),
-    m__joints(),
-    m__poseRot(),
-    m__kineTree(),
-    m__transformations()
+WorldTransformation::WorldTransformation() noexcept(true)
+: m__device(torch::kCPU), m__joints(), m__poseRot(), m__kineTree(), m__transformations()
 {
 }
 
 /**WorldTransformation (overload)
- * 
+ *
  * Brief
  * ----------
- * 
+ *
  *      Constructor to initialize kinematic tree and torch device.
- * 
+ *
  * Arguments
  * ----------
- * 
+ *
  *      @kineTree: - Tensor -
- *          Hierarchical relation between joints, the root is at the belly 
+ *          Hierarchical relation between joints, the root is at the belly
  *          button, (2, 24).
- * 
+ *
  *      @device: - Device -
  *          Torch device to run the module, CPUs or GPUs.
- * 
+ *
  * Return
  * ----------
- * 
- * 
+ *
+ *
  */
-WorldTransformation::WorldTransformation(
-    torch::Tensor &kineTree, torch::Device &device) 
-    noexcept(false) :
-    m__device(torch::kCPU),
-    m__joints(),
-    m__poseRot(),
-    m__transformations()
+WorldTransformation::WorldTransformation(torch::Tensor & kineTree, torch::Device & device) noexcept(false)
+: m__device(torch::kCPU), m__joints(), m__poseRot(), m__transformations()
 {
-    if (device.has_index()) {
-        m__device = device;
-    }
-    else {
-        throw smpl_error("WorldTransformation", 
-            "Failed to fetch device index!");
-    }
+  if(device.has_index())
+  {
+    m__device = device;
+  }
+  else
+  {
+    throw smpl_error("WorldTransformation", "Failed to fetch device index!");
+  }
 
-    if (kineTree.sizes() == 
-        torch::IntArrayRef({2, JOINT_NUM})) {
-        m__kineTree = kineTree.clone().to(m__device);
-    }
-    else {
-        throw smpl_error("WorldTransformation", 
-            "Failed to initialize kinematic tree!");
-    }
+  if(kineTree.sizes() == torch::IntArrayRef({2, JOINT_NUM}))
+  {
+    m__kineTree = kineTree.clone().to(m__device);
+  }
+  else
+  {
+    throw smpl_error("WorldTransformation", "Failed to initialize kinematic tree!");
+  }
 }
 
 /**WorldTransformation (overload)
- * 
+ *
  * Brief
  * ----------
- * 
+ *
  *      Copy constructor.
- * 
+ *
  * Arguments
  * ----------
- * 
+ *
  *      @worldTransformation: - Tensor -
  *          The <WorldTransformation> instantiation to copy with.
- * 
+ *
  * Return
  * ----------
- * 
- * 
+ *
+ *
  */
-WorldTransformation::WorldTransformation(
-    const WorldTransformation &worldTransformation) noexcept(false) :
-    m__device(torch::kCPU),
-    m__transformations()
+WorldTransformation::WorldTransformation(const WorldTransformation & worldTransformation) noexcept(false)
+: m__device(torch::kCPU), m__transformations()
 {
-    try {
-        *this = worldTransformation;
-    }
-    catch(std::exception& e) {
-        throw;
-    }
-    
+  try
+  {
+    *this = worldTransformation;
+  }
+  catch(std::exception & e)
+  {
+    throw;
+  }
 }
 
 /**~WorldTransformation
- * 
+ *
  * Brief
  * ----------
- * 
+ *
  *      Destructor.
- * 
+ *
  * Arguments
  * ----------
- * 
- * 
+ *
+ *
  * Return
  * ----------
- * 
- * 
+ *
+ *
  */
-WorldTransformation::~WorldTransformation() noexcept(true)
-{
-}
+WorldTransformation::~WorldTransformation() noexcept(true) {}
 
 /**operator=
- * 
+ *
  * Brief
  * ----------
- * 
+ *
  *      Assignment is used to copy a <WorldTransformation> instantiation..
- * 
+ *
  * Arguments
  * ----------
- * 
+ *
  *      @worldTransformation: - Tensor -
  *          The <WorldTransformation> instantiation to copy with.
- * 
+ *
  * Return
  * ----------
- * 
+ *
  *      @*this: - Tensor -
  *          Currrent instantiation.
- * 
+ *
  */
-WorldTransformation &WorldTransformation::operator=(
-        const WorldTransformation &worldTransformation) noexcept(false)
+WorldTransformation & WorldTransformation::operator=(const WorldTransformation & worldTransformation) noexcept(false)
 {
-    //
-    // hard copy
-    //
-    if (worldTransformation.m__device.has_index()) {
-        m__device = worldTransformation.m__device;
-    }
-    else {
-        throw smpl_error("WorldTransformation", 
-            "Failed to fetch device index!");
-    }
+  //
+  // hard copy
+  //
+  if(worldTransformation.m__device.has_index())
+  {
+    m__device = worldTransformation.m__device;
+  }
+  else
+  {
+    throw smpl_error("WorldTransformation", "Failed to fetch device index!");
+  }
 
-    if (worldTransformation.m__joints.sizes() == 
-        torch::IntArrayRef({BATCH_SIZE, JOINT_NUM, 3})) {
-        m__joints = worldTransformation.m__joints.clone().to(m__device);
-    }
-    else {
-        throw smpl_error("WorldTransformation", "Failed to copy joints");
-    }
+  if(worldTransformation.m__joints.sizes() == torch::IntArrayRef({BATCH_SIZE, JOINT_NUM, 3}))
+  {
+    m__joints = worldTransformation.m__joints.clone().to(m__device);
+  }
+  else
+  {
+    throw smpl_error("WorldTransformation", "Failed to copy joints");
+  }
 
-    if (worldTransformation.m__poseRot.sizes() ==
-        torch::IntArrayRef({BATCH_SIZE, JOINT_NUM, 3, 3})) {
-        m__poseRot = worldTransformation.m__poseRot.clone().to(m__device);
-    }
-    else {
-        throw smpl_error("WorldTransformation", 
-            "Failed to copy pose rotations");
-    }
+  if(worldTransformation.m__poseRot.sizes() == torch::IntArrayRef({BATCH_SIZE, JOINT_NUM, 3, 3}))
+  {
+    m__poseRot = worldTransformation.m__poseRot.clone().to(m__device);
+  }
+  else
+  {
+    throw smpl_error("WorldTransformation", "Failed to copy pose rotations");
+  }
 
-    if (worldTransformation.m__kineTree.sizes() ==
-        torch::IntArrayRef({2, JOINT_NUM})) {
-        m__kineTree = worldTransformation.m__kineTree.clone().to(m__device);
-    }
-    else {
-        throw smpl_error("WorldTransformation",
-            "Failed to copy kinematic tree!");
-    }
+  if(worldTransformation.m__kineTree.sizes() == torch::IntArrayRef({2, JOINT_NUM}))
+  {
+    m__kineTree = worldTransformation.m__kineTree.clone().to(m__device);
+  }
+  else
+  {
+    throw smpl_error("WorldTransformation", "Failed to copy kinematic tree!");
+  }
 
-    //
-    // soft copy
-    //
-    if (worldTransformation.m__transformations.sizes() == 
-        torch::IntArrayRef({BATCH_SIZE, VERTEX_NUM, 4, 4})) {
-        m__transformations = worldTransformation.m__transformations.clone().to(
-            m__device);
-    }
+  //
+  // soft copy
+  //
+  if(worldTransformation.m__transformations.sizes() == torch::IntArrayRef({BATCH_SIZE, VERTEX_NUM, 4, 4}))
+  {
+    m__transformations = worldTransformation.m__transformations.clone().to(m__device);
+  }
 
-    return *this;
+  return *this;
 }
 
 /**setDevice
- * 
+ *
  * Brief
  * ----------
- * 
+ *
  *      Set the torch device.
- * 
+ *
  * Arguments
  * ----------
- * 
+ *
  *      @device: - const Device & -
  *          The torch device to be used.
- * 
+ *
  * Return
  * ----------
- * 
+ *
  */
-void WorldTransformation::setDevice(
-    const torch::Device &device) noexcept(false)
+void WorldTransformation::setDevice(const torch::Device & device) noexcept(false)
 {
-    if (device.has_index()) {
-        m__device = device;
-    }
-    else {
-        throw smpl_error("WorldTransformation", "Failed to fetch device index!");
-    }
+  if(device.has_index())
+  {
+    m__device = device;
+  }
+  else
+  {
+    throw smpl_error("WorldTransformation", "Failed to fetch device index!");
+  }
 
-    return;
+  return;
 }
 
 /**setJoint
- * 
+ *
  * Brief
  * ----------
- * 
+ *
  *      Set joint locations of the deformed shape.
- * 
+ *
  * Arguments
  * ----------
- * 
+ *
  *      @joints: - const Tensor & -
  *          Joint locations of the deformed shape after regressing, (N, 24, 3).
- * 
+ *
  * Return
  * ----------
- * 
- * 
+ *
+ *
  */
-void WorldTransformation::setJoint(const torch::Tensor &joints) noexcept(false)
+void WorldTransformation::setJoint(const torch::Tensor & joints) noexcept(false)
 {
-    if (joints.sizes() == 
-        torch::IntArrayRef({BATCH_SIZE, JOINT_NUM, 3})) {
-        m__joints = joints.clone().to(m__device);
-    }
-    else {
-        throw smpl_error("WorldTransformation", "Failed to set joints");
-    }
+  if(joints.sizes() == torch::IntArrayRef({BATCH_SIZE, JOINT_NUM, 3}))
+  {
+    m__joints = joints.clone().to(m__device);
+  }
+  else
+  {
+    throw smpl_error("WorldTransformation", "Failed to set joints");
+  }
 
-    return;
+  return;
 }
 
 /**setPoseRotation
- * 
+ *
  * Brief
  * ----------
- * 
+ *
  *      Set pose rotations by axis-angles representations.
- * 
+ *
  * Arguments
  * ----------
- * 
+ *
  *      @poseRot: - const Tensor & -
  *          Rotations with respect to new pose by axis-angles
  *          representations, (N, 24, 3, 3).
- * 
+ *
  * Return
  * ----------
- * 
- * 
+ *
+ *
  */
-void WorldTransformation::setPoseRotation(const torch::Tensor &poseRot) 
-    noexcept(false)
+void WorldTransformation::setPoseRotation(const torch::Tensor & poseRot) noexcept(false)
 {
-    if (poseRot.sizes() ==
-        torch::IntArrayRef({BATCH_SIZE, JOINT_NUM, 3, 3})) {
-        m__poseRot = poseRot.clone().to(m__device);
-    }
-    else {
-        throw smpl_error("WorldTransformation", 
-            "Failed to set pose rotations");
-    }
+  if(poseRot.sizes() == torch::IntArrayRef({BATCH_SIZE, JOINT_NUM, 3, 3}))
+  {
+    m__poseRot = poseRot.clone().to(m__device);
+  }
+  else
+  {
+    throw smpl_error("WorldTransformation", "Failed to set pose rotations");
+  }
 
-    return;
+  return;
 }
 
 /**setJoint
- * 
+ *
  * Brief
  * ----------
- * 
+ *
  *      Set kinematice tree of the body.
- * 
+ *
  * Arguments
  * ----------
- * 
+ *
  *      @kineTree: - const Tensor & -
  *          Hierarchical relation between joints, the root is at the belly button,
  *          (2, 24).
- * 
+ *
  * Return
  * ----------
- * 
- * 
+ *
+ *
  */
-void WorldTransformation::setKinematicTree(const torch::Tensor &kineTree) 
-    noexcept(false)
+void WorldTransformation::setKinematicTree(const torch::Tensor & kineTree) noexcept(false)
 {
-    if (kineTree.sizes() == 
-        torch::IntArrayRef({2, JOINT_NUM})) {
-        m__kineTree = kineTree.clone().to(m__device);
-    }
-    else {
-        throw smpl_error("WorldTransformation", 
-            "Failed to set kinematic tree!");
-    }
-    
-    return;
+  if(kineTree.sizes() == torch::IntArrayRef({2, JOINT_NUM}))
+  {
+    m__kineTree = kineTree.clone().to(m__device);
+  }
+  else
+  {
+    throw smpl_error("WorldTransformation", "Failed to set kinematic tree!");
+  }
+
+  return;
 }
 
 /**getTransformation
- * 
+ *
  * Brief
  * ----------
- * 
+ *
  *      Get world transformations.
- * 
+ *
  * Arguments
  * ----------
- * 
- * 
+ *
+ *
  * Return
  * ----------
- * 
+ *
  *      @transformation: - const Tensor & -
  *          World transformation expressed in homogeneous coordinates
  *          after eliminating effects of rest pose, (N, 24, 4, 4).
- * 
+ *
  */
 torch::Tensor WorldTransformation::getTransformation() noexcept(false)
 {
-    torch::Tensor transformation;
+  torch::Tensor transformation;
 
-    if (m__transformations.sizes() == 
-        torch::IntArrayRef({BATCH_SIZE, JOINT_NUM, 4, 4})) {
-        transformation = m__transformations.clone().to(m__device);
-    }
+  if(m__transformations.sizes() == torch::IntArrayRef({BATCH_SIZE, JOINT_NUM, 4, 4}))
+  {
+    transformation = m__transformations.clone().to(m__device);
+  }
 
-    return transformation;
+  return transformation;
 }
 
 /**transform
- * 
+ *
  * Brief
  * ----------
- * 
+ *
  *      Outside wrapper to encapsulate world transformation process.
- * 
+ *
  * Arguments
  * ----------
- * 
- * 
+ *
+ *
  * Return
  * ----------
- * 
- * 
+ *
+ *
  * Notes
  * ----------
- * 
+ *
  *      This function implements equation (4) in the paper.
- * 
+ *
  *      The formula (3) are also considered here, but we include the initial
  *      T-pose inside the transformation matrix such that world transformations
  *      of theta star are omitted.
- * 
+ *
  */
 void WorldTransformation::transform() noexcept(false)
 {
-    //
-    // rotations in homogeneous coordinates
-    //
-    torch::Tensor zeros = torch::zeros(
-        {BATCH_SIZE, JOINT_NUM, 1, 3}, m__device);// (N, 24, 1, 3)
-    torch::Tensor poseRotHomo = torch::cat(
-        {m__poseRot, zeros}, 2);// (N, 24, 4, 3)
+  //
+  // rotations in homogeneous coordinates
+  //
+  torch::Tensor zeros = torch::zeros({BATCH_SIZE, JOINT_NUM, 1, 3}, m__device); // (N, 24, 1, 3)
+  torch::Tensor poseRotHomo = torch::cat({m__poseRot, zeros}, 2); // (N, 24, 4, 3)
 
-    //
-    // local transformation
-    //
-    torch::Tensor localTransformations;
-    try {
-        localTransformations = localTransform(poseRotHomo);
-    }
-    catch(std::exception &e) {
-        throw;
-    }
-    
-    //
-    // global transformation
-    //
-    torch::Tensor globalTransformations;
-    try {
-        globalTransformations = globalTransform(localTransformations);
-    }
-    catch(std::exception &e) {
-        throw;
-    }
+  //
+  // local transformation
+  //
+  torch::Tensor localTransformations;
+  try
+  {
+    localTransformations = localTransform(poseRotHomo);
+  }
+  catch(std::exception & e)
+  {
+    throw;
+  }
 
-    //
-    // relative transformation
-    //
-    try {
-        relativeTransform(globalTransformations);
-    }
-    catch(std::exception &e) {
-        throw;
-    }
+  //
+  // global transformation
+  //
+  torch::Tensor globalTransformations;
+  try
+  {
+    globalTransformations = globalTransform(localTransformations);
+  }
+  catch(std::exception & e)
+  {
+    throw;
+  }
 
-    return;
+  //
+  // relative transformation
+  //
+  try
+  {
+    relativeTransform(globalTransformations);
+  }
+  catch(std::exception & e)
+  {
+    throw;
+  }
+
+  return;
 }
 
 /**localTransform
- * 
+ *
  * Brief
  * ----------
- * 
+ *
  *      Local transformations with respect to each joint.
- * 
+ *
  * Arguments
  * ----------
- * 
+ *
  *      @poseRotHomo: - Tensor -
  *          Relative rotation denoted by axis-angles representations in
  *          homogeneous coordinates,, (N, 24, 4, 3).
- * 
+ *
  * Return
  * ----------
- * 
+ *
  *      @localTransformations: - Tensor -
  *          Local transformations in each joint local coordinate but expressed
  *          by global coordinates, (N, 24, 4, 4).
- * 
+ *
  * Notes
  * ----------
  *      Let
  *          ti - local translation of joint i
  *          ji - global location of joint i
- * 
+ *
  *      Then we have,
  *          t0 = j0, t1 = j1 - j0, t2 = j2 - j0,
  *          t3 = j3 - j0, t4 = j4 - j1, t5 = j5 - j2,
@@ -514,77 +503,64 @@ void WorldTransformation::transform() noexcept(false)
  *          t15 = j15 - j12, t16 = j16 - j13, t17 = j17 - j14,
  *          t18 = j18 - j15, t19 = j19 - j17, t20 = j20 - j18,
  *          t21 = j21 - j19, t22 = j22 - j20, t23 = j23 - j21.
- * 
+ *
  */
-torch::Tensor WorldTransformation::localTransform(
-    torch::Tensor &poseRotHomo) noexcept(false)
+torch::Tensor WorldTransformation::localTransform(torch::Tensor & poseRotHomo) noexcept(false)
 {
-    if (poseRotHomo.sizes() !=
-        torch::IntArrayRef({BATCH_SIZE, JOINT_NUM, 4, 3})) {
-        throw smpl_error("WorldTransformation", 
-            "Cannot transform bones locally!");
-    }
+  if(poseRotHomo.sizes() != torch::IntArrayRef({BATCH_SIZE, JOINT_NUM, 4, 3}))
+  {
+    throw smpl_error("WorldTransformation", "Cannot transform bones locally!");
+  }
 
-    std::vector<torch::Tensor> translations;
-    translations.push_back(
-        TorchEx::indexing(m__joints, 
-            torch::IntList(),
-            torch::IntList({0}),
-            torch::IntList())
-    );// [0, (N, 3)]
+  std::vector<torch::Tensor> translations;
+  translations.push_back(TorchEx::indexing(m__joints, torch::IntList(), torch::IntList({0}),
+                                           torch::IntList())); // [0, (N, 3)]
 
-    torch::Tensor ancestor;
-    torch::Tensor translation;
-    for (int64_t i = 1; i < JOINT_NUM; i++) {
-        ancestor = TorchEx::indexing(m__kineTree,
-            torch::IntList({0}), torch::IntList({i})).toType(torch::kLong);
-        translation = TorchEx::indexing(m__joints, 
-            torch::IntList(), 
-            torch::IntList({i}), 
-            torch::IntList()) - torch::index_select(m__joints, 
-            1, ancestor).squeeze(1);// (N, 3)
-        translations.push_back(translation);// [i, (N, 3)]
-    }
-    torch::Tensor localTranslations = torch::stack(
-        translations, 1);// (N, 24, 3)
-    localTranslations = torch::unsqueeze(localTranslations, 3);// (N, 24, 3, 1)
+  torch::Tensor ancestor;
+  torch::Tensor translation;
+  for(int64_t i = 1; i < JOINT_NUM; i++)
+  {
+    ancestor = TorchEx::indexing(m__kineTree, torch::IntList({0}), torch::IntList({i})).toType(torch::kLong);
+    translation = TorchEx::indexing(m__joints, torch::IntList(), torch::IntList({i}), torch::IntList())
+                  - torch::index_select(m__joints, 1, ancestor).squeeze(1); // (N, 3)
+    translations.push_back(translation); // [i, (N, 3)]
+  }
+  torch::Tensor localTranslations = torch::stack(translations, 1); // (N, 24, 3)
+  localTranslations = torch::unsqueeze(localTranslations, 3); // (N, 24, 3, 1)
 
-    torch::Tensor ones = torch::ones(
-        {BATCH_SIZE, JOINT_NUM, 1, 1}, m__device);// (N, 24, 1, 1)
-    torch::Tensor localTransformationsHomo = torch::cat(
-        {localTranslations, ones}, 2);// (N, 24, 4, 1)
-    torch::Tensor localTransformations = torch::cat(
-        {poseRotHomo, localTransformationsHomo}, 3);// (N, 24, 4, 4)
+  torch::Tensor ones = torch::ones({BATCH_SIZE, JOINT_NUM, 1, 1}, m__device); // (N, 24, 1, 1)
+  torch::Tensor localTransformationsHomo = torch::cat({localTranslations, ones}, 2); // (N, 24, 4, 1)
+  torch::Tensor localTransformations = torch::cat({poseRotHomo, localTransformationsHomo}, 3); // (N, 24, 4, 4)
 
-    return localTransformations;
+  return localTransformations;
 }
 
 /**globalTransform
- * 
+ *
  * Brief
  * ----------
- * 
- * 
+ *
+ *
  * Arguments
  * ----------
- * 
+ *
  *      @localTransformations: - Tensor -
  *          Local transformations in each joint local coordinate but expressed
  *          by global coordinates, (N, 24, 4, 4).
- * 
+ *
  * Return
  * ----------
- * 
+ *
  *      @globalTransformations: - Tensor -
  *          Global transformation of each bone, (N, 24, 4, 4).
- * 
+ *
  * Notes
  * ----------
- * 
+ *
  *      Let,
  *          Ai - absolute rotation of joint i
  *          Qi - relative rotation of joint i
- * 
+ *
  *      Then we have,
  *          A0 = Q0, A1 = A0Q1 = Q0Q1,
  *          A2 = A0Q2 = Q0Q2, A3 = A0Q3 = Q0Q3,
@@ -602,73 +578,61 @@ torch::Tensor WorldTransformation::localTransform(
  *          A21 = A19Q21 = Q0Q3Q6Q9Q14Q17Q19Q21,
  *          A22 = A20Q22 = Q0Q3Q6Q8Q13Q16Q18Q20Q22,
  *          A23 = A21Q23 = Q0Q3Q6Q9Q14Q17Q19Q21Q23.
- * 
+ *
  */
-torch::Tensor WorldTransformation::globalTransform(
-    torch::Tensor &localTransformations) noexcept(false)
+torch::Tensor WorldTransformation::globalTransform(torch::Tensor & localTransformations) noexcept(false)
 {
-    if (localTransformations.sizes() != 
-        torch::IntArrayRef({BATCH_SIZE, JOINT_NUM, 4, 4})) {
-        throw smpl_error("WorldTransformations", 
-            "Cannot transform bones globally!");
-    }
+  if(localTransformations.sizes() != torch::IntArrayRef({BATCH_SIZE, JOINT_NUM, 4, 4}))
+  {
+    throw smpl_error("WorldTransformations", "Cannot transform bones globally!");
+  }
 
-    std::vector<torch::Tensor> transformations;
-    transformations.push_back(
-        TorchEx::indexing(localTransformations,
-            torch::IntList(),
-            torch::IntList({0}),
-            torch::IntList(),
-            torch::IntList())
-    );// [0, (N, 4, 4)]
+  std::vector<torch::Tensor> transformations;
+  transformations.push_back(TorchEx::indexing(localTransformations, torch::IntList(), torch::IntList({0}),
+                                              torch::IntList(),
+                                              torch::IntList())); // [0, (N, 4, 4)]
 
-    torch::Tensor ancestor;
-    torch::Tensor transformation;
-    torch::Tensor globalSlice, localSlice;
-    for (int64_t i = 1; i < JOINT_NUM; i++) {
-        ancestor = TorchEx::indexing(m__kineTree, 
-            torch::IntArrayRef({0}), torch::IntArrayRef({i})).toType(torch::kLong);
-        transformation = torch::matmul(
-            transformations[*(ancestor.to(torch::kCPU).data<int64_t>())],
-            TorchEx::indexing(localTransformations,
-                torch::IntList(),
-                torch::IntList({i}),
-                torch::IntList(),
-                torch::IntList())
-        );
-        transformations.push_back(transformation);// [i, (N, 4, 4)]
-    }
-    torch::Tensor globalTransformations = torch::stack(
-        transformations, 1);// (N, 24, 4, 4)
+  torch::Tensor ancestor;
+  torch::Tensor transformation;
+  torch::Tensor globalSlice, localSlice;
+  for(int64_t i = 1; i < JOINT_NUM; i++)
+  {
+    ancestor = TorchEx::indexing(m__kineTree, torch::IntArrayRef({0}), torch::IntArrayRef({i})).toType(torch::kLong);
+    transformation = torch::matmul(transformations[*(ancestor.to(torch::kCPU).data<int64_t>())],
+                                   TorchEx::indexing(localTransformations, torch::IntList(), torch::IntList({i}),
+                                                     torch::IntList(), torch::IntList()));
+    transformations.push_back(transformation); // [i, (N, 4, 4)]
+  }
+  torch::Tensor globalTransformations = torch::stack(transformations, 1); // (N, 24, 4, 4)
 
-    return globalTransformations;
+  return globalTransformations;
 }
 
 /**relativeTransform
- * 
+ *
  * Brief
  * ----------
- * 
+ *
  *      Eliminate rest pose's transformation from global transformation.
- * 
+ *
  * Arguments
  * ----------
- * 
+ *
  *      @globalTransformations: - Tensor -
  *          Global transformation of each bone, (N, 24, 4, 4).
- * 
- * 
+ *
+ *
  * Return
  * ----------
- * 
- * 
+ *
+ *
  * Notes
  * ----------
- * 
+ *
  *      Let,
  *          ei - eliminated vector of joint i
  *          ji - global location of joint i
- * 
+ *
  *      Then we have,
  *          e0 = Q0j0, e1 = A1j1 = Q0Q1j1,
  *          e2 = A2j2 = Q0Q2j2, e3 = A3j3 = Q0Q3j3,
@@ -687,40 +651,27 @@ torch::Tensor WorldTransformation::globalTransform(
  *          e21 = A21j21 = Q0Q3Q6Q9Q14Q17Q19Q21j21,
  *          e22 = A22j22 = Q0Q3Q6Q8Q13Q16Q18Q20Q22j22,
  *          e23 = A23j23 = Q0Q3Q6Q9Q14Q17Q19Q21Q23j23.
- * 
+ *
  */
-void WorldTransformation::relativeTransform(
-    torch::Tensor &globalTransformations) noexcept(false)
+void WorldTransformation::relativeTransform(torch::Tensor & globalTransformations) noexcept(false)
 {
-    if (globalTransformations.sizes() != 
-        torch::IntArrayRef({BATCH_SIZE, JOINT_NUM, 4, 4})) {
-        throw smpl_error("WorldTransformation", 
-            "Cannot transform bones relatively!");
-    }
+  if(globalTransformations.sizes() != torch::IntArrayRef({BATCH_SIZE, JOINT_NUM, 4, 4}))
+  {
+    throw smpl_error("WorldTransformation", "Cannot transform bones relatively!");
+  }
 
-    torch::Tensor eliminated = torch::matmul(
-        TorchEx::indexing(globalTransformations,
-            torch::IntList(),
-            torch::IntList(),
-            torch::IntList({0, 3}),
-            torch::IntList({0, 3})
-        ),
-        torch::unsqueeze(m__joints, 3)
-    );// (N, 24, 3, 1)
-    torch::Tensor zeros = torch::zeros(
-        {BATCH_SIZE, JOINT_NUM, 1, 1}, m__device);// (N, 24, 1, 1)
-    torch::Tensor eliminatedHomo = torch::cat(
-        {eliminated, zeros}, 2);// (N, 24, 4, 1)
-    zeros = torch::zeros(
-        {BATCH_SIZE, JOINT_NUM, 4, 3}, m__device);// (N, 24, 4, 3)
-    eliminatedHomo = torch::cat(
-        {zeros, eliminatedHomo}, 3);// (N, 24, 4, 4)
-    torch::Tensor relativeTransformtions = 
-        globalTransformations - eliminatedHomo;// (N, 24, 4, 4)
+  torch::Tensor eliminated = torch::matmul(TorchEx::indexing(globalTransformations, torch::IntList(), torch::IntList(),
+                                                             torch::IntList({0, 3}), torch::IntList({0, 3})),
+                                           torch::unsqueeze(m__joints, 3)); // (N, 24, 3, 1)
+  torch::Tensor zeros = torch::zeros({BATCH_SIZE, JOINT_NUM, 1, 1}, m__device); // (N, 24, 1, 1)
+  torch::Tensor eliminatedHomo = torch::cat({eliminated, zeros}, 2); // (N, 24, 4, 1)
+  zeros = torch::zeros({BATCH_SIZE, JOINT_NUM, 4, 3}, m__device); // (N, 24, 4, 3)
+  eliminatedHomo = torch::cat({zeros, eliminatedHomo}, 3); // (N, 24, 4, 4)
+  torch::Tensor relativeTransformtions = globalTransformations - eliminatedHomo; // (N, 24, 4, 4)
 
-    m__transformations = relativeTransformtions;
+  m__transformations = relativeTransformtions;
 
-    return;
+  return;
 }
 
 //=============================================================================
