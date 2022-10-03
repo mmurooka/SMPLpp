@@ -39,6 +39,9 @@
 #include "toolbox/Singleton.hpp"
 #include "toolbox/Tester.h"
 //----------
+#include <ros/ros.h>
+#include <visualization_msgs/MarkerArray.h>
+//----------
 
 //===== FORWARD DECLARATIONS ==================================================
 
@@ -49,8 +52,10 @@ using clk = std::chrono::system_clock;
 
 //===== MAIN FUNCTION =========================================================
 
-int main(int argc, char const * argv[])
+int main(int argc, char * argv[])
 {
+  ros::init(argc, argv, "smplpp");
+
   torch::Device cuda(torch::kCUDA);
   cuda.set_index(0);
 

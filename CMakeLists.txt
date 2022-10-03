@@ -79,6 +79,7 @@ set(PROJECT_INCLUDE_DIRS
     ${GLEW_INCLUDE_DIRS}
     ${xtensor_INCLUDE_DIRS}
     ${TORCH_INCLUDE_DIRS}
+    ${catkin_INCLUDE_DIRS}
 )
 
 # message("----- Include Paths -----")
@@ -96,6 +97,7 @@ set(PROJECT_LIBRARIES
     nlohmann_json::nlohmann_json
     ${TORCH_LIBRARIES}
     stdc++fs                        # std::experimental::filesystem
+    ${catkin_LIBRARIES}
 )
 
 # message("----- Libraries Paths -----")
