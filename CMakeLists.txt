@@ -22,6 +22,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 # catkin
 find_package(catkin REQUIRED COMPONENTS
   roscpp
+  roslib
   visualization_msgs
   )
 
@@ -39,6 +40,7 @@ find_package(Torch REQUIRED)
 catkin_package(
   CATKIN_DEPENDS
   roscpp
+  roslib
   visualization_msgs
 )
 

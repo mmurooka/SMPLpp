@@ -34,10 +34,15 @@
 //----------
 #include <torch/torch.h>
 //----------
+#include <xtensor/xadapt.hpp>
+#include <xtensor/xarray.hpp>
+//----------
 #include "definition/def.h"
 #include "smpl/SMPL.h"
 #include "toolbox/Singleton.hpp"
+#include "toolbox/TorchEx.hpp"
 //----------
+#include <ros/package.h>
 #include <ros/ros.h>
 #include <visualization_msgs/MarkerArray.h>
 //----------
@@ -46,53 +51,115 @@
 
 //===== NAMESPACE =============================================================
 
-using ms = std::chrono::milliseconds;
-using clk = std::chrono::system_clock;
-
 //===== MAIN FUNCTION =========================================================
 
 int main(int argc, char * argv[])
 {
+  // Setup ROS
   ros::init(argc, argv, "smplpp");
   ros::NodeHandle nh;
-  ros::Publisher marker_pub = nh.advertise<visualization_msgs::MarkerArray>("smplpp/marker_arr", 1);
+  ros::NodeHandle pnh("~");
+  ros::Publisher markerPub = nh.advertise<visualization_msgs::MarkerArray>("smplpp/marker_arr", 1);
 
-  try
+  // Load SMPL model
   {
+    auto startTime = std::chrono::system_clock::now();
+
     torch::Device device(torch::kCPU);
-    std::string modelPath = "../data/smpl_female.json";
-    nh.getParam("model_path", modelPath);
+    device.set_index(0);
+
+    std::string modelPath = ros::package::getPath("smplpp") + "/data/smpl_female.json";
+    pnh.getParam("model_path", modelPath);
+    ROS_INFO_STREAM("Load SMPL model from " << modelPath);
 
     SINGLE_SMPL::get()->setDevice(device);
     SINGLE_SMPL::get()->setModelPath(modelPath);
-
-    auto begin = clk::now();
     SINGLE_SMPL::get()->init();
-    auto end = clk::now();
-    auto duration = std::chrono::duration_cast<ms>(end - begin);
-    ROS_INFO_STREAM("Time duration to load SMPL: " << (double)duration.count() / 1000 << " [s]");
-  }
-  catch(std::exception & e)
-  {
-    std::cerr << e.what() << std::endl;
+
+    ROS_INFO_STREAM("Duration to load SMPL: " << std::chrono::duration_cast<std::chrono::duration<double>>(
+                                                     std::chrono::system_clock::now() - startTime)
+                                                         .count()
+                                                     * 1e-3
+                                              << " [s]");
   }
 
+  double rateFreq = 30.0;
+  pnh.getParam("rate", rateFreq);
+  ros::Rate rate(rateFreq);
   while(ros::ok())
   {
     torch::Tensor beta = 0.03 * torch::rand({BATCH_SIZE, SHAPE_BASIS_DIM}); // (N, 10)
     torch::Tensor theta = 0.2 * torch::rand({BATCH_SIZE, JOINT_NUM, 3}); // (N, 24, 3)
 
+    // Update SMPL model
     {
-      auto begin = clk::now();
+      auto startTime = std::chrono::system_clock::now();
+
       SINGLE_SMPL::get()->launch(beta, theta);
-      auto end = clk::now();
-      auto duration = std::chrono::duration_cast<ms>(end - begin);
-      ROS_INFO_STREAM("Time duration to run SMPL: " << (double)duration.count() / 1000 << " [s]");
+
+      ROS_INFO_STREAM("Duration to update SMPL: " << std::chrono::duration_cast<std::chrono::duration<double>>(
+                                                         std::chrono::system_clock::now() - startTime)
+                                                         .count()
+                                                  << " [ms]");
     }
 
     {
+      auto startTime = std::chrono::system_clock::now();
+
+      visualization_msgs::MarkerArray markerArrMsg;
+      visualization_msgs::Marker markerMsg;
+      markerMsg.header.stamp = ros::Time::now();
+      markerMsg.header.frame_id = "world";
+      markerMsg.ns = "SMPL model";
+      markerMsg.id = 0;
+      markerMsg.type = visualization_msgs::Marker::TRIANGLE_LIST;
+      markerMsg.action = visualization_msgs::Marker::ADD;
+      markerMsg.pose.orientation.w = 1.0;
+      markerMsg.scale.x = 1.0;
+      markerMsg.scale.y = 1.0;
+      markerMsg.scale.z = 1.0;
+      markerMsg.color.r = 0.1;
+      markerMsg.color.g = 0.8;
+      markerMsg.color.b = 0.1;
+      markerMsg.color.a = 1.0;
+
       torch::Tensor vertices = SINGLE_SMPL::get()->getVertex();
+      torch::Tensor faceIndices = SINGLE_SMPL::get()->getFaceIndex();
+      assert(vertices.sizes() == torch::IntArrayRef({BATCH_SIZE, VERTEX_NUM, 3}));
+      assert(faceIndices.sizes() == torch::IntArrayRef({FACE_INDEX_NUM, 3}));
+
+      torch::Tensor slice_ = smpl::TorchEx::indexing(vertices, torch::IntList({0}));
+      xt::xarray<float> slice = xt::adapt((float *)slice_.to(torch::kCPU).data_ptr(),
+                                          xt::xarray<float>::shape_type({static_cast<const size_t>(VERTEX_NUM), 3}));
+
+      xt::xarray<int32_t> faceIndexArr =
+          xt::adapt((int32_t *)faceIndices.to(torch::kCPU).data_ptr(),
+                    xt::xarray<int32_t>::shape_type({static_cast<const size_t>(FACE_INDEX_NUM), 3}));
+
+      for(int64_t i = 0; i < FACE_INDEX_NUM; i++)
+      {
+        for(int64_t j = 0; j < 3; j++)
+        {
+          int64_t idx = faceIndexArr(i, j) - 1;
+          geometry_msgs::Point pointMsg;
+          pointMsg.x = slice(idx, 0);
+          pointMsg.y = slice(idx, 1);
+          pointMsg.z = slice(idx, 2);
+          markerMsg.points.push_back(pointMsg);
+        }
+      }
+
+      markerArrMsg.markers.push_back(markerMsg);
+      markerPub.publish(markerArrMsg);
+
+      ROS_INFO_STREAM("Duration to publish message: " << std::chrono::duration_cast<std::chrono::duration<double>>(
+                                                             std::chrono::system_clock::now() - startTime)
+                                                             .count()
+                                                      << " [ms]");
     }
+
+    ros::spinOnce();
+    rate.sleep();
   }
 
   SINGLE_SMPL::destroy();
