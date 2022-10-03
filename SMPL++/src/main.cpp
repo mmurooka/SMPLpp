@@ -54,55 +54,45 @@ using clk = std::chrono::system_clock;
 int main(int argc, char * argv[])
 {
   ros::init(argc, argv, "smplpp");
-
-  torch::Device cuda(torch::kCUDA);
-  cuda.set_index(0);
-
-  std::string modelPath = "../data/smpl_female.json";
-  std::string outputPath = "../out/vertices.obj";
-
-  torch::Tensor beta = 0.03 * torch::rand({BATCH_SIZE, SHAPE_BASIS_DIM}); // (N, 10)
-  torch::Tensor theta = 0.2 * torch::rand({BATCH_SIZE, JOINT_NUM, 3}); // (N, 24, 3)
-
-  torch::Tensor vertices;
+  ros::NodeHandle nh;
+  ros::Publisher marker_pub = nh.advertise<visualization_msgs::MarkerArray>("smplpp/marker_arr", 1);
 
   try
   {
-    SINGLE_SMPL::get()->setDevice(cuda);
+    torch::Device device(torch::kCPU);
+    std::string modelPath = "../data/smpl_female.json";
+    nh.getParam("model_path", modelPath);
+
+    SINGLE_SMPL::get()->setDevice(device);
     SINGLE_SMPL::get()->setModelPath(modelPath);
 
     auto begin = clk::now();
     SINGLE_SMPL::get()->init();
     auto end = clk::now();
     auto duration = std::chrono::duration_cast<ms>(end - begin);
-    std::cout << "Time duration to load SMPL: " << (double)duration.count() / 1000 << " s" << std::endl;
+    ROS_INFO_STREAM("Time duration to load SMPL: " << (double)duration.count() / 1000 << " [s]");
+  }
+  catch(std::exception & e)
+  {
+    std::cerr << e.what() << std::endl;
+  }
 
-    const int64_t LOOPS = 100;
-    duration = std::chrono::duration_cast<ms>(end - end); // reset duration
-    for(int64_t i = 0; i < LOOPS; i++)
+  while(ros::ok())
+  {
+    torch::Tensor beta = 0.03 * torch::rand({BATCH_SIZE, SHAPE_BASIS_DIM}); // (N, 10)
+    torch::Tensor theta = 0.2 * torch::rand({BATCH_SIZE, JOINT_NUM, 3}); // (N, 24, 3)
+
     {
-      begin = clk::now();
+      auto begin = clk::now();
       SINGLE_SMPL::get()->launch(beta, theta);
-      end = clk::now();
-      duration += std::chrono::duration_cast<ms>(end - begin);
+      auto end = clk::now();
+      auto duration = std::chrono::duration_cast<ms>(end - begin);
+      ROS_INFO_STREAM("Time duration to run SMPL: " << (double)duration.count() / 1000 << " [s]");
     }
-    std::cout << "Time duration to run SMPL: " << (double)duration.count() / LOOPS << " ms" << std::endl;
 
-    vertices = SINGLE_SMPL::get()->getVertex();
-  }
-  catch(std::exception & e)
-  {
-    std::cerr << e.what() << std::endl;
-  }
-
-  try
-  {
-    SINGLE_SMPL::get()->setVertPath(outputPath);
-    SINGLE_SMPL::get()->out(0);
-  }
-  catch(std::exception & e)
-  {
-    std::cerr << e.what() << std::endl;
+    {
+      torch::Tensor vertices = SINGLE_SMPL::get()->getVertex();
+    }
   }
 
   SINGLE_SMPL::destroy();
