@@ -123,17 +123,18 @@ int main(int argc, char * argv[])
       markerMsg.color.b = 0.1;
       markerMsg.color.a = 1.0;
 
-      torch::Tensor vertices = SINGLE_SMPL::get()->getVertex();
-      torch::Tensor faceIndices = SINGLE_SMPL::get()->getFaceIndex();
-      assert(vertices.sizes() == torch::IntArrayRef({BATCH_SIZE, VERTEX_NUM, 3}));
-      assert(faceIndices.sizes() == torch::IntArrayRef({FACE_INDEX_NUM, 3}));
+      torch::Tensor vertexTensorBatched = SINGLE_SMPL::get()->getVertex();
+      torch::Tensor faceIndexTensor = SINGLE_SMPL::get()->getFaceIndex();
+      assert(vertexTensorBatched.sizes() == torch::IntArrayRef({BATCH_SIZE, VERTEX_NUM, 3}));
+      assert(faceIndexTensor.sizes() == torch::IntArrayRef({FACE_INDEX_NUM, 3}));
 
-      torch::Tensor slice_ = smpl::TorchEx::indexing(vertices, torch::IntList({0}));
-      xt::xarray<float> slice = xt::adapt((float *)slice_.to(torch::kCPU).data_ptr(),
-                                          xt::xarray<float>::shape_type({static_cast<const size_t>(VERTEX_NUM), 3}));
+      torch::Tensor vertexTensor = smpl::TorchEx::indexing(vertexTensorBatched, torch::IntList({0}));
+      xt::xarray<float> vertexArr =
+          xt::adapt(static_cast<float *>(vertexTensor.to(torch::kCPU).data_ptr()),
+                    xt::xarray<float>::shape_type({static_cast<const size_t>(VERTEX_NUM), 3}));
 
       xt::xarray<int32_t> faceIndexArr =
-          xt::adapt((int32_t *)faceIndices.to(torch::kCPU).data_ptr(),
+          xt::adapt(static_cast<int32_t *>(faceIndexTensor.to(torch::kCPU).data_ptr()),
                     xt::xarray<int32_t>::shape_type({static_cast<const size_t>(FACE_INDEX_NUM), 3}));
 
       for(int64_t i = 0; i < FACE_INDEX_NUM; i++)
@@ -142,9 +143,9 @@ int main(int argc, char * argv[])
         {
           int64_t idx = faceIndexArr(i, j) - 1;
           geometry_msgs::Point pointMsg;
-          pointMsg.x = slice(idx, 0);
-          pointMsg.y = slice(idx, 1);
-          pointMsg.z = slice(idx, 2);
+          pointMsg.x = vertexArr(idx, 0);
+          pointMsg.y = vertexArr(idx, 1);
+          pointMsg.z = vertexArr(idx, 2);
           markerMsg.points.push_back(pointMsg);
         }
       }
