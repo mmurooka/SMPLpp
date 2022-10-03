@@ -2,292 +2,292 @@ publish_interval: 10
 settings:
   /smplpp/pose_param/angles[0]/x:
     is_repeat: false
-    max: 1.0
-    min: 0.1
+    max: 2.0
+    min: -2.0
   /smplpp/pose_param/angles[0]/y:
     is_repeat: false
-    max: 1.0
-    min: 0.1
+    max: 2.0
+    min: -2.0
   /smplpp/pose_param/angles[0]/z:
     is_repeat: false
-    max: 1.0
-    min: 0.1
+    max: 2.0
+    min: -2.0
   /smplpp/pose_param/angles[1]/x:
     is_repeat: false
-    max: 1.0
-    min: 0.1
+    max: 2.0
+    min: -2.0
   /smplpp/pose_param/angles[1]/y:
     is_repeat: false
-    max: 1.0
-    min: 0.1
+    max: 2.0
+    min: -2.0
   /smplpp/pose_param/angles[1]/z:
     is_repeat: false
-    max: 1.0
-    min: 0.1
+    max: 2.0
+    min: -2.0
   /smplpp/pose_param/angles[2]/x:
     is_repeat: false
-    max: 1.0
-    min: 0.1
+    max: 2.0
+    min: -2.0
   /smplpp/pose_param/angles[2]/y:
     is_repeat: false
-    max: 1.0
-    min: 0.1
+    max: 2.0
+    min: -2.0
   /smplpp/pose_param/angles[2]/z:
     is_repeat: false
-    max: 1.0
-    min: 0.1
+    max: 2.0
+    min: -2.0
   /smplpp/pose_param/angles[3]/x:
     is_repeat: false
-    max: 1.0
-    min: 0.1
+    max: 2.0
+    min: -2.0
   /smplpp/pose_param/angles[3]/y:
     is_repeat: false
-    max: 1.0
-    min: 0.1
+    max: 2.0
+    min: -2.0
   /smplpp/pose_param/angles[3]/z:
     is_repeat: false
-    max: 1.0
-    min: 0.1
+    max: 2.0
+    min: -2.0
   /smplpp/pose_param/angles[4]/x:
     is_repeat: false
-    max: 1.0
-    min: 0.1
+    max: 2.0
+    min: -2.0
   /smplpp/pose_param/angles[4]/y:
     is_repeat: false
-    max: 1.0
-    min: 0.1
+    max: 2.0
+    min: -2.0
   /smplpp/pose_param/angles[4]/z:
     is_repeat: false
-    max: 1.0
-    min: 0.1
+    max: 2.0
+    min: -2.0
   /smplpp/pose_param/angles[5]/x:
     is_repeat: false
-    max: 1.0
-    min: 0.1
+    max: 2.0
+    min: -2.0
   /smplpp/pose_param/angles[5]/y:
     is_repeat: false
-    max: 1.0
-    min: 0.1
+    max: 2.0
+    min: -2.0
   /smplpp/pose_param/angles[5]/z:
     is_repeat: false
-    max: 1.0
-    min: 0.1
+    max: 2.0
+    min: -2.0
   /smplpp/pose_param/angles[6]/x:
     is_repeat: false
-    max: 1.0
-    min: 0.1
+    max: 2.0
+    min: -2.0
   /smplpp/pose_param/angles[6]/y:
     is_repeat: false
-    max: 1.0
-    min: 0.1
+    max: 2.0
+    min: -2.0
   /smplpp/pose_param/angles[6]/z:
     is_repeat: false
-    max: 1.0
-    min: 0.1
+    max: 2.0
+    min: -2.0
   /smplpp/pose_param/angles[7]/x:
     is_repeat: false
-    max: 1.0
-    min: 0.1
+    max: 2.0
+    min: -2.0
   /smplpp/pose_param/angles[7]/y:
     is_repeat: false
-    max: 1.0
-    min: 0.1
+    max: 2.0
+    min: -2.0
   /smplpp/pose_param/angles[7]/z:
     is_repeat: false
-    max: 1.0
-    min: 0.1
+    max: 2.0
+    min: -2.0
   /smplpp/pose_param/angles[8]/x:
     is_repeat: false
-    max: 1.0
-    min: 0.1
+    max: 2.0
+    min: -2.0
   /smplpp/pose_param/angles[8]/y:
     is_repeat: false
-    max: 1.0
-    min: 0.1
+    max: 2.0
+    min: -2.0
   /smplpp/pose_param/angles[8]/z:
     is_repeat: false
-    max: 1.0
-    min: 0.1
+    max: 2.0
+    min: -2.0
   /smplpp/pose_param/angles[9]/x:
     is_repeat: false
-    max: 1.0
-    min: 0.1
+    max: 2.0
+    min: -2.0
   /smplpp/pose_param/angles[9]/y:
     is_repeat: false
-    max: 1.0
-    min: 0.1
+    max: 2.0
+    min: -2.0
   /smplpp/pose_param/angles[9]/z:
     is_repeat: false
-    max: 1.0
-    min: 0.1
+    max: 2.0
+    min: -2.0
   /smplpp/pose_param/angles[10]/x:
     is_repeat: false
-    max: 1.0
-    min: 0.1
+    max: 2.0
+    min: -2.0
   /smplpp/pose_param/angles[10]/y:
     is_repeat: false
-    max: 1.0
-    min: 0.1
+    max: 2.0
+    min: -2.0
   /smplpp/pose_param/angles[10]/z:
     is_repeat: false
-    max: 1.0
-    min: 0.1
+    max: 2.0
+    min: -2.0
   /smplpp/pose_param/angles[11]/x:
     is_repeat: false
-    max: 1.0
-    min: 0.1
+    max: 2.0
+    min: -2.0
   /smplpp/pose_param/angles[11]/y:
     is_repeat: false
-    max: 1.0
-    min: 0.1
+    max: 2.0
+    min: -2.0
   /smplpp/pose_param/angles[11]/z:
     is_repeat: false
-    max: 1.0
-    min: 0.1
+    max: 2.0
+    min: -2.0
   /smplpp/pose_param/angles[12]/x:
     is_repeat: false
-    max: 1.0
-    min: 0.1
+    max: 2.0
+    min: -2.0
   /smplpp/pose_param/angles[12]/y:
     is_repeat: false
-    max: 1.0
-    min: 0.1
+    max: 2.0
+    min: -2.0
   /smplpp/pose_param/angles[12]/z:
     is_repeat: false
-    max: 1.0
-    min: 0.1
+    max: 2.0
+    min: -2.0
   /smplpp/pose_param/angles[13]/x:
     is_repeat: false
-    max: 1.0
-    min: 0.1
+    max: 2.0
+    min: -2.0
   /smplpp/pose_param/angles[13]/y:
     is_repeat: false
-    max: 1.0
-    min: 0.1
+    max: 2.0
+    min: -2.0
   /smplpp/pose_param/angles[13]/z:
     is_repeat: false
-    max: 1.0
-    min: 0.1
+    max: 2.0
+    min: -2.0
   /smplpp/pose_param/angles[14]/x:
     is_repeat: false
-    max: 1.0
-    min: 0.1
+    max: 2.0
+    min: -2.0
   /smplpp/pose_param/angles[14]/y:
     is_repeat: false
-    max: 1.0
-    min: 0.1
+    max: 2.0
+    min: -2.0
   /smplpp/pose_param/angles[14]/z:
     is_repeat: false
-    max: 1.0
-    min: 0.1
+    max: 2.0
+    min: -2.0
   /smplpp/pose_param/angles[15]/x:
     is_repeat: false
-    max: 1.0
-    min: 0.1
+    max: 2.0
+    min: -2.0
   /smplpp/pose_param/angles[15]/y:
     is_repeat: false
-    max: 1.0
-    min: 0.1
+    max: 2.0
+    min: -2.0
   /smplpp/pose_param/angles[15]/z:
     is_repeat: false
-    max: 1.0
-    min: 0.1
+    max: 2.0
+    min: -2.0
   /smplpp/pose_param/angles[16]/x:
     is_repeat: false
-    max: 1.0
-    min: 0.1
+    max: 2.0
+    min: -2.0
   /smplpp/pose_param/angles[16]/y:
     is_repeat: false
-    max: 1.0
-    min: 0.1
+    max: 2.0
+    min: -2.0
   /smplpp/pose_param/angles[16]/z:
     is_repeat: false
-    max: 1.0
-    min: 0.1
+    max: 2.0
+    min: -2.0
   /smplpp/pose_param/angles[17]/x:
     is_repeat: false
-    max: 1.0
-    min: 0.1
+    max: 2.0
+    min: -2.0
   /smplpp/pose_param/angles[17]/y:
     is_repeat: false
-    max: 1.0
-    min: 0.1
+    max: 2.0
+    min: -2.0
   /smplpp/pose_param/angles[17]/z:
     is_repeat: false
-    max: 1.0
-    min: 0.1
+    max: 2.0
+    min: -2.0
   /smplpp/pose_param/angles[18]/x:
     is_repeat: false
-    max: 1.0
-    min: 0.1
+    max: 2.0
+    min: -2.0
   /smplpp/pose_param/angles[18]/y:
     is_repeat: false
-    max: 1.0
-    min: 0.1
+    max: 2.0
+    min: -2.0
   /smplpp/pose_param/angles[18]/z:
     is_repeat: false
-    max: 1.0
-    min: 0.1
+    max: 2.0
+    min: -2.0
   /smplpp/pose_param/angles[19]/x:
     is_repeat: false
-    max: 1.0
-    min: 0.1
+    max: 2.0
+    min: -2.0
   /smplpp/pose_param/angles[19]/y:
     is_repeat: false
-    max: 1.0
-    min: 0.1
+    max: 2.0
+    min: -2.0
   /smplpp/pose_param/angles[19]/z:
     is_repeat: false
-    max: 1.0
-    min: 0.1
+    max: 2.0
+    min: -2.0
   /smplpp/pose_param/angles[20]/x:
     is_repeat: false
-    max: 1.0
-    min: 0.1
+    max: 2.0
+    min: -2.0
   /smplpp/pose_param/angles[20]/y:
     is_repeat: false
-    max: 1.0
-    min: 0.1
+    max: 2.0
+    min: -2.0
   /smplpp/pose_param/angles[20]/z:
     is_repeat: false
-    max: 1.0
-    min: 0.1
+    max: 2.0
+    min: -2.0
   /smplpp/pose_param/angles[21]/x:
     is_repeat: false
-    max: 1.0
-    min: 0.1
+    max: 2.0
+    min: -2.0
   /smplpp/pose_param/angles[21]/y:
     is_repeat: false
-    max: 1.0
-    min: 0.1
+    max: 2.0
+    min: -2.0
   /smplpp/pose_param/angles[21]/z:
     is_repeat: false
-    max: 1.0
-    min: 0.1
+    max: 2.0
+    min: -2.0
   /smplpp/pose_param/angles[22]/x:
     is_repeat: false
-    max: 1.0
-    min: 0.1
+    max: 2.0
+    min: -2.0
   /smplpp/pose_param/angles[22]/y:
     is_repeat: false
-    max: 1.0
-    min: 0.1
+    max: 2.0
+    min: -2.0
   /smplpp/pose_param/angles[22]/z:
     is_repeat: false
-    max: 1.0
-    min: 0.1
+    max: 2.0
+    min: -2.0
   /smplpp/pose_param/angles[23]/x:
     is_repeat: false
-    max: 1.0
-    min: 0.1
+    max: 2.0
+    min: -2.0
   /smplpp/pose_param/angles[23]/y:
     is_repeat: false
-    max: 1.0
-    min: 0.1
+    max: 2.0
+    min: -2.0
   /smplpp/pose_param/angles[23]/z:
     is_repeat: false
-    max: 1.0
-    min: 0.1
+    max: 2.0
+    min: -2.0
 texts:
 - /smplpp/pose_param/angles[0]/x
 - /smplpp/pose_param/angles[0]/y

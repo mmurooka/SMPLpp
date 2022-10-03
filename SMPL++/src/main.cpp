@@ -54,19 +54,18 @@
 
 //===== MAIN FUNCTION =========================================================
 
-// torch::Tensor g_theta = torch::zeros({BATCH_SIZE, JOINT_NUM, 3}); // (N, 24, 3)
-torch::Tensor g_theta = 0.2 * torch::rand({BATCH_SIZE, JOINT_NUM, 3}); // (N, 24, 3)
+torch::Tensor g_theta = torch::zeros({BATCH_SIZE, JOINT_NUM, 3}); // (N, 24, 3)
 
 void poseParamCallback(const smplpp::PoseParam::ConstPtr & msg)
 {
   if(msg->angles.size() != JOINT_NUM)
   {
-    throw smpl::smpl_error("main", "Invalid angles size: " + std::to_string(msg->angles.size())
-                                       + " != " + std::to_string(JOINT_NUM));
+    ROS_ERROR_STREAM("Invalid angles size: " << std::to_string(msg->angles.size())
+                                             << " != " << std::to_string(JOINT_NUM));
+    return;
   }
 
-  // for(int64_t i = 0; i < JOINT_NUM; i++)
-  for(int64_t i = 0; i < 3; i++)
+  for(int64_t i = 0; i < JOINT_NUM; i++)
   {
     g_theta.index({0, i, 0}) = msg->angles[i].x;
     g_theta.index({0, i, 1}) = msg->angles[i].y;
