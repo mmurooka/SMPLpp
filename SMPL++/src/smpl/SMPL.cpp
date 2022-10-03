@@ -534,8 +534,18 @@ void SMPL::init() noexcept(false)
     xt::xarray<float> poseBlendBasis;
     xt::from_json(m__model["shape_blend_shapes"], shapeBlendBasis);
     xt::from_json(m__model["pose_blend_shapes"], poseBlendBasis);
+    if(shapeBlendBasis.shape(2) != SHAPE_BASIS_DIM)
+    {
+      throw smpl_error("SMPL", "Shape parameter dimensions are invalid: " + std::to_string(shapeBlendBasis.shape(2))
+                                   + " != " + std::to_string(SHAPE_BASIS_DIM));
+    }
     m__shapeBlendBasis =
         torch::from_blob(shapeBlendBasis.data(), {VERTEX_NUM, 3, SHAPE_BASIS_DIM}).to(m__device); // (6890, 3, 10)
+    if(poseBlendBasis.shape(2) != POSE_BASIS_DIM)
+    {
+      throw smpl_error("SMPL", "Pose parameter dimensions are invalid: " + std::to_string(poseBlendBasis.shape(2))
+                                   + " != " + std::to_string(POSE_BASIS_DIM));
+    }
     m__poseBlendBasis =
         torch::from_blob(poseBlendBasis.data(), {VERTEX_NUM, 3, POSE_BASIS_DIM}).to(m__device); // (6890, 3, 207)
 

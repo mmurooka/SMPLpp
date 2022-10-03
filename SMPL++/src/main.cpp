@@ -78,7 +78,7 @@ int main(int argc, char * argv[])
     }
     else
     {
-      throw std::runtime_error("Invalid device type: " + deviceType);
+      throw smpl::smpl_error("main", "Invalid device type: " + deviceType);
     }
     device->set_index(0);
     ROS_INFO_STREAM("Device type: " << deviceType);
