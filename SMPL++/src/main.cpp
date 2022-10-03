@@ -37,7 +37,6 @@
 #include "definition/def.h"
 #include "smpl/SMPL.h"
 #include "toolbox/Singleton.hpp"
-#include "toolbox/Tester.h"
 //----------
 #include <ros/ros.h>
 #include <visualization_msgs/MarkerArray.h>
@@ -58,16 +57,6 @@ int main(int argc, char * argv[])
 
   torch::Device cuda(torch::kCUDA);
   cuda.set_index(0);
-
-  // smpl::Tester tester;
-  // tester.setDevice(cuda);
-
-  // tester.singleton();
-  // tester.blendShape();
-  // tester.jointRegression();
-  // tester.worldTransformation();
-  // tester.linearBlendSkinning();
-  // tester.import();
 
   std::string modelPath = "../data/smpl_female.json";
   std::string outputPath = "../out/vertices.obj";
