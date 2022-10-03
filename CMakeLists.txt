@@ -21,8 +21,11 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # catkin
 find_package(catkin REQUIRED COMPONENTS
+  message_generation
   roscpp
   roslib
+  std_msgs
+  geometry_msgs
   visualization_msgs
   )
 
@@ -37,10 +40,26 @@ message("-- LIBTORCH_PATH: ${LIBTORCH_PATH}")
 list(APPEND CMAKE_PREFIX_PATH ${LIBTORCH_PATH})
 find_package(Torch REQUIRED)
 
+##
+## CATKIN
+##
+
+add_message_files(
+  FILES
+  PoseParam.msg
+)
+
+generate_messages(
+  DEPENDENCIES std_msgs geometry_msgs
+)
+
 catkin_package(
   CATKIN_DEPENDS
+  message_runtime
   roscpp
   roslib
+  std_msgs
+  geometry_msgs
   visualization_msgs
 )
 

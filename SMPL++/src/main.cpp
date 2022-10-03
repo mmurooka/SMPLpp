@@ -45,6 +45,7 @@
 #include <ros/package.h>
 #include <ros/ros.h>
 #include <visualization_msgs/MarkerArray.h>
+#include <smplpp/PoseParam.h>
 //----------
 
 //===== FORWARD DECLARATIONS ==================================================
@@ -53,6 +54,26 @@
 
 //===== MAIN FUNCTION =========================================================
 
+// torch::Tensor g_theta = torch::zeros({BATCH_SIZE, JOINT_NUM, 3}); // (N, 24, 3)
+torch::Tensor g_theta = 0.2 * torch::rand({BATCH_SIZE, JOINT_NUM, 3}); // (N, 24, 3)
+
+void poseParamCallback(const smplpp::PoseParam::ConstPtr & msg)
+{
+  if(msg->angles.size() != JOINT_NUM)
+  {
+    throw smpl::smpl_error("main", "Invalid angles size: " + std::to_string(msg->angles.size())
+                                       + " != " + std::to_string(JOINT_NUM));
+  }
+
+  // for(int64_t i = 0; i < JOINT_NUM; i++)
+  for(int64_t i = 0; i < 3; i++)
+  {
+    g_theta.index({0, i, 0}) = msg->angles[i].x;
+    g_theta.index({0, i, 1}) = msg->angles[i].y;
+    g_theta.index({0, i, 2}) = msg->angles[i].z;
+  }
+}
+
 int main(int argc, char * argv[])
 {
   // Setup ROS
@@ -60,6 +81,7 @@ int main(int argc, char * argv[])
   ros::NodeHandle nh;
   ros::NodeHandle pnh("~");
   ros::Publisher markerPub = nh.advertise<visualization_msgs::MarkerArray>("smplpp/marker_arr", 1);
+  ros::Subscriber poseParamSub = nh.subscribe("smplpp/pose_param", 1, poseParamCallback);
 
   // Load SMPL model
   {
@@ -107,19 +129,19 @@ int main(int argc, char * argv[])
   while(ros::ok())
   {
     torch::Tensor beta = 0.03 * torch::rand({BATCH_SIZE, SHAPE_BASIS_DIM}); // (N, 10)
-    torch::Tensor theta = 0.2 * torch::rand({BATCH_SIZE, JOINT_NUM, 3}); // (N, 24, 3)
 
     // Update SMPL model
     {
       auto startTime = std::chrono::system_clock::now();
 
-      SINGLE_SMPL::get()->launch(beta, theta);
+      SINGLE_SMPL::get()->launch(beta, g_theta);
 
-      ROS_INFO_STREAM("Duration to update SMPL: " << std::chrono::duration_cast<std::chrono::duration<double>>(
-                                                         std::chrono::system_clock::now() - startTime)
-                                                             .count()
-                                                         * 1e3
-                                                  << " [ms]");
+      ROS_INFO_STREAM_THROTTLE(10.0,
+                               "Duration to update SMPL: " << std::chrono::duration_cast<std::chrono::duration<double>>(
+                                                                  std::chrono::system_clock::now() - startTime)
+                                                                      .count()
+                                                                  * 1e3
+                                                           << " [ms]");
     }
 
     {
@@ -172,11 +194,12 @@ int main(int argc, char * argv[])
       markerArrMsg.markers.push_back(markerMsg);
       markerPub.publish(markerArrMsg);
 
-      ROS_INFO_STREAM("Duration to publish message: " << std::chrono::duration_cast<std::chrono::duration<double>>(
-                                                             std::chrono::system_clock::now() - startTime)
-                                                                 .count()
-                                                             * 1e3
-                                                      << " [ms]");
+      ROS_INFO_STREAM_THROTTLE(10.0, "Duration to publish message: "
+                                         << std::chrono::duration_cast<std::chrono::duration<double>>(
+                                                std::chrono::system_clock::now() - startTime)
+                                                    .count()
+                                                * 1e3
+                                         << " [ms]");
     }
 
     ros::spinOnce();

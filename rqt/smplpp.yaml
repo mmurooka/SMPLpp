@@ -1,0 +1,363 @@
+publish_interval: 10
+settings:
+  /smplpp/pose_param/angles[0]/x:
+    is_repeat: false
+    max: 1.0
+    min: 0.1
+  /smplpp/pose_param/angles[0]/y:
+    is_repeat: false
+    max: 1.0
+    min: 0.1
+  /smplpp/pose_param/angles[0]/z:
+    is_repeat: false
+    max: 1.0
+    min: 0.1
+  /smplpp/pose_param/angles[1]/x:
+    is_repeat: false
+    max: 1.0
+    min: 0.1
+  /smplpp/pose_param/angles[1]/y:
+    is_repeat: false
+    max: 1.0
+    min: 0.1
+  /smplpp/pose_param/angles[1]/z:
+    is_repeat: false
+    max: 1.0
+    min: 0.1
+  /smplpp/pose_param/angles[2]/x:
+    is_repeat: false
+    max: 1.0
+    min: 0.1
+  /smplpp/pose_param/angles[2]/y:
+    is_repeat: false
+    max: 1.0
+    min: 0.1
+  /smplpp/pose_param/angles[2]/z:
+    is_repeat: false
+    max: 1.0
+    min: 0.1
+  /smplpp/pose_param/angles[3]/x:
+    is_repeat: false
+    max: 1.0
+    min: 0.1
+  /smplpp/pose_param/angles[3]/y:
+    is_repeat: false
+    max: 1.0
+    min: 0.1
+  /smplpp/pose_param/angles[3]/z:
+    is_repeat: false
+    max: 1.0
+    min: 0.1
+  /smplpp/pose_param/angles[4]/x:
+    is_repeat: false
+    max: 1.0
+    min: 0.1
+  /smplpp/pose_param/angles[4]/y:
+    is_repeat: false
+    max: 1.0
+    min: 0.1
+  /smplpp/pose_param/angles[4]/z:
+    is_repeat: false
+    max: 1.0
+    min: 0.1
+  /smplpp/pose_param/angles[5]/x:
+    is_repeat: false
+    max: 1.0
+    min: 0.1
+  /smplpp/pose_param/angles[5]/y:
+    is_repeat: false
+    max: 1.0
+    min: 0.1
+  /smplpp/pose_param/angles[5]/z:
+    is_repeat: false
+    max: 1.0
+    min: 0.1
+  /smplpp/pose_param/angles[6]/x:
+    is_repeat: false
+    max: 1.0
+    min: 0.1
+  /smplpp/pose_param/angles[6]/y:
+    is_repeat: false
+    max: 1.0
+    min: 0.1
+  /smplpp/pose_param/angles[6]/z:
+    is_repeat: false
+    max: 1.0
+    min: 0.1
+  /smplpp/pose_param/angles[7]/x:
+    is_repeat: false
+    max: 1.0
+    min: 0.1
+  /smplpp/pose_param/angles[7]/y:
+    is_repeat: false
+    max: 1.0
+    min: 0.1
+  /smplpp/pose_param/angles[7]/z:
+    is_repeat: false
+    max: 1.0
+    min: 0.1
+  /smplpp/pose_param/angles[8]/x:
+    is_repeat: false
+    max: 1.0
+    min: 0.1
+  /smplpp/pose_param/angles[8]/y:
+    is_repeat: false
+    max: 1.0
+    min: 0.1
+  /smplpp/pose_param/angles[8]/z:
+    is_repeat: false
+    max: 1.0
+    min: 0.1
+  /smplpp/pose_param/angles[9]/x:
+    is_repeat: false
+    max: 1.0
+    min: 0.1
+  /smplpp/pose_param/angles[9]/y:
+    is_repeat: false
+    max: 1.0
+    min: 0.1
+  /smplpp/pose_param/angles[9]/z:
+    is_repeat: false
+    max: 1.0
+    min: 0.1
+  /smplpp/pose_param/angles[10]/x:
+    is_repeat: false
+    max: 1.0
+    min: 0.1
+  /smplpp/pose_param/angles[10]/y:
+    is_repeat: false
+    max: 1.0
+    min: 0.1
+  /smplpp/pose_param/angles[10]/z:
+    is_repeat: false
+    max: 1.0
+    min: 0.1
+  /smplpp/pose_param/angles[11]/x:
+    is_repeat: false
+    max: 1.0
+    min: 0.1
+  /smplpp/pose_param/angles[11]/y:
+    is_repeat: false
+    max: 1.0
+    min: 0.1
+  /smplpp/pose_param/angles[11]/z:
+    is_repeat: false
+    max: 1.0
+    min: 0.1
+  /smplpp/pose_param/angles[12]/x:
+    is_repeat: false
+    max: 1.0
+    min: 0.1
+  /smplpp/pose_param/angles[12]/y:
+    is_repeat: false
+    max: 1.0
+    min: 0.1
+  /smplpp/pose_param/angles[12]/z:
+    is_repeat: false
+    max: 1.0
+    min: 0.1
+  /smplpp/pose_param/angles[13]/x:
+    is_repeat: false
+    max: 1.0
+    min: 0.1
+  /smplpp/pose_param/angles[13]/y:
+    is_repeat: false
+    max: 1.0
+    min: 0.1
+  /smplpp/pose_param/angles[13]/z:
+    is_repeat: false
+    max: 1.0
+    min: 0.1
+  /smplpp/pose_param/angles[14]/x:
+    is_repeat: false
+    max: 1.0
+    min: 0.1
+  /smplpp/pose_param/angles[14]/y:
+    is_repeat: false
+    max: 1.0
+    min: 0.1
+  /smplpp/pose_param/angles[14]/z:
+    is_repeat: false
+    max: 1.0
+    min: 0.1
+  /smplpp/pose_param/angles[15]/x:
+    is_repeat: false
+    max: 1.0
+    min: 0.1
+  /smplpp/pose_param/angles[15]/y:
+    is_repeat: false
+    max: 1.0
+    min: 0.1
+  /smplpp/pose_param/angles[15]/z:
+    is_repeat: false
+    max: 1.0
+    min: 0.1
+  /smplpp/pose_param/angles[16]/x:
+    is_repeat: false
+    max: 1.0
+    min: 0.1
+  /smplpp/pose_param/angles[16]/y:
+    is_repeat: false
+    max: 1.0
+    min: 0.1
+  /smplpp/pose_param/angles[16]/z:
+    is_repeat: false
+    max: 1.0
+    min: 0.1
+  /smplpp/pose_param/angles[17]/x:
+    is_repeat: false
+    max: 1.0
+    min: 0.1
+  /smplpp/pose_param/angles[17]/y:
+    is_repeat: false
+    max: 1.0
+    min: 0.1
+  /smplpp/pose_param/angles[17]/z:
+    is_repeat: false
+    max: 1.0
+    min: 0.1
+  /smplpp/pose_param/angles[18]/x:
+    is_repeat: false
+    max: 1.0
+    min: 0.1
+  /smplpp/pose_param/angles[18]/y:
+    is_repeat: false
+    max: 1.0
+    min: 0.1
+  /smplpp/pose_param/angles[18]/z:
+    is_repeat: false
+    max: 1.0
+    min: 0.1
+  /smplpp/pose_param/angles[19]/x:
+    is_repeat: false
+    max: 1.0
+    min: 0.1
+  /smplpp/pose_param/angles[19]/y:
+    is_repeat: false
+    max: 1.0
+    min: 0.1
+  /smplpp/pose_param/angles[19]/z:
+    is_repeat: false
+    max: 1.0
+    min: 0.1
+  /smplpp/pose_param/angles[20]/x:
+    is_repeat: false
+    max: 1.0
+    min: 0.1
+  /smplpp/pose_param/angles[20]/y:
+    is_repeat: false
+    max: 1.0
+    min: 0.1
+  /smplpp/pose_param/angles[20]/z:
+    is_repeat: false
+    max: 1.0
+    min: 0.1
+  /smplpp/pose_param/angles[21]/x:
+    is_repeat: false
+    max: 1.0
+    min: 0.1
+  /smplpp/pose_param/angles[21]/y:
+    is_repeat: false
+    max: 1.0
+    min: 0.1
+  /smplpp/pose_param/angles[21]/z:
+    is_repeat: false
+    max: 1.0
+    min: 0.1
+  /smplpp/pose_param/angles[22]/x:
+    is_repeat: false
+    max: 1.0
+    min: 0.1
+  /smplpp/pose_param/angles[22]/y:
+    is_repeat: false
+    max: 1.0
+    min: 0.1
+  /smplpp/pose_param/angles[22]/z:
+    is_repeat: false
+    max: 1.0
+    min: 0.1
+  /smplpp/pose_param/angles[23]/x:
+    is_repeat: false
+    max: 1.0
+    min: 0.1
+  /smplpp/pose_param/angles[23]/y:
+    is_repeat: false
+    max: 1.0
+    min: 0.1
+  /smplpp/pose_param/angles[23]/z:
+    is_repeat: false
+    max: 1.0
+    min: 0.1
+texts:
+- /smplpp/pose_param/angles[0]/x
+- /smplpp/pose_param/angles[0]/y
+- /smplpp/pose_param/angles[0]/z
+- /smplpp/pose_param/angles[1]/x
+- /smplpp/pose_param/angles[1]/y
+- /smplpp/pose_param/angles[1]/z
+- /smplpp/pose_param/angles[2]/x
+- /smplpp/pose_param/angles[2]/y
+- /smplpp/pose_param/angles[2]/z
+- /smplpp/pose_param/angles[3]/x
+- /smplpp/pose_param/angles[3]/y
+- /smplpp/pose_param/angles[3]/z
+- /smplpp/pose_param/angles[4]/x
+- /smplpp/pose_param/angles[4]/y
+- /smplpp/pose_param/angles[4]/z
+- /smplpp/pose_param/angles[5]/x
+- /smplpp/pose_param/angles[5]/y
+- /smplpp/pose_param/angles[5]/z
+- /smplpp/pose_param/angles[6]/x
+- /smplpp/pose_param/angles[6]/y
+- /smplpp/pose_param/angles[6]/z
+- /smplpp/pose_param/angles[7]/x
+- /smplpp/pose_param/angles[7]/y
+- /smplpp/pose_param/angles[7]/z
+- /smplpp/pose_param/angles[8]/x
+- /smplpp/pose_param/angles[8]/y
+- /smplpp/pose_param/angles[8]/z
+- /smplpp/pose_param/angles[9]/x
+- /smplpp/pose_param/angles[9]/y
+- /smplpp/pose_param/angles[9]/z
+- /smplpp/pose_param/angles[10]/x
+- /smplpp/pose_param/angles[10]/y
+- /smplpp/pose_param/angles[10]/z
+- /smplpp/pose_param/angles[11]/x
+- /smplpp/pose_param/angles[11]/y
+- /smplpp/pose_param/angles[11]/z
+- /smplpp/pose_param/angles[12]/x
+- /smplpp/pose_param/angles[12]/y
+- /smplpp/pose_param/angles[12]/z
+- /smplpp/pose_param/angles[13]/x
+- /smplpp/pose_param/angles[13]/y
+- /smplpp/pose_param/angles[13]/z
+- /smplpp/pose_param/angles[14]/x
+- /smplpp/pose_param/angles[14]/y
+- /smplpp/pose_param/angles[14]/z
+- /smplpp/pose_param/angles[15]/x
+- /smplpp/pose_param/angles[15]/y
+- /smplpp/pose_param/angles[15]/z
+- /smplpp/pose_param/angles[16]/x
+- /smplpp/pose_param/angles[16]/y
+- /smplpp/pose_param/angles[16]/z
+- /smplpp/pose_param/angles[17]/x
+- /smplpp/pose_param/angles[17]/y
+- /smplpp/pose_param/angles[17]/z
+- /smplpp/pose_param/angles[18]/x
+- /smplpp/pose_param/angles[18]/y
+- /smplpp/pose_param/angles[18]/z
+- /smplpp/pose_param/angles[19]/x
+- /smplpp/pose_param/angles[19]/y
+- /smplpp/pose_param/angles[19]/z
+- /smplpp/pose_param/angles[20]/x
+- /smplpp/pose_param/angles[20]/y
+- /smplpp/pose_param/angles[20]/z
+- /smplpp/pose_param/angles[21]/x
+- /smplpp/pose_param/angles[21]/y
+- /smplpp/pose_param/angles[21]/z
+- /smplpp/pose_param/angles[22]/x
+- /smplpp/pose_param/angles[22]/y
+- /smplpp/pose_param/angles[22]/z
+- /smplpp/pose_param/angles[23]/x
+- /smplpp/pose_param/angles[23]/y
+- /smplpp/pose_param/angles[23]/z
