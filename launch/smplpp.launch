@@ -2,6 +2,7 @@
   <node pkg="smplpp" type="smplpp" name="smplpp" output="screen">
     <rosparam subst_value="true">
       model_path: $(find smplpp)/data/smpl_male.json
+      device: CPU
       rate: 1.0
     </rosparam>
   </node>

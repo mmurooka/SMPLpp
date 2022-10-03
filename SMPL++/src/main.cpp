@@ -65,21 +65,39 @@ int main(int argc, char * argv[])
   {
     auto startTime = std::chrono::system_clock::now();
 
-    torch::Device device(torch::kCPU);
-    device.set_index(0);
+    std::string deviceType = "CPU";
+    pnh.getParam("device", deviceType);
+    std::unique_ptr<torch::Device> device;
+    if(deviceType == "CPU")
+    {
+      device = std::make_unique<torch::Device>(torch::kCPU);
+    }
+    else if(deviceType == "CUDA")
+    {
+      device = std::make_unique<torch::Device>(torch::kCUDA);
+    }
+    else
+    {
+      throw std::runtime_error("Invalid device type: " + deviceType);
+    }
+    device->set_index(0);
+    ROS_INFO_STREAM("Device type: " << deviceType);
 
-    std::string modelPath = ros::package::getPath("smplpp") + "/data/smpl_female.json";
+    std::string modelPath;
     pnh.getParam("model_path", modelPath);
+    if(modelPath.empty())
+    {
+      modelPath = ros::package::getPath("smplpp") + "/data/smpl_female.json";
+    }
     ROS_INFO_STREAM("Load SMPL model from " << modelPath);
 
-    SINGLE_SMPL::get()->setDevice(device);
+    SINGLE_SMPL::get()->setDevice(*device);
     SINGLE_SMPL::get()->setModelPath(modelPath);
     SINGLE_SMPL::get()->init();
 
     ROS_INFO_STREAM("Duration to load SMPL: " << std::chrono::duration_cast<std::chrono::duration<double>>(
                                                      std::chrono::system_clock::now() - startTime)
-                                                         .count()
-                                                     * 1e-3
+                                                     .count()
                                               << " [s]");
   }
 
@@ -99,7 +117,8 @@ int main(int argc, char * argv[])
 
       ROS_INFO_STREAM("Duration to update SMPL: " << std::chrono::duration_cast<std::chrono::duration<double>>(
                                                          std::chrono::system_clock::now() - startTime)
-                                                         .count()
+                                                             .count()
+                                                         * 1e3
                                                   << " [ms]");
     }
 
@@ -155,7 +174,8 @@ int main(int argc, char * argv[])
 
       ROS_INFO_STREAM("Duration to publish message: " << std::chrono::duration_cast<std::chrono::duration<double>>(
                                                              std::chrono::system_clock::now() - startTime)
-                                                             .count()
+                                                                 .count()
+                                                             * 1e3
                                                       << " [ms]");
     }
 
