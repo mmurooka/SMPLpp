@@ -1,0 +1,17 @@
+<package format="2">
+  <name>smplpp</name>
+  <version>0.1.0</version>
+  <description>
+    SMPL
+  </description>
+  <maintainer email="XXX@XXX.XXX">XXX XXX</maintainer>
+  <license>MIT</license>
+
+  <url>http://ros.org/wiki/smplpp</url>
+  <author>Chongyi Zheng</author>
+
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <depend>roscpp</depend>
+  <depend>visualization_msgs</depend>
+</package>

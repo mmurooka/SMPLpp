@@ -6,7 +6,7 @@ cmake_minimum_required(VERSION 3.5)
 ##
 ## PROJECT NAME
 ##
-project(SMPL++)
+project(smplpp)
 
 ##
 ## COMPILER SETTINGS
@@ -19,6 +19,12 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 ## PACKAGES
 ##
 
+# catkin
+find_package(catkin REQUIRED COMPONENTS
+  roscpp
+  visualization_msgs
+  )
+
 # xtensor
 find_package(xtensor REQUIRED)
 
@@ -29,6 +35,12 @@ find_package(nlohmann_json REQUIRED)
 message("-- LIBTORCH_PATH: ${LIBTORCH_PATH}")
 list(APPEND CMAKE_PREFIX_PATH ${LIBTORCH_PATH})
 find_package(Torch REQUIRED)
+
+catkin_package(
+  CATKIN_DEPENDS
+  roscpp
+  visualization_msgs
+)
 
 ##
 ## GATHER FILES
