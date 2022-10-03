@@ -222,3 +222,11 @@ release
 docs/tex
 out/*
 data
+
+*~
+*.pyc
+
+GPATH
+GRTAGS
+GSYMS
+GTAGS
