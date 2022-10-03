@@ -415,7 +415,7 @@ torch::Tensor SMPL::getRestShape() noexcept(false)
 torch::Tensor SMPL::getFaceIndex() noexcept(false)
 {
   torch::Tensor faceIndices;
-  if(m__faceIndices.sizes() != torch::IntArrayRef({FACE_INDEX_NUM, 3}))
+  if(m__faceIndices.sizes() == torch::IntArrayRef({FACE_INDEX_NUM, 3}))
   {
     faceIndices = m__faceIndices.clone().to(m__device);
   }
