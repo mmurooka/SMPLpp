@@ -60,8 +60,8 @@ void poseParamCallback(const smplpp::PoseParam::ConstPtr & msg)
 {
   if(msg->angles.size() != JOINT_NUM)
   {
-    ROS_ERROR_STREAM("Invalid angles size: " << std::to_string(msg->angles.size())
-                                             << " != " << std::to_string(JOINT_NUM));
+    ROS_WARN_STREAM("Invalid angles size: " << std::to_string(msg->angles.size())
+                                            << " != " << std::to_string(JOINT_NUM));
     return;
   }
 
