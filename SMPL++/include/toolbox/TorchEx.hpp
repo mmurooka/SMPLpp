@@ -162,19 +162,19 @@ public: // PUBLIC ATTRIBUTES
  *      With this helper function, we can index a tensor as a numpy array:
  *
  *          tensor[:, 0] <=> TensorEx::indexing(tensor,
- *                              torch::IntList(),
- *                              torch::IntList({0}))
+ *                              torch::IntArrayRef(),
+ *                              torch::IntArrayRef({0}))
  *
  *          tensor[:, 0:5] <=> TensorEx::indexing(tensor,
- *                              torch::IntList(),
- *                              torch::IntList(0, 5))
+ *                              torch::IntArrayRef(),
+ *                              torch::IntArrayRef(0, 5))
  *
  *          tensor[0:2:10] <=> TensorEx::indexing(tensor,
- *                              torch::IntList(0, 2, 10));
+ *                              torch::IntArrayRef(0, 2, 10));
  *
  *          tensor[1:, 0] <=> TensorEx::indexing(tensor,
- *                              torch::IntList({1, tensor.size(0)}),
- *                              torch::IntList({0}))
+ *                              torch::IntArrayRef({1, tensor.size(0)}),
+ *                              torch::IntArrayRef({0}))
  *
  */
 template<class... Arrays>
@@ -225,7 +225,7 @@ torch::Tensor TorchEx::indexing(torch::Tensor & self, Arrays... indices) noexcep
 template<class Array, class... Rest>
 torch::Tensor TorchEx::indexing_impl(torch::Tensor & self, int64_t layer, Array index, Rest... indices) noexcept(false)
 {
-  if(std::is_same<Array, torch::IntList>::value)
+  if(std::is_same<Array, torch::IntArrayRef>::value)
   {
 
     torch::Tensor slice;
@@ -292,7 +292,7 @@ torch::Tensor TorchEx::indexing_impl(torch::Tensor & self, int64_t layer, Array 
 template<class Array>
 torch::Tensor TorchEx::indexing_impl(torch::Tensor & self, int64_t layer, Array index) noexcept(false)
 {
-  if(std::is_same<Array, torch::IntList>::value)
+  if(std::is_same<Array, torch::IntArrayRef>::value)
   {
 
     torch::Tensor out;

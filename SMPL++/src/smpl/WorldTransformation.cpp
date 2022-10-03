@@ -513,15 +513,15 @@ torch::Tensor WorldTransformation::localTransform(torch::Tensor & poseRotHomo) n
   }
 
   std::vector<torch::Tensor> translations;
-  translations.push_back(TorchEx::indexing(m__joints, torch::IntList(), torch::IntList({0}),
-                                           torch::IntList())); // [0, (N, 3)]
+  translations.push_back(TorchEx::indexing(m__joints, torch::IntArrayRef(), torch::IntArrayRef({0}),
+                                           torch::IntArrayRef())); // [0, (N, 3)]
 
   torch::Tensor ancestor;
   torch::Tensor translation;
   for(int64_t i = 1; i < JOINT_NUM; i++)
   {
-    ancestor = TorchEx::indexing(m__kineTree, torch::IntList({0}), torch::IntList({i})).toType(torch::kLong);
-    translation = TorchEx::indexing(m__joints, torch::IntList(), torch::IntList({i}), torch::IntList())
+    ancestor = TorchEx::indexing(m__kineTree, torch::IntArrayRef({0}), torch::IntArrayRef({i})).toType(torch::kLong);
+    translation = TorchEx::indexing(m__joints, torch::IntArrayRef(), torch::IntArrayRef({i}), torch::IntArrayRef())
                   - torch::index_select(m__joints, 1, ancestor).squeeze(1); // (N, 3)
     translations.push_back(translation); // [i, (N, 3)]
   }
@@ -588,9 +588,9 @@ torch::Tensor WorldTransformation::globalTransform(torch::Tensor & localTransfor
   }
 
   std::vector<torch::Tensor> transformations;
-  transformations.push_back(TorchEx::indexing(localTransformations, torch::IntList(), torch::IntList({0}),
-                                              torch::IntList(),
-                                              torch::IntList())); // [0, (N, 4, 4)]
+  transformations.push_back(TorchEx::indexing(localTransformations, torch::IntArrayRef(), torch::IntArrayRef({0}),
+                                              torch::IntArrayRef(),
+                                              torch::IntArrayRef())); // [0, (N, 4, 4)]
 
   torch::Tensor ancestor;
   torch::Tensor transformation;
@@ -598,9 +598,10 @@ torch::Tensor WorldTransformation::globalTransform(torch::Tensor & localTransfor
   for(int64_t i = 1; i < JOINT_NUM; i++)
   {
     ancestor = TorchEx::indexing(m__kineTree, torch::IntArrayRef({0}), torch::IntArrayRef({i})).toType(torch::kLong);
-    transformation = torch::matmul(transformations[*(ancestor.to(torch::kCPU).data<int64_t>())],
-                                   TorchEx::indexing(localTransformations, torch::IntList(), torch::IntList({i}),
-                                                     torch::IntList(), torch::IntList()));
+    transformation =
+        torch::matmul(transformations[*(ancestor.to(torch::kCPU).data_ptr<int64_t>())],
+                      TorchEx::indexing(localTransformations, torch::IntArrayRef(), torch::IntArrayRef({i}),
+                                        torch::IntArrayRef(), torch::IntArrayRef()));
     transformations.push_back(transformation); // [i, (N, 4, 4)]
   }
   torch::Tensor globalTransformations = torch::stack(transformations, 1); // (N, 24, 4, 4)
@@ -660,9 +661,10 @@ void WorldTransformation::relativeTransform(torch::Tensor & globalTransformation
     throw smpl_error("WorldTransformation", "Cannot transform bones relatively!");
   }
 
-  torch::Tensor eliminated = torch::matmul(TorchEx::indexing(globalTransformations, torch::IntList(), torch::IntList(),
-                                                             torch::IntList({0, 3}), torch::IntList({0, 3})),
-                                           torch::unsqueeze(m__joints, 3)); // (N, 24, 3, 1)
+  torch::Tensor eliminated =
+      torch::matmul(TorchEx::indexing(globalTransformations, torch::IntArrayRef(), torch::IntArrayRef(),
+                                      torch::IntArrayRef({0, 3}), torch::IntArrayRef({0, 3})),
+                    torch::unsqueeze(m__joints, 3)); // (N, 24, 3, 1)
   torch::Tensor zeros = torch::zeros({BATCH_SIZE, JOINT_NUM, 1, 1}, m__device); // (N, 24, 1, 1)
   torch::Tensor eliminatedHomo = torch::cat({eliminated, zeros}, 2); // (N, 24, 4, 1)
   zeros = torch::zeros({BATCH_SIZE, JOINT_NUM, 4, 3}, m__device); // (N, 24, 4, 3)

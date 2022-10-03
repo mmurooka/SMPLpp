@@ -818,16 +818,16 @@ torch::Tensor BlendShape::rodrigues(torch::Tensor & theta) noexcept(false)
   //
   torch::Tensor zeros = torch::zeros({BATCH_SIZE, JOINT_NUM},
                                      m__device); // (N, 24)
-  torch::Tensor skew =
-      torch::stack({zeros, -TorchEx::indexing(axes, torch::IntList(), torch::IntList(), torch::IntList({2})),
-                    TorchEx::indexing(axes, torch::IntList(), torch::IntList(), torch::IntList({1})),
+  torch::Tensor skew = torch::stack(
+      {zeros, -TorchEx::indexing(axes, torch::IntArrayRef(), torch::IntArrayRef(), torch::IntArrayRef({2})),
+       TorchEx::indexing(axes, torch::IntArrayRef(), torch::IntArrayRef(), torch::IntArrayRef({1})),
 
-                    TorchEx::indexing(axes, torch::IntList(), torch::IntList(), torch::IntList({2})), zeros,
-                    -TorchEx::indexing(axes, torch::IntList(), torch::IntList(), torch::IntList({0})),
+       TorchEx::indexing(axes, torch::IntArrayRef(), torch::IntArrayRef(), torch::IntArrayRef({2})), zeros,
+       -TorchEx::indexing(axes, torch::IntArrayRef(), torch::IntArrayRef(), torch::IntArrayRef({0})),
 
-                    -TorchEx::indexing(axes, torch::IntList(), torch::IntList(), torch::IntList({1})),
-                    TorchEx::indexing(axes, torch::IntList(), torch::IntList(), torch::IntList({0})), zeros},
-                   2); // (N, 24, 9)
+       -TorchEx::indexing(axes, torch::IntArrayRef(), torch::IntArrayRef(), torch::IntArrayRef({1})),
+       TorchEx::indexing(axes, torch::IntArrayRef(), torch::IntArrayRef(), torch::IntArrayRef({0})), zeros},
+      2); // (N, 24, 9)
   skew = torch::reshape(skew, {BATCH_SIZE, JOINT_NUM, 3, 3}); // (N, 24, 3, 3)
 
   //
@@ -880,9 +880,10 @@ torch::Tensor BlendShape::linRotMin() noexcept(false)
   //
   // truncate rotations
   //
-  unPoseRot = TorchEx::indexing(unPoseRot, torch::IntList(), torch::IntList({9, unPoseRot.size(1)})); // (N, 207)
-  unRestPoseRot =
-      TorchEx::indexing(unRestPoseRot, torch::IntList(), torch::IntList({9, unRestPoseRot.size(1)})); // (N, 207)
+  unPoseRot =
+      TorchEx::indexing(unPoseRot, torch::IntArrayRef(), torch::IntArrayRef({9, unPoseRot.size(1)})); // (N, 207)
+  unRestPoseRot = TorchEx::indexing(unRestPoseRot, torch::IntArrayRef(),
+                                    torch::IntArrayRef({9, unRestPoseRot.size(1)})); // (N, 207)
 
   //
   // pose blend coefficients

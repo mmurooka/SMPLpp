@@ -508,11 +508,12 @@ torch::Tensor LinearBlendSkinning::homo2cart(torch::Tensor & homo) noexcept(fals
     throw smpl_error("LinearBlendSkinning", "Cannot convert homogeneous coordinates to Cartesian ones!");
   }
 
-  torch::Tensor homoW = TorchEx::indexing(homo, torch::IntList(), torch::IntList(), torch::IntList({3})); // (N, 6890)
+  torch::Tensor homoW =
+      TorchEx::indexing(homo, torch::IntArrayRef(), torch::IntArrayRef(), torch::IntArrayRef({3})); // (N, 6890)
   homoW = torch::unsqueeze(homoW, 2); // (N, 6890, 1)
   torch::Tensor homoUnit = homo / homoW; // (N, 6890, 4)
-  torch::Tensor cart =
-      TorchEx::indexing(homoUnit, torch::IntList(), torch::IntList(), torch::IntList({0, 3})); // (N, 6890, 3)
+  torch::Tensor cart = TorchEx::indexing(homoUnit, torch::IntArrayRef(), torch::IntArrayRef(),
+                                         torch::IntArrayRef({0, 3})); // (N, 6890, 3)
 
   return cart;
 }

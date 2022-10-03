@@ -128,13 +128,13 @@ int main(int argc, char * argv[])
       assert(vertexTensorBatched.sizes() == torch::IntArrayRef({BATCH_SIZE, VERTEX_NUM, 3}));
       assert(faceIndexTensor.sizes() == torch::IntArrayRef({FACE_INDEX_NUM, 3}));
 
-      torch::Tensor vertexTensor = smpl::TorchEx::indexing(vertexTensorBatched, torch::IntList({0}));
+      torch::Tensor vertexTensor = smpl::TorchEx::indexing(vertexTensorBatched, torch::IntArrayRef({0}));
       xt::xarray<float> vertexArr =
-          xt::adapt(static_cast<float *>(vertexTensor.to(torch::kCPU).data_ptr()),
+          xt::adapt(vertexTensor.to(torch::kCPU).data_ptr<float>(),
                     xt::xarray<float>::shape_type({static_cast<const size_t>(VERTEX_NUM), 3}));
 
       xt::xarray<int32_t> faceIndexArr =
-          xt::adapt(static_cast<int32_t *>(faceIndexTensor.to(torch::kCPU).data_ptr()),
+          xt::adapt(faceIndexTensor.to(torch::kCPU).data_ptr<int32_t>(),
                     xt::xarray<int32_t>::shape_type({static_cast<const size_t>(FACE_INDEX_NUM), 3}));
 
       for(int64_t i = 0; i < FACE_INDEX_NUM; i++)

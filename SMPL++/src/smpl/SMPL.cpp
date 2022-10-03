@@ -683,7 +683,7 @@ void SMPL::out(int64_t index) noexcept(false)
   {
     std::ofstream file(m__vertPath);
 
-    torch::Tensor slice_ = TorchEx::indexing(vertices, torch::IntList({index})); // (6890, 3)
+    torch::Tensor slice_ = TorchEx::indexing(vertices, torch::IntArrayRef({index})); // (6890, 3)
     xt::xarray<float> slice = xt::adapt((float *)slice_.to(torch::kCPU).data_ptr(),
                                         xt::xarray<float>::shape_type({(const size_t)VERTEX_NUM, 3}));
 

@@ -494,14 +494,14 @@ void Tester::blendShape() noexcept(true)
   std::cout << poseBlendShape << std::endl;
   std::cout << std::endl;
 
-  torch::Tensor poseRotSlice =
-      TorchEx::indexing(poseRotation, torch::IntList({0}), torch::IntList({0, 5}), torch::IntList(), torch::IntList());
+  torch::Tensor poseRotSlice = TorchEx::indexing(poseRotation, torch::IntArrayRef({0}), torch::IntArrayRef({0, 5}),
+                                                 torch::IntArrayRef(), torch::IntArrayRef());
   std::cout << "first five pose rotation: " << poseRotSlice.sizes() << std::endl; // (5, 3, 3)
   std::cout << poseRotSlice << std::endl; // the first five rotation
   std::cout << std::endl;
 
-  torch::Tensor restRotSlice =
-      TorchEx::indexing(restPoseRotation, torch::IntList(), torch::IntList({0}), torch::IntList(), torch::IntList());
+  torch::Tensor restRotSlice = TorchEx::indexing(restPoseRotation, torch::IntArrayRef(), torch::IntArrayRef({0}),
+                                                 torch::IntArrayRef(), torch::IntArrayRef());
   std::cout << "first rest pose rotation: " << restRotSlice.sizes() << std::endl; // (1, 3, 3)
   std::cout << restRotSlice << std::endl; // the first rotation
   std::cout << std::endl;
@@ -844,7 +844,8 @@ void Tester::worldTransformation() noexcept(true)
     std::cerr << e.what() << std::endl;
   }
 
-  torch::Tensor slice = TorchEx::indexing(transformations, torch::IntList(), torch::IntList({0, 5}), torch::IntList());
+  torch::Tensor slice =
+      TorchEx::indexing(transformations, torch::IntArrayRef(), torch::IntArrayRef({0, 5}), torch::IntArrayRef());
   std::cout << "first five pose rotation: " << slice.sizes() << std::endl; // (1, 5, 4, 4)
   std::cout << slice << std::endl;
 
