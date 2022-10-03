@@ -26,6 +26,8 @@ find_package(xtensor REQUIRED)
 find_package(nlohmann_json REQUIRED)
 
 # Torch
+message("-- LIBTORCH_PATH: ${LIBTORCH_PATH}")
+list(APPEND CMAKE_PREFIX_PATH ${LIBTORCH_PATH})
 find_package(Torch REQUIRED)
 
 ##
