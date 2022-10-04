@@ -62,8 +62,8 @@ void poseParamCallback(const smplpp::PoseParam::ConstPtr & msg)
 {
   if(msg->angles.size() != JOINT_NUM)
   {
-    ROS_WARN_STREAM("Invalid angles size: " << std::to_string(msg->angles.size())
-                                            << " != " << std::to_string(JOINT_NUM));
+    ROS_WARN_STREAM("Invalid pose param size: " << std::to_string(msg->angles.size())
+                                                << " != " << std::to_string(JOINT_NUM));
     return;
   }
 
@@ -77,7 +77,14 @@ void poseParamCallback(const smplpp::PoseParam::ConstPtr & msg)
 
 void shapeParamCallback(const std_msgs::Float64MultiArray::ConstPtr & msg)
 {
-  for(int64_t i = 0; i < msg->data.size(); i++)
+  if(msg->data.size() != SHAPE_BASIS_DIM)
+  {
+    ROS_WARN_STREAM("Invalid shape param size: " << std::to_string(msg->data.size())
+                                                 << " != " << std::to_string(SHAPE_BASIS_DIM));
+    return;
+  }
+
+  for(int64_t i = 0; i < SHAPE_BASIS_DIM; i++)
   {
     g_beta.index({0, i}) = msg->data[i];
   }
