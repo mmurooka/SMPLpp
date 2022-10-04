@@ -42,6 +42,7 @@
 #include "toolbox/Singleton.hpp"
 #include "toolbox/TorchEx.hpp"
 //----------
+#include <geometry_msgs/PointStamped.h>
 #include <ros/package.h>
 #include <ros/ros.h>
 #include <std_msgs/Float64MultiArray.h>
@@ -90,6 +91,32 @@ void shapeParamCallback(const std_msgs::Float64MultiArray::ConstPtr & msg)
   }
 }
 
+void clickedPointCallback(const geometry_msgs::PointStamped::ConstPtr & msg)
+{
+  torch::Tensor clickedPos = torch::empty({3});
+  clickedPos.index_put_({0}, msg->point.x);
+  clickedPos.index_put_({1}, msg->point.y);
+  clickedPos.index_put_({2}, msg->point.z);
+
+  torch::Tensor vertexTensor = SINGLE_SMPL::get()->getVertex().index({0});
+
+  double posErrMin = 1e10;
+  int64_t vertexIdxMin = 0;
+  for(int64_t vertexIdx = 0; vertexIdx < VERTEX_NUM; vertexIdx++)
+  {
+    double posErr = torch::nn::functional::mse_loss(vertexTensor.index({vertexIdx}), clickedPos)
+                        .to(torch::DeviceType::CPU)
+                        .item<float>();
+    if(posErr < posErrMin)
+    {
+      posErrMin = posErr;
+      vertexIdxMin = vertexIdx;
+    }
+  }
+
+  ROS_INFO_STREAM("Vertex idx closest to clicked point: " << vertexIdxMin);
+}
+
 int main(int argc, char * argv[])
 {
   // Setup ROS
@@ -99,6 +126,7 @@ int main(int argc, char * argv[])
   ros::Publisher markerPub = nh.advertise<visualization_msgs::MarkerArray>("smplpp/marker_arr", 1);
   ros::Subscriber poseParamSub = nh.subscribe("smplpp/pose_param", 1, poseParamCallback);
   ros::Subscriber shapeParamSub = nh.subscribe("smplpp/shape_param", 1, shapeParamCallback);
+  ros::Subscriber clickedPointSub = nh.subscribe("/clicked_point", 1, clickedPointCallback);
 
   // Load SMPL model
   {
