@@ -393,6 +393,11 @@ torch::Tensor LinearBlendSkinning::getVertex() noexcept(false)
   return vertices;
 }
 
+torch::Tensor LinearBlendSkinning::getVertex(int64_t idx) noexcept(false)
+{
+  return m__posedVert.index({0, idx});
+}
+
 /**skinning
  *
  * Brief

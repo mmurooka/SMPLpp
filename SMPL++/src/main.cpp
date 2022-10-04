@@ -56,6 +56,15 @@
 
 //===== MAIN FUNCTION =========================================================
 
+struct IkTarget
+{
+  int64_t vertexIdx = -1;
+
+  torch::Tensor targetPos = torch::zeros({3});
+
+  IkTarget(int64_t _vertexIdx, torch::Tensor _targetPos) : vertexIdx(_vertexIdx), targetPos(_targetPos) {}
+};
+
 torch::Tensor g_theta = torch::zeros({BATCH_SIZE, JOINT_NUM, 3}); // (N, 24, 3)
 torch::Tensor g_beta = torch::zeros({BATCH_SIZE, SHAPE_BASIS_DIM}); // (N, 10)
 
@@ -124,9 +133,33 @@ int main(int argc, char * argv[])
   ros::NodeHandle nh;
   ros::NodeHandle pnh("~");
   ros::Publisher markerPub = nh.advertise<visualization_msgs::MarkerArray>("smplpp/marker_arr", 1);
-  ros::Subscriber poseParamSub = nh.subscribe("smplpp/pose_param", 1, poseParamCallback);
+  bool enableIk = false;
+  pnh.getParam("enable_ik", enableIk);
+  ros::Subscriber poseParamSub;
+  if(!enableIk)
+  {
+    poseParamSub = nh.subscribe("smplpp/pose_param", 1, poseParamCallback);
+  }
   ros::Subscriber shapeParamSub = nh.subscribe("smplpp/shape_param", 1, shapeParamCallback);
   ros::Subscriber clickedPointSub = nh.subscribe("/clicked_point", 1, clickedPointCallback);
+
+  // Setup IK
+  std::unordered_map<std::string, IkTarget> ikTargetList;
+  if(enableIk)
+  {
+    auto makeTensor3d = [](const std::vector<double> & vec) -> torch::Tensor {
+      torch::Tensor tensor = torch::empty({3});
+      for(int i = 0; i < 3; i++)
+      {
+        tensor.index_put_({i}, vec[i]);
+      }
+      return tensor;
+    };
+    ikTargetList.emplace("LeftHand", IkTarget(2006, makeTensor3d({0.5, 0.5, 1.0})));
+    ikTargetList.emplace("RightHand", IkTarget(5508, makeTensor3d({0.5, -0.5, 1.0})));
+    ikTargetList.emplace("LeftFoot", IkTarget(3438, makeTensor3d({0.0, 0.2, 0.0})));
+    ikTargetList.emplace("RightFoot", IkTarget(6838, makeTensor3d({0.0, -0.2, 0.0})));
+  }
 
   // Load SMPL model
   {
@@ -177,7 +210,36 @@ int main(int argc, char * argv[])
     {
       auto startTime = std::chrono::system_clock::now();
 
+      if(ikTargetList.size() > 0)
+      {
+        g_theta.set_requires_grad(true);
+        auto & g_theta_grad = g_theta.mutable_grad();
+        if(g_theta_grad.defined())
+        {
+          g_theta_grad = g_theta_grad.detach();
+          g_theta_grad.zero_();
+        }
+      }
+
       SINGLE_SMPL::get()->launch(g_beta, g_theta);
+
+      if(ikTargetList.size() > 0)
+      {
+        torch::Tensor posErr = torch::zeros({});
+        for(const auto & ikTarget : ikTargetList)
+        {
+          posErr += torch::nn::functional::mse_loss(SINGLE_SMPL::get()->getVertex(ikTarget.second.vertexIdx),
+                                                    ikTarget.second.targetPos);
+        }
+
+        posErr.backward();
+
+        // std::cout << "g_theta.grad():\n" << g_theta.grad() << std::endl;
+
+        g_theta.set_requires_grad(false);
+        constexpr double gain = 1e-2;
+        g_theta -= gain * g_theta.grad();
+      }
 
       ROS_INFO_STREAM_THROTTLE(10.0,
                                "Duration to update SMPL: " << std::chrono::duration_cast<std::chrono::duration<double>>(
@@ -187,6 +249,7 @@ int main(int argc, char * argv[])
                                                            << " [ms]");
     }
 
+    // Publish marker
     {
       auto startTime = std::chrono::system_clock::now();
 

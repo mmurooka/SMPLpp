@@ -178,6 +178,7 @@ public: // PUBLIC METHODS
   void setTransformation(const torch::Tensor & transformation) noexcept(false);
 
   torch::Tensor getVertex() noexcept(false);
+  torch::Tensor getVertex(int64_t idx) noexcept(false);
 
   // %% Linear Blend Skinning %%
   void skinning() noexcept(false);
