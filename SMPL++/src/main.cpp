@@ -44,6 +44,7 @@
 //----------
 #include <ros/package.h>
 #include <ros/ros.h>
+#include <std_msgs/Float64MultiArray.h>
 #include <visualization_msgs/MarkerArray.h>
 #include <smplpp/PoseParam.h>
 //----------
@@ -55,6 +56,7 @@
 //===== MAIN FUNCTION =========================================================
 
 torch::Tensor g_theta = torch::zeros({BATCH_SIZE, JOINT_NUM, 3}); // (N, 24, 3)
+torch::Tensor g_beta = torch::zeros({BATCH_SIZE, SHAPE_BASIS_DIM}); // (N, 10)
 
 void poseParamCallback(const smplpp::PoseParam::ConstPtr & msg)
 {
@@ -73,6 +75,14 @@ void poseParamCallback(const smplpp::PoseParam::ConstPtr & msg)
   }
 }
 
+void shapeParamCallback(const std_msgs::Float64MultiArray::ConstPtr & msg)
+{
+  for(int64_t i = 0; i < msg->data.size(); i++)
+  {
+    g_beta.index({0, i}) = msg->data[i];
+  }
+}
+
 int main(int argc, char * argv[])
 {
   // Setup ROS
@@ -81,6 +91,7 @@ int main(int argc, char * argv[])
   ros::NodeHandle pnh("~");
   ros::Publisher markerPub = nh.advertise<visualization_msgs::MarkerArray>("smplpp/marker_arr", 1);
   ros::Subscriber poseParamSub = nh.subscribe("smplpp/pose_param", 1, poseParamCallback);
+  ros::Subscriber shapeParamSub = nh.subscribe("smplpp/shape_param", 1, shapeParamCallback);
 
   // Load SMPL model
   {
@@ -127,13 +138,11 @@ int main(int argc, char * argv[])
   ros::Rate rate(rateFreq);
   while(ros::ok())
   {
-    torch::Tensor beta = 0.03 * torch::rand({BATCH_SIZE, SHAPE_BASIS_DIM}); // (N, 10)
-
     // Update SMPL model
     {
       auto startTime = std::chrono::system_clock::now();
 
-      SINGLE_SMPL::get()->launch(beta, g_theta);
+      SINGLE_SMPL::get()->launch(g_beta, g_theta);
 
       ROS_INFO_STREAM_THROTTLE(10.0,
                                "Duration to update SMPL: " << std::chrono::duration_cast<std::chrono::duration<double>>(

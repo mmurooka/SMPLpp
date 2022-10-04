@@ -1,0 +1,53 @@
+publish_interval: 10
+settings:
+  /smplpp/shape_param/data[0]:
+    is_repeat: false
+    max: 5.0
+    min: -5.0
+  /smplpp/shape_param/data[1]:
+    is_repeat: false
+    max: 5.0
+    min: -5.0
+  /smplpp/shape_param/data[2]:
+    is_repeat: false
+    max: 5.0
+    min: -5.0
+  /smplpp/shape_param/data[3]:
+    is_repeat: false
+    max: 5.0
+    min: -5.0
+  /smplpp/shape_param/data[4]:
+    is_repeat: false
+    max: 5.0
+    min: -5.0
+  /smplpp/shape_param/data[5]:
+    is_repeat: false
+    max: 5.0
+    min: -5.0
+  /smplpp/shape_param/data[6]:
+    is_repeat: false
+    max: 5.0
+    min: -5.0
+  /smplpp/shape_param/data[7]:
+    is_repeat: false
+    max: 5.0
+    min: -5.0
+  /smplpp/shape_param/data[8]:
+    is_repeat: false
+    max: 5.0
+    min: -5.0
+  /smplpp/shape_param/data[9]:
+    is_repeat: false
+    max: 5.0
+    min: -5.0
+texts:
+- /smplpp/shape_param/data[0]
+- /smplpp/shape_param/data[1]
+- /smplpp/shape_param/data[2]
+- /smplpp/shape_param/data[3]
+- /smplpp/shape_param/data[4]
+- /smplpp/shape_param/data[5]
+- /smplpp/shape_param/data[6]
+- /smplpp/shape_param/data[7]
+- /smplpp/shape_param/data[8]
+- /smplpp/shape_param/data[9]

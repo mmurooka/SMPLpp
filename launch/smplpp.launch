@@ -10,7 +10,11 @@
   <node pkg="rviz" type="rviz" name="$(anon rviz)"
         args="-d $(find smplpp)/rviz/smplpp.rviz" />
 
-  <node pkg="rqt_ez_publisher" type="rqt_ez_publisher" name="rqt_ez_publisher"
-        args="--slider-file $(find smplpp)/rqt/smplpp.yaml"
+  <node pkg="rqt_ez_publisher" type="rqt_ez_publisher" name="rqt_ez_publisher_pose"
+        args="--slider-file $(find smplpp)/rqt/smplpp_pose.yaml"
+        output="log" clear_params="true" />
+
+  <node pkg="rqt_ez_publisher" type="rqt_ez_publisher" name="rqt_ez_publisher_shape"
+        args="--slider-file $(find smplpp)/rqt/smplpp_shape.yaml"
         output="log" clear_params="true" />
 </launch>
