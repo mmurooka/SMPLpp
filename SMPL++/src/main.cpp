@@ -148,6 +148,11 @@ int main(int argc, char * argv[])
   std::unordered_map<std::string, IkTarget> ikTargetList;
   if(enableIk)
   {
+    // Set initial root orientation
+    g_theta.index_put_({0, 1, 0}, 1.2092);
+    g_theta.index_put_({0, 1, 1}, 1.2092);
+    g_theta.index_put_({0, 1, 2}, 1.2092);
+
     auto makeTensor3d = [](const std::vector<double> & vec) -> torch::Tensor {
       torch::Tensor tensor = torch::empty({3});
       for(int i = 0; i < 3; i++)
