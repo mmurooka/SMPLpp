@@ -64,8 +64,8 @@ namespace smpl
  *
  */
 BlendShape::BlendShape() noexcept(true)
-: m__device(torch::kCPU), m__beta(), m__shapeBlendBasis(), m__shapeBlendShape(), m__theta(), m__restTheta(),
-  m__poseRot(), m__restPoseRot(), m__poseBlendBasis(), m__poseBlendShape()
+: m__device(torch::kCPU), m__beta(), m__shapeBlendBasis(), m__shapeBlendShape(), m__rootPos(), m__theta(),
+  m__restTheta(), m__poseRot(), m__restPoseRot(), m__poseBlendBasis(), m__poseBlendShape()
 {
 }
 
@@ -97,8 +97,8 @@ BlendShape::BlendShape() noexcept(true)
 BlendShape::BlendShape(torch::Tensor & shapeBlendBasis,
                        torch::Tensor & poseBlendBasis,
                        torch::Device & device) noexcept(false)
-: m__device(torch::kCPU), m__beta(), m__shapeBlendBasis(), m__shapeBlendShape(), m__theta(), m__restTheta(),
-  m__poseRot(), m__restPoseRot(), m__poseBlendBasis(), m__poseBlendShape()
+: m__device(torch::kCPU), m__beta(), m__shapeBlendBasis(), m__shapeBlendShape(), m__rootPos(), m__theta(),
+  m__restTheta(), m__poseRot(), m__restPoseRot(), m__poseBlendBasis(), m__poseBlendShape()
 {
   if(m__device.has_index())
   {
@@ -237,6 +237,15 @@ BlendShape & BlendShape::operator=(const BlendShape & blendShape) noexcept(false
     throw smpl_error("BlendShape", "Failed to copy beta!");
   }
 
+  if(blendShape.m__rootPos.sizes() == torch::IntArrayRef({BATCH_SIZE, 1, 3}))
+  {
+    m__rootPos = blendShape.m__rootPos.clone().to(m__device);
+  }
+  else
+  {
+    throw smpl_error("BlendShape", "Failed to copy rootPos!");
+  }
+
   if(blendShape.m__theta.sizes() == torch::IntArrayRef({BATCH_SIZE, JOINT_NUM, 3}))
   {
     m__theta = blendShape.m__theta.clone().to(m__device);
@@ -370,6 +379,20 @@ void BlendShape::setShapeBlendBasis(const torch::Tensor & shapeBlendBasis) noexc
   else
   {
     throw smpl_error("BlendShape", "Failed to set shape blend basis!");
+  }
+
+  return;
+}
+
+void BlendShape::setRootPos(const torch::Tensor & rootPos) noexcept(false)
+{
+  if(rootPos.sizes() == torch::IntArrayRef({BATCH_SIZE, 1, 3}))
+  {
+    m__rootPos = rootPos.clone().to(m__device);
+  }
+  else
+  {
+    throw smpl_error("BlendShape", "Failed to set rootPos!");
   }
 
   return;

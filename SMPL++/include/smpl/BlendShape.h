@@ -77,6 +77,9 @@ namespace smpl
  *      - m__shapeBlendShape: <private>
  *          Shape blend shape of SMPL model, (N, 6890, 3).
  *
+ *      - m__rootPos: <private>
+ *          Batch of root position, (N, 1, 3).
+ *
  *      - m__theta: <private>
  *          Batch of pose in axis-angle representations, (N, 24, 3).
  *
@@ -134,6 +137,9 @@ namespace smpl
  *
  *      - setShapeBlendBasis: <public>
  *          Set shape blend basis.
+ *
+ *      - setRootPos: <public>
+ *          Set new root position.
  *
  *      - setTheta: <public>
  *          Set new pose in axis-angle representation.
@@ -198,6 +204,7 @@ private: // PRIVATE ATTRIBUTES
   torch::Tensor m__shapeBlendBasis;
   torch::Tensor m__shapeBlendShape;
 
+  torch::Tensor m__rootPos;
   torch::Tensor m__theta;
   torch::Tensor m__restTheta;
   torch::Tensor m__poseRot;
@@ -234,6 +241,7 @@ public: // PUBLIC METHODS
   void setBeta(const torch::Tensor & beta) noexcept(false);
   void setShapeBlendBasis(const torch::Tensor & shapeBlendBasis) noexcept(false);
 
+  void setRootPos(const torch::Tensor & rootPos) noexcept(false);
   void setTheta(const torch::Tensor & theta) noexcept(false);
   void setRestTheta(const torch::Tensor & restPostTheta) noexcept(true);
   void setPoseBlendBasis(const torch::Tensor & poseBlendBasis) noexcept(false);
