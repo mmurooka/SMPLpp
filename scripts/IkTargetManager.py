@@ -44,6 +44,7 @@ class IkTargetManager(object):
         int_marker.header.frame_id = "world"
         int_marker.name = name
         int_marker.pose = toPoseMsg(pos)
+        int_marker.scale = 0.3
 
         # move_x control
         control = InteractiveMarkerControl()
@@ -75,14 +76,13 @@ class IkTargetManager(object):
         return int_marker
 
     def interactivemarkerFeedback(self, feedback):
-        if feedback.event_type == feedback.MOUSE_UP:
-            # set message
-            pose_msg = PoseStamped()
-            pose_msg.header = feedback.header
-            pose_msg.pose = feedback.pose
+        # set message
+        pose_msg = PoseStamped()
+        pose_msg.header = feedback.header
+        pose_msg.pose = feedback.pose
 
-            # publish message
-            self.pose_pub.publish(pose_msg)
+        # publish message
+        self.pose_pub.publish(pose_msg)
 
     def spin(self):
         rospy.spin()
