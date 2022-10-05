@@ -43,6 +43,7 @@
 #include "toolbox/TorchEx.hpp"
 //----------
 #include <geometry_msgs/PointStamped.h>
+#include <geometry_msgs/PoseArray.h>
 #include <ros/package.h>
 #include <ros/ros.h>
 #include <std_msgs/Float64MultiArray.h>
@@ -133,7 +134,9 @@ int main(int argc, char * argv[])
   ros::init(argc, argv, "smplpp");
   ros::NodeHandle nh;
   ros::NodeHandle pnh("~");
-  ros::Publisher markerPub = nh.advertise<visualization_msgs::MarkerArray>("smplpp/marker_arr", 1);
+  ros::Publisher markerArrPub = nh.advertise<visualization_msgs::MarkerArray>("smplpp/marker_arr", 1);
+  ros::Publisher targetPoseArrPub = nh.advertise<geometry_msgs::PoseArray>("smplpp/target_pose_arr", 1);
+  ros::Publisher actualPoseArrPub = nh.advertise<geometry_msgs::PoseArray>("smplpp/actual_pose_arr", 1);
   bool enableIk = false;
   pnh.getParam("enable_ik", enableIk);
   ros::Subscriber poseParamSub;
@@ -211,7 +214,7 @@ int main(int argc, char * argv[])
   ros::Rate rate(rateFreq);
   while(ros::ok())
   {
-    // Update SMPL model
+    // Update SMPL model and solve IK
     {
       auto startTime = std::chrono::system_clock::now();
 
@@ -251,7 +254,7 @@ int main(int argc, char * argv[])
                                                            << " [ms]");
     }
 
-    // Publish marker
+    // Publish SMPL model
     {
       auto startTime = std::chrono::system_clock::now();
 
@@ -300,7 +303,7 @@ int main(int argc, char * argv[])
       }
 
       markerArrMsg.markers.push_back(markerMsg);
-      markerPub.publish(markerArrMsg);
+      markerArrPub.publish(markerArrMsg);
 
       ROS_INFO_STREAM_THROTTLE(10.0, "Duration to publish message: "
                                          << std::chrono::duration_cast<std::chrono::duration<double>>(
@@ -308,6 +311,41 @@ int main(int argc, char * argv[])
                                                     .count()
                                                 * 1e3
                                          << " [ms]");
+    }
+
+    // Publish IK pose
+    if(ikTargetList.size() > 0)
+    {
+      geometry_msgs::PoseArray targetPoseArrMsg;
+      geometry_msgs::PoseArray actualPoseArrMsg;
+
+      auto timeNow = ros::Time::now();
+      targetPoseArrMsg.header.stamp = timeNow;
+      targetPoseArrMsg.header.frame_id = "world";
+      actualPoseArrMsg.header.stamp = timeNow;
+      actualPoseArrMsg.header.frame_id = "world";
+
+      for(const auto & ikTarget : ikTargetList)
+      {
+        geometry_msgs::Pose targetPoseMsg;
+        geometry_msgs::Pose actualPoseMsg;
+
+        targetPoseMsg.position.x = ikTarget.second.targetPos.index({0}).item<float>();
+        targetPoseMsg.position.y = ikTarget.second.targetPos.index({1}).item<float>();
+        targetPoseMsg.position.z = ikTarget.second.targetPos.index({2}).item<float>();
+        targetPoseMsg.orientation.w = 1.0;
+        targetPoseArrMsg.poses.push_back(targetPoseMsg);
+
+        torch::Tensor actualPos = SINGLE_SMPL::get()->getVertex(ikTarget.second.vertexIdx);
+        actualPoseMsg.position.x = actualPos.index({0}).item<float>();
+        actualPoseMsg.position.y = actualPos.index({1}).item<float>();
+        actualPoseMsg.position.z = actualPos.index({2}).item<float>();
+        actualPoseMsg.orientation.w = 1.0;
+        actualPoseArrMsg.poses.push_back(actualPoseMsg);
+      }
+
+      targetPoseArrPub.publish(targetPoseArrMsg);
+      actualPoseArrPub.publish(actualPoseArrMsg);
     }
 
     ros::spinOnce();
