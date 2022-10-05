@@ -44,6 +44,7 @@
 //----------
 #include <geometry_msgs/PointStamped.h>
 #include <geometry_msgs/PoseArray.h>
+#include <geometry_msgs/PoseStamped.h>
 #include <ros/package.h>
 #include <ros/ros.h>
 #include <std_msgs/Float64MultiArray.h>
@@ -69,6 +70,7 @@ struct IkTarget
 std::unique_ptr<torch::Device> g_device;
 torch::Tensor g_theta = torch::zeros({BATCH_SIZE, JOINT_NUM + 1, 3}); // (N, 24 + 1, 3)
 torch::Tensor g_beta = torch::zeros({BATCH_SIZE, SHAPE_BASIS_DIM}); // (N, 10)
+std::unordered_map<std::string, IkTarget> g_ikTargetList;
 
 void poseParamCallback(const smplpp::PoseParam::ConstPtr & msg)
 {
@@ -100,6 +102,13 @@ void shapeParamCallback(const std_msgs::Float64MultiArray::ConstPtr & msg)
   {
     g_beta.index({0, i}) = msg->data[i];
   }
+}
+
+void ikTargetPoseCallback(const geometry_msgs::PoseStamped::ConstPtr & msg)
+{
+  g_ikTargetList.at("LeftHand").targetPos.index_put_({0}, msg->pose.position.x);
+  g_ikTargetList.at("LeftHand").targetPos.index_put_({1}, msg->pose.position.y);
+  g_ikTargetList.at("LeftHand").targetPos.index_put_({2}, msg->pose.position.z);
 }
 
 void clickedPointCallback(const geometry_msgs::PointStamped::ConstPtr & msg)
@@ -145,10 +154,10 @@ int main(int argc, char * argv[])
     poseParamSub = nh.subscribe("smplpp/pose_param", 1, poseParamCallback);
   }
   ros::Subscriber shapeParamSub = nh.subscribe("smplpp/shape_param", 1, shapeParamCallback);
+  ros::Subscriber ikTargetPoseSub = nh.subscribe("smplpp/ik_target_pose", 1, ikTargetPoseCallback);
   ros::Subscriber clickedPointSub = nh.subscribe("/clicked_point", 1, clickedPointCallback);
 
   // Setup IK
-  std::unordered_map<std::string, IkTarget> ikTargetList;
   if(enableIk)
   {
     // Set initial root orientation
@@ -164,10 +173,10 @@ int main(int argc, char * argv[])
       }
       return tensor;
     };
-    ikTargetList.emplace("LeftHand", IkTarget(2006, makeTensor3d({0.5, 0.5, 1.0})));
-    ikTargetList.emplace("RightHand", IkTarget(5508, makeTensor3d({0.5, -0.5, 1.0})));
-    ikTargetList.emplace("LeftFoot", IkTarget(3438, makeTensor3d({0.0, 0.2, 0.0})));
-    ikTargetList.emplace("RightFoot", IkTarget(6838, makeTensor3d({0.0, -0.2, 0.0})));
+    g_ikTargetList.emplace("LeftHand", IkTarget(2006, makeTensor3d({0.5, 0.5, 1.0})));
+    g_ikTargetList.emplace("RightHand", IkTarget(5508, makeTensor3d({0.5, -0.5, 1.0})));
+    g_ikTargetList.emplace("LeftFoot", IkTarget(3438, makeTensor3d({0.0, 0.2, 0.0})));
+    g_ikTargetList.emplace("RightFoot", IkTarget(6838, makeTensor3d({0.0, -0.2, 0.0})));
   }
 
   // Load SMPL model
@@ -218,7 +227,7 @@ int main(int argc, char * argv[])
     {
       auto startTime = std::chrono::system_clock::now();
 
-      if(ikTargetList.size() > 0)
+      if(g_ikTargetList.size() > 0)
       {
         g_theta.set_requires_grad(true);
         auto & g_theta_grad = g_theta.mutable_grad();
@@ -231,10 +240,10 @@ int main(int argc, char * argv[])
 
       SINGLE_SMPL::get()->launch(g_beta, g_theta);
 
-      if(ikTargetList.size() > 0)
+      if(g_ikTargetList.size() > 0)
       {
         torch::Tensor posErr = torch::zeros({}).to(*g_device);
-        for(const auto & ikTarget : ikTargetList)
+        for(const auto & ikTarget : g_ikTargetList)
         {
           posErr += torch::nn::functional::mse_loss(SINGLE_SMPL::get()->getVertex(ikTarget.second.vertexIdx),
                                                     ikTarget.second.targetPos.to(*g_device));
@@ -314,7 +323,7 @@ int main(int argc, char * argv[])
     }
 
     // Publish IK pose
-    if(ikTargetList.size() > 0)
+    if(g_ikTargetList.size() > 0)
     {
       geometry_msgs::PoseArray targetPoseArrMsg;
       geometry_msgs::PoseArray actualPoseArrMsg;
@@ -325,7 +334,7 @@ int main(int argc, char * argv[])
       actualPoseArrMsg.header.stamp = timeNow;
       actualPoseArrMsg.header.frame_id = "world";
 
-      for(const auto & ikTarget : ikTargetList)
+      for(const auto & ikTarget : g_ikTargetList)
       {
         geometry_msgs::Pose targetPoseMsg;
         geometry_msgs::Pose actualPoseMsg;
