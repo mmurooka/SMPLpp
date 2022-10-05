@@ -44,7 +44,7 @@
 //----------
 #include <geometry_msgs/PointStamped.h>
 #include <geometry_msgs/PoseArray.h>
-#include <geometry_msgs/PoseStamped.h>
+#include <geometry_msgs/TransformStamped.h>
 #include <ros/package.h>
 #include <ros/ros.h>
 #include <std_msgs/Float64MultiArray.h>
@@ -105,11 +105,11 @@ void shapeParamCallback(const std_msgs::Float64MultiArray::ConstPtr & msg)
   }
 }
 
-void ikTargetPoseCallback(const geometry_msgs::PoseStamped::ConstPtr & msg)
+void ikTargetPoseCallback(const geometry_msgs::TransformStamped::ConstPtr & msg)
 {
-  g_ikTargetList.at("LeftHand").targetPos.index_put_({0}, msg->pose.position.x);
-  g_ikTargetList.at("LeftHand").targetPos.index_put_({1}, msg->pose.position.y);
-  g_ikTargetList.at("LeftHand").targetPos.index_put_({2}, msg->pose.position.z);
+  g_ikTargetList.at(msg->child_frame_id).targetPos.index_put_({0}, msg->transform.translation.x);
+  g_ikTargetList.at(msg->child_frame_id).targetPos.index_put_({1}, msg->transform.translation.y);
+  g_ikTargetList.at(msg->child_frame_id).targetPos.index_put_({2}, msg->transform.translation.z);
 }
 
 void clickedPointCallback(const geometry_msgs::PointStamped::ConstPtr & msg)

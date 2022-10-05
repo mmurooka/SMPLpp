@@ -4,7 +4,7 @@ import numpy as np
 
 import rospy
 from tf import transformations
-from geometry_msgs.msg import PoseStamped, Pose
+from geometry_msgs.msg import TransformStamped, Pose
 from visualization_msgs.msg import InteractiveMarker, InteractiveMarkerControl, InteractiveMarkerFeedback
 from interactive_markers.interactive_marker_server import InteractiveMarkerServer
 
@@ -23,17 +23,32 @@ class IkTargetManager(object):
         self.setupInteractiveMarker()
 
         # setup publisher
-        self.pose_pub = rospy.Publisher("ik_target_pose", PoseStamped, queue_size=1)
+        self.transform_pub = rospy.Publisher("ik_target_pose", TransformStamped, queue_size=1)
 
     def setupInteractiveMarker(self):
         # make server
         self.im_server = InteractiveMarkerServer("ik_target_manager")
 
-        # add start
+        # add marker
         self.im_server.insert(
             self._makeInteractiveMarker(
-                name="ik_target_pose",
+                name="LeftHand",
                 pos=[0.5, 0.5, 1.0]),
+            self.interactivemarkerFeedback)
+        self.im_server.insert(
+            self._makeInteractiveMarker(
+                name="RightHand",
+                pos=[0.5, -0.5, 1.0]),
+            self.interactivemarkerFeedback)
+        self.im_server.insert(
+            self._makeInteractiveMarker(
+                name="LeftFoot",
+                pos=[0.0, 0.2, 0.0]),
+            self.interactivemarkerFeedback)
+        self.im_server.insert(
+            self._makeInteractiveMarker(
+                name="RightFoot",
+                pos=[0.0, -0.2, 0.0]),
             self.interactivemarkerFeedback)
 
         # apply to server
@@ -77,12 +92,16 @@ class IkTargetManager(object):
 
     def interactivemarkerFeedback(self, feedback):
         # set message
-        pose_msg = PoseStamped()
-        pose_msg.header = feedback.header
-        pose_msg.pose = feedback.pose
+        transform_msg = TransformStamped()
+        transform_msg.header = feedback.header
+        transform_msg.child_frame_id = feedback.marker_name
+        transform_msg.transform.translation.x = feedback.pose.position.x
+        transform_msg.transform.translation.y = feedback.pose.position.y
+        transform_msg.transform.translation.z = feedback.pose.position.z
+        transform_msg.transform.rotation = feedback.pose.orientation
 
         # publish message
-        self.pose_pub.publish(pose_msg)
+        self.transform_pub.publish(transform_msg)
 
     def spin(self):
         rospy.spin()
