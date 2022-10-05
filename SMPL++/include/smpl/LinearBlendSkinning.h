@@ -74,6 +74,9 @@ namespace smpl
  *          World transformation expressed in homogeneous coordinates
  *          after eliminating effects of rest pose, (N, 24, 4, 4).
  *
+ *      - m__rootPos: <private>
+ *          Batch of root position, (N, 1, 3).
+ *
  *      - m__weights: <private>
  *          Weights for linear blend skinning, (6890, 24).
  *
@@ -121,6 +124,9 @@ namespace smpl
  *      - setTransformation: <public>
  *          Set the world transformation.
  *
+ *      - setRootPos: <public>
+ *          Set new root position.
+ *
  *      - getVertex: <public>
  *          Get vertex locations of the new pose.
  *
@@ -150,6 +156,7 @@ private: // PIRVATE ATTRIBUTES
 
   torch::Tensor m__restShape;
   torch::Tensor m__transformation;
+  torch::Tensor m__rootPos;
   torch::Tensor m__weights;
   torch::Tensor m__posedVert;
 
@@ -176,6 +183,7 @@ public: // PUBLIC METHODS
   void setWeight(const torch::Tensor & weights) noexcept(false);
   void setRestShape(const torch::Tensor & restShape) noexcept(false);
   void setTransformation(const torch::Tensor & transformation) noexcept(false);
+  void setRootPos(const torch::Tensor & rootPos) noexcept(false);
 
   torch::Tensor getVertex() noexcept(false);
   torch::Tensor getVertex(int64_t idx) noexcept(false);

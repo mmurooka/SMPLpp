@@ -65,19 +65,20 @@ struct IkTarget
   IkTarget(int64_t _vertexIdx, torch::Tensor _targetPos) : vertexIdx(_vertexIdx), targetPos(_targetPos) {}
 };
 
-torch::Tensor g_theta = torch::zeros({BATCH_SIZE, JOINT_NUM, 3}); // (N, 24, 3)
+std::unique_ptr<torch::Device> g_device;
+torch::Tensor g_theta = torch::zeros({BATCH_SIZE, JOINT_NUM + 1, 3}); // (N, 24 + 1, 3)
 torch::Tensor g_beta = torch::zeros({BATCH_SIZE, SHAPE_BASIS_DIM}); // (N, 10)
 
 void poseParamCallback(const smplpp::PoseParam::ConstPtr & msg)
 {
-  if(msg->angles.size() != JOINT_NUM)
+  if(msg->angles.size() != JOINT_NUM + 1)
   {
     ROS_WARN_STREAM("Invalid pose param size: " << std::to_string(msg->angles.size())
-                                                << " != " << std::to_string(JOINT_NUM));
+                                                << " != " << std::to_string(JOINT_NUM + 1));
     return;
   }
 
-  for(int64_t i = 0; i < JOINT_NUM; i++)
+  for(int64_t i = 0; i < JOINT_NUM + 1; i++)
   {
     g_theta.index({0, i, 0}) = msg->angles[i].x;
     g_theta.index({0, i, 1}) = msg->angles[i].y;
@@ -113,9 +114,9 @@ void clickedPointCallback(const geometry_msgs::PointStamped::ConstPtr & msg)
   int64_t vertexIdxMin = 0;
   for(int64_t vertexIdx = 0; vertexIdx < VERTEX_NUM; vertexIdx++)
   {
-    double posErr = torch::nn::functional::mse_loss(vertexTensor.index({vertexIdx}), clickedPos)
-                        .to(torch::DeviceType::CPU)
-                        .item<float>();
+    double posErr =
+        torch::nn::functional::mse_loss(vertexTensor.index({vertexIdx}).to(torch::DeviceType::CPU), clickedPos)
+            .item<float>();
     if(posErr < posErrMin)
     {
       posErrMin = posErr;
@@ -167,20 +168,19 @@ int main(int argc, char * argv[])
 
     std::string deviceType = "CPU";
     pnh.getParam("device", deviceType);
-    std::unique_ptr<torch::Device> device;
     if(deviceType == "CPU")
     {
-      device = std::make_unique<torch::Device>(torch::kCPU);
+      g_device = std::make_unique<torch::Device>(torch::kCPU);
     }
     else if(deviceType == "CUDA")
     {
-      device = std::make_unique<torch::Device>(torch::kCUDA);
+      g_device = std::make_unique<torch::Device>(torch::kCUDA);
     }
     else
     {
       throw smpl::smpl_error("main", "Invalid device type: " + deviceType);
     }
-    device->set_index(0);
+    g_device->set_index(0);
     ROS_INFO_STREAM("Device type: " << deviceType);
 
     std::string modelPath;
@@ -191,7 +191,7 @@ int main(int argc, char * argv[])
     }
     ROS_INFO_STREAM("Load SMPL model from " << modelPath);
 
-    SINGLE_SMPL::get()->setDevice(*device);
+    SINGLE_SMPL::get()->setDevice(*g_device);
     SINGLE_SMPL::get()->setModelPath(modelPath);
     SINGLE_SMPL::get()->init();
 
@@ -225,11 +225,11 @@ int main(int argc, char * argv[])
 
       if(ikTargetList.size() > 0)
       {
-        torch::Tensor posErr = torch::zeros({});
+        torch::Tensor posErr = torch::zeros({}).to(*g_device);
         for(const auto & ikTarget : ikTargetList)
         {
           posErr += torch::nn::functional::mse_loss(SINGLE_SMPL::get()->getVertex(ikTarget.second.vertexIdx),
-                                                    ikTarget.second.targetPos);
+                                                    ikTarget.second.targetPos.to(*g_device));
         }
 
         posErr.backward();

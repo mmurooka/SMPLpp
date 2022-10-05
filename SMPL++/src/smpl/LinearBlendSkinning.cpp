@@ -64,7 +64,7 @@ namespace smpl
  *
  */
 LinearBlendSkinning::LinearBlendSkinning() noexcept(true)
-: m__device(torch::kCPU), m__restShape(), m__transformation(), m__weights(), m__posedVert()
+: m__device(torch::kCPU), m__restShape(), m__transformation(), m__rootPos(), m__weights(), m__posedVert()
 {
 }
 
@@ -210,6 +210,15 @@ LinearBlendSkinning & LinearBlendSkinning::operator=(const LinearBlendSkinning &
   else
   {
     throw smpl_error("LinearBlendSkinning", "Failed to copy world transformation!");
+  }
+
+  if(linearBlendSkinning.m__rootPos.sizes() == torch::IntArrayRef({BATCH_SIZE, 1, 3}))
+  {
+    m__rootPos = linearBlendSkinning.m__rootPos.clone().to(m__device);
+  }
+  else
+  {
+    throw smpl_error("LinearBlendSkinning", "Failed to copy rootPos!");
   }
 
   if(linearBlendSkinning.m__weights.sizes() == torch::IntArrayRef({VERTEX_NUM, JOINT_NUM}))
@@ -360,6 +369,20 @@ void LinearBlendSkinning::setTransformation(const torch::Tensor & transformation
   return;
 }
 
+void LinearBlendSkinning::setRootPos(const torch::Tensor & rootPos) noexcept(false)
+{
+  if(rootPos.sizes() == torch::IntArrayRef({BATCH_SIZE, 1, 3}))
+  {
+    m__rootPos = rootPos.clone().to(m__device);
+  }
+  else
+  {
+    throw smpl_error("LinearBlendSknning", "Failed to set rootPos!");
+  }
+
+  return;
+}
+
 /**getVertex
  *
  * Brief
@@ -444,6 +467,7 @@ void LinearBlendSkinning::skinning() noexcept(false)
   try
   {
     m__posedVert = homo2cart(verticesHomo);
+    m__posedVert += torch::tile(m__rootPos, {1, VERTEX_NUM, 1});
   }
   catch(std::exception & e)
   {
