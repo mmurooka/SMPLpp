@@ -595,7 +595,7 @@ void SMPL::init() noexcept(false)
  *          Batch of shape coefficient vectors, (N, 10).
  *
  *      @theta: - Tensor -
- *          Batch of root position and pose in axis-angle representations, (N, 24 + 1, 3).
+ *          Batch of pose in axis-angle representations, (N, 24, 3).
  *
  *      @translation: - Tensor -
  *          Batch of global translation vectors, (N, 3).
@@ -609,7 +609,7 @@ void SMPL::init() noexcept(false)
 void SMPL::launch(torch::Tensor & beta, torch::Tensor & theta) noexcept(false)
 {
   if(m__model.is_null() && beta.sizes() != torch::IntArrayRef({BATCH_SIZE, SHAPE_BASIS_DIM})
-     && theta.sizes() != torch::IntArrayRef({BATCH_SIZE, JOINT_NUM + 1, 3}))
+     && theta.sizes() != torch::IntArrayRef({BATCH_SIZE, JOINT_NUM, 3}))
   {
     throw smpl_error("SMPL", "Cannot launch a SMPL model!");
   }
@@ -620,10 +620,7 @@ void SMPL::launch(torch::Tensor & beta, torch::Tensor & theta) noexcept(false)
     // blend shapes
     //
     m__blender.setBeta(beta);
-    m__blender.setRootPos(
-        theta.index({at::indexing::Slice(), at::indexing::Slice(at::indexing::None, 1), at::indexing::Slice()}));
-    m__blender.setTheta(
-        theta.index({at::indexing::Slice(), at::indexing::Slice(1, at::indexing::None), at::indexing::Slice()}));
+    m__blender.setTheta(theta);
     m__blender.setShapeBlendBasis(m__shapeBlendBasis);
     m__blender.setPoseBlendBasis(m__poseBlendBasis);
 

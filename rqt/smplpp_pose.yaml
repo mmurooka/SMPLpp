@@ -288,18 +288,6 @@ settings:
     is_repeat: false
     max: 2.0
     min: -2.0
-  /smplpp/pose_param/angles[24]/x:
-    is_repeat: false
-    max: 2.0
-    min: -2.0
-  /smplpp/pose_param/angles[24]/y:
-    is_repeat: false
-    max: 2.0
-    min: -2.0
-  /smplpp/pose_param/angles[24]/z:
-    is_repeat: false
-    max: 2.0
-    min: -2.0
 texts:
 - /smplpp/pose_param/angles[0]/x
 - /smplpp/pose_param/angles[0]/y
@@ -373,6 +361,3 @@ texts:
 - /smplpp/pose_param/angles[23]/x
 - /smplpp/pose_param/angles[23]/y
 - /smplpp/pose_param/angles[23]/z
-- /smplpp/pose_param/angles[24]/x
-- /smplpp/pose_param/angles[24]/y
-- /smplpp/pose_param/angles[24]/z
