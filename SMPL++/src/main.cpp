@@ -144,11 +144,15 @@ int main(int argc, char * argv[])
   ros::init(argc, argv, "smplpp");
   ros::NodeHandle nh;
   ros::NodeHandle pnh("~");
+
+  bool enableIk = false;
+  pnh.getParam("enable_ik", enableIk);
+  bool enableVertexColor = false;
+  pnh.getParam("enable_vertex_color", enableVertexColor);
+
   ros::Publisher markerArrPub = nh.advertise<visualization_msgs::MarkerArray>("smplpp/marker_arr", 1);
   ros::Publisher targetPoseArrPub = nh.advertise<geometry_msgs::PoseArray>("smplpp/target_pose_arr", 1);
   ros::Publisher actualPoseArrPub = nh.advertise<geometry_msgs::PoseArray>("smplpp/actual_pose_arr", 1);
-  bool enableIk = false;
-  pnh.getParam("enable_ik", enableIk);
   ros::Subscriber poseParamSub;
   if(!enableIk)
   {
@@ -319,6 +323,26 @@ int main(int argc, char * argv[])
           xt::adapt(faceIndexTensor.to(torch::kCPU).data_ptr<int32_t>(),
                     xt::xarray<int32_t>::shape_type({static_cast<const size_t>(FACE_INDEX_NUM), 3}));
 
+      double zMin = 1e10;
+      double zMax = -1e10;
+      if(enableVertexColor)
+      {
+        for(int64_t vertexIdx = 0; vertexIdx < VERTEX_NUM; vertexIdx++)
+        {
+          double z = vertexTensor.index({vertexIdx, 2}).item<float>();
+          zMin = std::min(z, zMin);
+          zMax = std::max(z, zMax);
+        }
+      }
+      auto makeColorMsg = [zMin, zMax](double z) -> std_msgs::ColorRGBA {
+        std_msgs::ColorRGBA colorMsg;
+        colorMsg.r = std::exp(-1 * std::pow(z - zMax, 2));
+        colorMsg.g = std::exp(-1 * std::pow(z - 0.5 * (zMin + zMax), 2));
+        colorMsg.b = std::exp(-1 * std::pow(z - zMin, 2));
+        colorMsg.a = 1.0;
+        return colorMsg;
+      };
+
       for(int64_t i = 0; i < FACE_INDEX_NUM; i++)
       {
         for(int64_t j = 0; j < 3; j++)
@@ -329,6 +353,10 @@ int main(int argc, char * argv[])
           pointMsg.y = vertexArr(idx, 1);
           pointMsg.z = vertexArr(idx, 2);
           markerMsg.points.push_back(pointMsg);
+          if(enableVertexColor)
+          {
+            markerMsg.colors.push_back(makeColorMsg(pointMsg.z));
+          }
         }
       }
 
