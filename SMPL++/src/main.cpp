@@ -71,6 +71,7 @@ std::unique_ptr<torch::Device> g_device;
 torch::Tensor g_theta = torch::zeros({BATCH_SIZE, JOINT_NUM + 1, 3}); // (N, 24 + 1, 3)
 torch::Tensor g_beta = torch::zeros({BATCH_SIZE, SHAPE_BASIS_DIM}); // (N, 10)
 std::unordered_map<std::string, IkTarget> g_ikTargetList;
+int64_t g_torsoVertexIdx = 3500;
 
 void poseParamCallback(const smplpp::PoseParam::ConstPtr & msg)
 {
@@ -243,19 +244,33 @@ int main(int argc, char * argv[])
       if(g_ikTargetList.size() > 0)
       {
         torch::Tensor objective = torch::zeros({}).to(*g_device);
+
+        // Add end-effector position error to the objective
         for(const auto & ikTarget : g_ikTargetList)
         {
           objective += torch::nn::functional::mse_loss(SINGLE_SMPL::get()->getVertex(ikTarget.second.vertexIdx),
                                                        ikTarget.second.targetPos.to(*g_device));
         }
 
+        // Add torso position error to the objective
+        {
+          torch::Tensor torsoActualPos = SINGLE_SMPL::get()->getVertex(g_torsoVertexIdx);
+          torch::Tensor torsoTargetPos =
+              0.5 * (g_ikTargetList.at("LeftFoot").targetPos + g_ikTargetList.at("RightFoot").targetPos);
+          objective += torch::nn::functional::mse_loss(torsoActualPos.index({at::indexing::Slice(0, 2)}),
+                                                       torsoTargetPos.index({at::indexing::Slice(0, 2)}).to(*g_device));
+        }
+
+        // Add regularization term to the objective
         constexpr double thetaRegWeight = 1e-3;
         objective += thetaRegWeight
                      * torch::sum(torch::square(g_theta.index(
                          {at::indexing::Slice(), at::indexing::Slice(2, at::indexing::None), at::indexing::Slice()})));
 
+        // Calculate backward propagation
         objective.backward();
 
+        // Update theta
         g_theta.set_requires_grad(false);
         constexpr double gain = 1e-1;
         g_theta -= gain * g_theta.grad();
