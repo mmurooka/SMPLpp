@@ -236,13 +236,10 @@ int main(int argc, char * argv[])
           posErr += torch::nn::functional::mse_loss(SINGLE_SMPL::get()->getVertex(ikTarget.second.vertexIdx),
                                                     ikTarget.second.targetPos.to(*g_device));
         }
-
         posErr.backward();
 
-        // std::cout << "g_theta.grad():\n" << g_theta.grad() << std::endl;
-
         g_theta.set_requires_grad(false);
-        constexpr double gain = 1e-2;
+        constexpr double gain = 1e-1;
         g_theta -= gain * g_theta.grad();
       }
 
