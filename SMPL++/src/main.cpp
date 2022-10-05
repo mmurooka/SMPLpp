@@ -336,9 +336,11 @@ int main(int argc, char * argv[])
       }
       auto makeColorMsg = [zMin, zMax](double z) -> std_msgs::ColorRGBA {
         std_msgs::ColorRGBA colorMsg;
-        colorMsg.r = std::exp(-1 * std::pow(z - zMax, 2));
-        colorMsg.g = std::exp(-1 * std::pow(z - 0.5 * (zMin + zMax), 2));
-        colorMsg.b = std::exp(-1 * std::pow(z - zMin, 2));
+        double scale = 0.5 * std::max(zMax - zMin, 1e-3);
+        double zMid = 0.5 * (zMin + zMax);
+        colorMsg.r = std::exp(-1 * std::pow((z - zMax) / scale, 2));
+        colorMsg.g = std::exp(-1 * std::pow((z - zMid) / scale, 2));
+        colorMsg.b = std::exp(-1 * std::pow((z - zMin) / scale, 2));
         colorMsg.a = 1.0;
         return colorMsg;
       };
