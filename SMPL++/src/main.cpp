@@ -242,13 +242,19 @@ int main(int argc, char * argv[])
 
       if(g_ikTargetList.size() > 0)
       {
-        torch::Tensor posErr = torch::zeros({}).to(*g_device);
+        torch::Tensor objective = torch::zeros({}).to(*g_device);
         for(const auto & ikTarget : g_ikTargetList)
         {
-          posErr += torch::nn::functional::mse_loss(SINGLE_SMPL::get()->getVertex(ikTarget.second.vertexIdx),
-                                                    ikTarget.second.targetPos.to(*g_device));
+          objective += torch::nn::functional::mse_loss(SINGLE_SMPL::get()->getVertex(ikTarget.second.vertexIdx),
+                                                       ikTarget.second.targetPos.to(*g_device));
         }
-        posErr.backward();
+
+        constexpr double thetaRegWeight = 1e-3;
+        objective += thetaRegWeight
+                     * torch::sum(torch::square(g_theta.index(
+                         {at::indexing::Slice(), at::indexing::Slice(2, at::indexing::None), at::indexing::Slice()})));
+
+        objective.backward();
 
         g_theta.set_requires_grad(false);
         constexpr double gain = 1e-1;
