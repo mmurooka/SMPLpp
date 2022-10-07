@@ -467,7 +467,7 @@ void LinearBlendSkinning::skinning() noexcept(false)
   try
   {
     m__posedVert = homo2cart(verticesHomo);
-    m__posedVert += torch::tile(m__rootPos, {1, VERTEX_NUM, 1});
+    m__posedVert += m__rootPos.expand({-1, VERTEX_NUM, -1});
   }
   catch(std::exception & e)
   {
