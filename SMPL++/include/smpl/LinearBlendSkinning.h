@@ -130,6 +130,8 @@ namespace smpl
  *      - getVertex: <public>
  *          Get vertex locations of the new pose.
  *
+ *      - getVertexRaw: <public>
+ *          Get tensor of vertex locations of the deformed mesh.
  *      %%
  *
  *      %
@@ -186,7 +188,7 @@ public: // PUBLIC METHODS
   void setRootPos(const torch::Tensor & rootPos) noexcept(false);
 
   torch::Tensor getVertex() noexcept(false);
-  torch::Tensor getVertex(int64_t idx) noexcept(false);
+  torch::Tensor getVertexRaw(int64_t idx) noexcept(false);
 
   // %% Linear Blend Skinning %%
   void skinning() noexcept(false);

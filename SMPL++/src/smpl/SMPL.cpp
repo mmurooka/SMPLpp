@@ -495,9 +495,9 @@ torch::Tensor SMPL::getVertex() noexcept(false)
   return vertices;
 }
 
-torch::Tensor SMPL::getVertex(int64_t idx) noexcept(false)
+torch::Tensor SMPL::getVertexRaw(int64_t idx) noexcept(false)
 {
-  return m__skinner.getVertex(idx);
+  return m__skinner.getVertexRaw(idx);
 }
 
 /**init

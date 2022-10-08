@@ -165,6 +165,9 @@ namespace smpl
  *
  *      - getVertex: <public>
  *          Get vertex locations of the deformed mesh.
+ *
+ *      - getVertexRaw: <public>
+ *          Get tensor of vertex locations of the deformed mesh.
  *      %%
  *
  *      %
@@ -231,7 +234,7 @@ public: // PUBLIC METHODS
   torch::Tensor getFaceIndex() noexcept(false);
   torch::Tensor getRestJoint() noexcept(false);
   torch::Tensor getVertex() noexcept(false);
-  torch::Tensor getVertex(int64_t idx) noexcept(false);
+  torch::Tensor getVertexRaw(int64_t idx) noexcept(false);
 
   // %% Modeling %%
   void init() noexcept(false);

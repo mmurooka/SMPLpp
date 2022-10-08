@@ -252,13 +252,13 @@ int main(int argc, char * argv[])
         // Add end-effector position error to the objective
         for(const auto & ikTarget : g_ikTargetList)
         {
-          objective += torch::nn::functional::mse_loss(SINGLE_SMPL::get()->getVertex(ikTarget.second.vertexIdx),
+          objective += torch::nn::functional::mse_loss(SINGLE_SMPL::get()->getVertexRaw(ikTarget.second.vertexIdx),
                                                        ikTarget.second.targetPos.to(*g_device));
         }
 
         // Add torso position error to the objective
         {
-          torch::Tensor torsoActualPos = SINGLE_SMPL::get()->getVertex(g_torsoVertexIdx);
+          torch::Tensor torsoActualPos = SINGLE_SMPL::get()->getVertexRaw(g_torsoVertexIdx);
           torch::Tensor torsoTargetPos =
               0.5 * (g_ikTargetList.at("LeftFoot").targetPos + g_ikTargetList.at("RightFoot").targetPos);
           objective += torch::nn::functional::mse_loss(torsoActualPos.index({at::indexing::Slice(0, 2)}),
@@ -396,7 +396,7 @@ int main(int argc, char * argv[])
         targetPoseMsg.orientation.w = 1.0;
         targetPoseArrMsg.poses.push_back(targetPoseMsg);
 
-        torch::Tensor actualPos = SINGLE_SMPL::get()->getVertex(ikTarget.second.vertexIdx);
+        torch::Tensor actualPos = SINGLE_SMPL::get()->getVertexRaw(ikTarget.second.vertexIdx);
         actualPoseMsg.position.x = actualPos.index({0}).item<float>();
         actualPoseMsg.position.y = actualPos.index({1}).item<float>();
         actualPoseMsg.position.z = actualPos.index({2}).item<float>();
