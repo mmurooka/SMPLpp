@@ -119,15 +119,13 @@ void clickedPointCallback(const geometry_msgs::PointStamped::ConstPtr & msg)
   clickedPos.index_put_({1}, msg->point.y);
   clickedPos.index_put_({2}, msg->point.z);
 
-  torch::Tensor vertexTensor = SINGLE_SMPL::get()->getVertex().index({0});
+  torch::Tensor vertexTensor = SINGLE_SMPL::get()->getVertex().index({0}).to(torch::kCPU);
 
   double posErrMin = 1e10;
   int64_t vertexIdxMin = 0;
   for(int64_t vertexIdx = 0; vertexIdx < VERTEX_NUM; vertexIdx++)
   {
-    double posErr =
-        torch::nn::functional::mse_loss(vertexTensor.index({vertexIdx}).to(torch::DeviceType::CPU), clickedPos)
-            .item<float>();
+    double posErr = torch::nn::functional::mse_loss(vertexTensor.index({vertexIdx}), clickedPos).item<float>();
     if(posErr < posErrMin)
     {
       posErrMin = posErr;
@@ -309,18 +307,15 @@ int main(int argc, char * argv[])
       markerMsg.color.b = 0.1;
       markerMsg.color.a = 1.0;
 
-      torch::Tensor vertexTensorBatched = SINGLE_SMPL::get()->getVertex();
-      torch::Tensor faceIndexTensor = SINGLE_SMPL::get()->getFaceIndex();
-      assert(vertexTensorBatched.sizes() == torch::IntArrayRef({BATCH_SIZE, VERTEX_NUM, 3}));
+      torch::Tensor vertexTensor = SINGLE_SMPL::get()->getVertex().index({0}).to(torch::kCPU);
+      torch::Tensor faceIndexTensor = SINGLE_SMPL::get()->getFaceIndex().to(torch::kCPU);
+      assert(vertexTensor.sizes() == torch::IntArrayRef({VERTEX_NUM, 3}));
       assert(faceIndexTensor.sizes() == torch::IntArrayRef({FACE_INDEX_NUM, 3}));
 
-      torch::Tensor vertexTensor = smpl::TorchEx::indexing(vertexTensorBatched, torch::IntArrayRef({0}));
-      xt::xarray<float> vertexArr =
-          xt::adapt(vertexTensor.to(torch::kCPU).data_ptr<float>(),
-                    xt::xarray<float>::shape_type({static_cast<const size_t>(VERTEX_NUM), 3}));
-
+      xt::xarray<float> vertexArr = xt::adapt(
+          vertexTensor.data_ptr<float>(), xt::xarray<float>::shape_type({static_cast<const size_t>(VERTEX_NUM), 3}));
       xt::xarray<int32_t> faceIndexArr =
-          xt::adapt(faceIndexTensor.to(torch::kCPU).data_ptr<int32_t>(),
+          xt::adapt(faceIndexTensor.data_ptr<int32_t>(),
                     xt::xarray<int32_t>::shape_type({static_cast<const size_t>(FACE_INDEX_NUM), 3}));
 
       double zMin = 1e10;
