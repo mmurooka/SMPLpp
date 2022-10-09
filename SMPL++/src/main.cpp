@@ -334,16 +334,12 @@ int main(int argc, char * argv[])
           xt::adapt(faceIndexTensor.data_ptr<int32_t>(),
                     xt::xarray<int32_t>::shape_type({static_cast<const size_t>(FACE_INDEX_NUM), 3}));
 
-      double zMin = 1e10;
-      double zMax = -1e10;
+      double zMin = 0.0;
+      double zMax = 0.0;
       if(enableVertexColor)
       {
-        for(int64_t vertexIdx = 0; vertexIdx < VERTEX_NUM; vertexIdx++)
-        {
-          double z = vertexTensor.index({vertexIdx, 2}).item<float>();
-          zMin = std::min(z, zMin);
-          zMax = std::max(z, zMax);
-        }
+        zMin = torch::min(vertexTensor.index({at::indexing::Slice(), 2})).item<float>();
+        zMax = torch::max(vertexTensor.index({at::indexing::Slice(), 2})).item<float>();
       }
       auto makeColorMsg = [zMin, zMax](double z) -> std_msgs::ColorRGBA {
         std_msgs::ColorRGBA colorMsg;
