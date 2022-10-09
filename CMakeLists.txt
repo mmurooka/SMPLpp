@@ -27,7 +27,10 @@ find_package(catkin REQUIRED COMPONENTS
   std_msgs
   geometry_msgs
   visualization_msgs
-  )
+)
+
+# Eigen
+find_package(Eigen3 REQUIRED)
 
 # xtensor
 find_package(xtensor REQUIRED)
@@ -98,6 +101,7 @@ set(SMPLXX_INCLUDE_DIRS
 set(PROJECT_INCLUDE_DIRS
     ${SMPLXX_INCLUDE_DIRS}
     ${GLEW_INCLUDE_DIRS}
+    ${EIGEN3_INCLUDE_DIR}
     ${xtensor_INCLUDE_DIRS}
     ${TORCH_INCLUDE_DIRS}
     ${catkin_INCLUDE_DIRS}
