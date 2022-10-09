@@ -170,7 +170,7 @@ int main(int argc, char * argv[])
 
     auto makeTensor3d = [](const std::vector<double> & vec) -> torch::Tensor {
       torch::Tensor tensor = torch::empty({3});
-      for(int i = 0; i < 3; i++)
+      for(int64_t i = 0; i < 3; i++)
       {
         tensor.index_put_({i}, vec[i]);
       }
