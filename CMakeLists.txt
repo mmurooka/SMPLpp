@@ -70,47 +70,37 @@ catkin_package(
 ## GATHER FILES
 ##
 file(GLOB HEADER
-    "SMPL++/include/*.h"
-    "SMPL++/include/*.hpp"
-    "SMPL++/include/definition/*.h"
-    "SMPL++/include/definition/*.hpp"
-    "SMPL++/include/toolbox/*.h"
-    "SMPL++/include/toolbox/*.hpp"
-    "SMPL++/include/smpl/*.h"
-    "SMPL++/include/smpl/*.hpp"
+    "include/*.h"
+    "include/*.hpp"
+    "include/definition/*.h"
+    "include/definition/*.hpp"
+    "include/toolbox/*.h"
+    "include/toolbox/*.hpp"
+    "include/smpl/*.h"
+    "include/smpl/*.hpp"
 )
 
 file(GLOB SOURCE
-    "SMPL++/src/*.c"
-    "SMPL++/src/*.cpp"
-    "SMPL++/src/definition/*.c"
-    "SMPL++/src/definition/*.cpp"
-    "SMPL++/src/toolbox/*.c"
-    "SMPL++/src/toolbox/*.cpp"
-    "SMPL++/src/smpl/*.c"
-    "SMPL++/src/smpl/*.cpp"
+    "src/*.c"
+    "src/*.cpp"
+    "src/definition/*.c"
+    "src/definition/*.cpp"
+    "src/toolbox/*.c"
+    "src/toolbox/*.cpp"
+    "src/smpl/*.c"
+    "src/smpl/*.cpp"
 )
 
 ##
 ## INCLUDE DIRECTORIES
 ##
-set(SMPLXX_INCLUDE_DIRS
-    "SMPL++/include"
-)
-
 set(PROJECT_INCLUDE_DIRS
-    ${SMPLXX_INCLUDE_DIRS}
+    ${PROJECT_SOURCE_DIR}/include
     ${EIGEN3_INCLUDE_DIR}
     ${xtensor_INCLUDE_DIRS}
     ${TORCH_INCLUDE_DIRS}
     ${catkin_INCLUDE_DIRS}
 )
-
-# message("----- Include Paths -----")
-# message("SMPL++: ${SMPLXX_INCLUDE_DIRS}")
-# message("xtensor: ${xtensor_INCLUDE_DIRS}")
-# message("Torch: ${TORCH_INCLUDE_DIRS}")
-# message("-------------------------------")
 
 ##
 ## LIBRARIES
@@ -123,10 +113,6 @@ set(PROJECT_LIBRARIES
     stdc++fs                        # std::experimental::filesystem
     ${catkin_LIBRARIES}
 )
-
-# message("----- Libraries Paths -----")
-# message("Torch: ${TORCH_LIBRARIES}")
-# message("-------------------------------")
 
 ##
 ## OUTPUTS
