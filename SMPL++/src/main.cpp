@@ -32,6 +32,8 @@
 //----------
 #include <chrono>
 //----------
+#include <Eigen/Dense>
+//----------
 #include <torch/torch.h>
 //----------
 #include <xtensor/xadapt.hpp>
@@ -245,37 +247,55 @@ int main(int argc, char * argv[])
 
       if(g_ikTargetList.size() > 0)
       {
-        torch::Tensor objective = torch::zeros({}).to(*g_device);
+        Eigen::VectorXd e(3 * g_ikTargetList.size());
+        Eigen::MatrixXd J(3 * g_ikTargetList.size(), 3 * (JOINT_NUM + 1));
+        int64_t rowIdx = 0;
 
-        // Add end-effector position error to the objective
+        // Add end-effector position error
         for(const auto & ikTarget : g_ikTargetList)
         {
-          objective += torch::nn::functional::mse_loss(SINGLE_SMPL::get()->getVertexRaw(ikTarget.second.vertexIdx),
-                                                       ikTarget.second.targetPos.to(*g_device));
+          torch::Tensor actualPos = SINGLE_SMPL::get()->getVertexRaw(ikTarget.second.vertexIdx).to(torch::kCPU);
+          torch::Tensor targetPos = ikTarget.second.targetPos.to(torch::kCPU);
+          torch::Tensor posError = actualPos - targetPos;
+          e.segment<3>(rowIdx) = Eigen::Map<Eigen::Vector3f>(posError.data_ptr<float>()).cast<double>();
+
+          for(int64_t i = 0; i < 3; i++)
+          {
+            // Calculate backward of each element
+            torch::Tensor select = torch::zeros({1, 3});
+            select.index_put_({0, i}, 1);
+            actualPos.backward(select, true);
+
+            // Set gradient
+            float * gradDataPtr = g_theta.grad().index({0}).view({3 * (JOINT_NUM + 1)}).data_ptr<float>();
+            J.row(rowIdx) = Eigen::Map<Eigen::VectorXf>(gradDataPtr, 3 * (JOINT_NUM + 1)).cast<double>();
+            g_theta.mutable_grad().zero_();
+
+            rowIdx++;
+          }
         }
 
-        // Add torso position error to the objective
-        {
-          torch::Tensor torsoActualPos = SINGLE_SMPL::get()->getVertexRaw(g_torsoVertexIdx);
-          torch::Tensor torsoTargetPos =
-              0.5 * (g_ikTargetList.at("LeftFoot").targetPos + g_ikTargetList.at("RightFoot").targetPos);
-          objective += torch::nn::functional::mse_loss(torsoActualPos.index({at::indexing::Slice(0, 2)}),
-                                                       torsoTargetPos.index({at::indexing::Slice(0, 2)}).to(*g_device));
-        }
+        // // Add torso position error
+        // {
+        //   torch::Tensor torsoActualPos = SINGLE_SMPL::get()->getVertexRaw(g_torsoVertexIdx);
+        //   torch::Tensor torsoTargetPos =
+        //       0.5 * (g_ikTargetList.at("LeftFoot").targetPos + g_ikTargetList.at("RightFoot").targetPos);
+        //   objective += torch::nn::functional::mse_loss(torsoActualPos.index({at::indexing::Slice(0, 2)}),
+        //                                                torsoTargetPos.index({at::indexing::Slice(0,
+        //                                                2)}).to(*g_device));
+        // }
 
-        // Add regularization term to the objective
-        constexpr double thetaRegWeight = 1e-3;
-        objective += thetaRegWeight
-                     * torch::sum(torch::square(g_theta.index(
-                         {at::indexing::Slice(), at::indexing::Slice(2, at::indexing::None), at::indexing::Slice()})));
-
-        // Calculate backward propagation
-        objective.backward();
+        // Solve linear equation for IK
+        double thetaRegWeight = 1e-3 + e.squaredNorm();
+        Eigen::MatrixXd linearEqA = J.transpose() * J;
+        linearEqA.diagonal().array() += thetaRegWeight;
+        Eigen::VectorXd linearEqB = J.transpose() * e;
+        Eigen::LLT<Eigen::MatrixXd> linearEqLlt(linearEqA);
+        Eigen::VectorXf deltaTheta = -1 * linearEqLlt.solve(linearEqB).cast<float>();
 
         // Update theta
         g_theta.set_requires_grad(false);
-        constexpr double gain = 1e-1;
-        g_theta -= gain * g_theta.grad();
+        g_theta += torch::from_blob((deltaTheta.data()), {deltaTheta.size()}).clone().view({1, JOINT_NUM + 1, 3});
       }
 
       ROS_INFO_STREAM_THROTTLE(10.0,
