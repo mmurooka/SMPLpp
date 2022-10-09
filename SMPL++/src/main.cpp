@@ -232,6 +232,7 @@ int main(int argc, char * argv[])
     {
       auto startTime = std::chrono::system_clock::now();
 
+      // Setup gradient
       if(g_ikTargetList.size() > 0)
       {
         g_theta.set_requires_grad(true);
@@ -243,22 +244,27 @@ int main(int argc, char * argv[])
         }
       }
 
+      // Forward SMPL model
       SINGLE_SMPL::get()->launch(g_beta, g_theta);
 
+      // Solve IK
       if(g_ikTargetList.size() > 0)
       {
+        int64_t thetaDim = 3 * (JOINT_NUM + 1);
         Eigen::VectorXd e(3 * g_ikTargetList.size());
-        Eigen::MatrixXd J(3 * g_ikTargetList.size(), 3 * (JOINT_NUM + 1));
+        Eigen::MatrixXd J(3 * g_ikTargetList.size(), thetaDim);
         int64_t rowIdx = 0;
 
         // Add end-effector position error
         for(const auto & ikTarget : g_ikTargetList)
         {
           torch::Tensor actualPos = SINGLE_SMPL::get()->getVertexRaw(ikTarget.second.vertexIdx).to(torch::kCPU);
-          torch::Tensor targetPos = ikTarget.second.targetPos.to(torch::kCPU);
-          torch::Tensor posError = actualPos - targetPos;
+          torch::Tensor posError = actualPos - ikTarget.second.targetPos;
+
+          // Set task value
           e.segment<3>(rowIdx) = Eigen::Map<Eigen::Vector3f>(posError.data_ptr<float>()).cast<double>();
 
+          // Set task Jacobian
           for(int64_t i = 0; i < 3; i++)
           {
             // Calculate backward of each element
@@ -266,36 +272,26 @@ int main(int argc, char * argv[])
             select.index_put_({0, i}, 1);
             actualPos.backward(select, true);
 
-            // Set gradient
-            float * gradDataPtr = g_theta.grad().index({0}).view({3 * (JOINT_NUM + 1)}).data_ptr<float>();
-            J.row(rowIdx) = Eigen::Map<Eigen::VectorXf>(gradDataPtr, 3 * (JOINT_NUM + 1)).cast<double>();
+            float * gradDataPtr = g_theta.grad().index({0}).view({thetaDim}).data_ptr<float>();
+            J.row(rowIdx) = Eigen::Map<Eigen::VectorXf>(gradDataPtr, thetaDim).cast<double>();
             g_theta.mutable_grad().zero_();
 
             rowIdx++;
           }
         }
 
-        // // Add torso position error
-        // {
-        //   torch::Tensor torsoActualPos = SINGLE_SMPL::get()->getVertexRaw(g_torsoVertexIdx);
-        //   torch::Tensor torsoTargetPos =
-        //       0.5 * (g_ikTargetList.at("LeftFoot").targetPos + g_ikTargetList.at("RightFoot").targetPos);
-        //   objective += torch::nn::functional::mse_loss(torsoActualPos.index({at::indexing::Slice(0, 2)}),
-        //                                                torsoTargetPos.index({at::indexing::Slice(0,
-        //                                                2)}).to(*g_device));
-        // }
-
         // Solve linear equation for IK
-        double thetaRegWeight = 1e-3 + e.squaredNorm();
+        double thetaRegWeight = 1e-6 + e.squaredNorm();
         Eigen::MatrixXd linearEqA = J.transpose() * J;
         linearEqA.diagonal().array() += thetaRegWeight;
         Eigen::VectorXd linearEqB = J.transpose() * e;
         Eigen::LLT<Eigen::MatrixXd> linearEqLlt(linearEqA);
-        Eigen::VectorXf deltaTheta = -1 * linearEqLlt.solve(linearEqB).cast<float>();
+        Eigen::VectorXd deltaTheta = -1 * linearEqLlt.solve(linearEqB);
 
         // Update theta
         g_theta.set_requires_grad(false);
-        g_theta += torch::from_blob((deltaTheta.data()), {deltaTheta.size()}).clone().view({1, JOINT_NUM + 1, 3});
+        g_theta += torch::from_blob(const_cast<float *>(deltaTheta.cast<float>().eval().data()), {deltaTheta.size()})
+                       .view_as(g_theta);
       }
 
       ROS_INFO_STREAM_THROTTLE(10.0,
@@ -411,7 +407,7 @@ int main(int argc, char * argv[])
         targetPoseMsg.orientation.w = 1.0;
         targetPoseArrMsg.poses.push_back(targetPoseMsg);
 
-        torch::Tensor actualPos = SINGLE_SMPL::get()->getVertexRaw(ikTarget.second.vertexIdx);
+        torch::Tensor actualPos = SINGLE_SMPL::get()->getVertexRaw(ikTarget.second.vertexIdx).to(torch::kCPU);
         actualPoseMsg.position.x = actualPos.index({0}).item<float>();
         actualPoseMsg.position.y = actualPos.index({1}).item<float>();
         actualPoseMsg.position.z = actualPos.index({2}).item<float>();
