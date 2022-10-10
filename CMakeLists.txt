@@ -68,62 +68,38 @@ catkin_package(
 )
 
 ##
-## GATHER FILES
-##
-file(GLOB HEADER
-    "include/definition/*.h"
-    "include/definition/*.hpp"
-    "include/toolbox/*.h"
-    "include/toolbox/*.hpp"
-    "include/smpl/*.h"
-    "include/smpl/*.hpp"
-)
-
-file(GLOB SOURCE
-    "src/definition/*.cpp"
-    "src/toolbox/*.cpp"
-    "src/smpl/*.cpp"
-)
-
-##
-## INCLUDE DIRECTORIES
-##
-set(PROJECT_INCLUDE_DIRS
-    ${PROJECT_SOURCE_DIR}/include
-    ${EIGEN3_INCLUDE_DIR}
-    ${xtensor_INCLUDE_DIRS}
-    ${TORCH_INCLUDE_DIRS}
-    ${catkin_INCLUDE_DIRS}
-)
-
-##
-## LIBRARIES
-##
-set(PROJECT_LIBRARIES
-    xtensor
-    ${xtensor_blas_LIBRARIES}
-    nlohmann_json::nlohmann_json
-    ${TORCH_LIBRARIES}
-    stdc++fs # std::experimental::filesystem
-    ${catkin_LIBRARIES}
-)
-
-##
 ## OUTPUTS
 ##
 add_library(smplpp SHARED
-  ${HEADER}
-  ${SOURCE}
+  src/BlendShape.cpp
+  src/JointRegression.cpp
+  src/LinearBlendSkinning.cpp
+  src/SMPL.cpp
+  src/VPoser.cpp
+  src/WorldTransformation.cpp
+  src/definition/def.cpp
+  src/toolbox/Exception.cpp
+  src/toolbox/Tester.cpp
+  src/toolbox/TorchEx.cpp
 )
 target_include_directories(smplpp PUBLIC
-  ${PROJECT_INCLUDE_DIRS}
+  ${PROJECT_SOURCE_DIR}/include
+  ${EIGEN3_INCLUDE_DIR}
+  ${xtensor_INCLUDE_DIRS}
+  ${TORCH_INCLUDE_DIRS}
+  ${catkin_INCLUDE_DIRS}
 )
 target_link_libraries(smplpp PUBLIC
-  ${PROJECT_LIBRARIES}
+  xtensor
+  ${xtensor_blas_LIBRARIES}
+  nlohmann_json::nlohmann_json
+  ${TORCH_LIBRARIES}
+  stdc++fs # std::experimental::filesystem
+  ${catkin_LIBRARIES}
 )
 
-add_executable(main
-  src/main.cpp)
-target_link_libraries(main PRIVATE
+add_executable(node
+  node/node.cpp)
+target_link_libraries(node PRIVATE
   smplpp
 )

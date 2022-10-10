@@ -33,7 +33,7 @@
 //----------
 #  include <torch/torch.h>
 //----------
-#  include "toolbox/Exception.h"
+#  include <smpl/toolbox/Exception.h>
 //----------
 
 //===== EXTERNAL FORWARD DECLARATIONS =========================================

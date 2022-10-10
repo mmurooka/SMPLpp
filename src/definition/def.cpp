@@ -27,7 +27,7 @@
 
 //===== INCLUDES ==============================================================
 
-#include "definition/def.h"
+#include <smpl/definition/def.h>
 
 //===== EXTERNAL DECLARATIONS =================================================
 

@@ -28,9 +28,9 @@
 //===== INCLUDES ==============================================================
 
 //----------
-#include "smpl/JointRegression.h"
-#include "definition/def.h"
-#include "toolbox/Exception.h"
+#include <smpl/JointRegression.h>
+#include <smpl/definition/def.h>
+#include <smpl/toolbox/Exception.h>
 //----------
 
 //===== EXTERNAL FORWARD DECLARATIONS =========================================

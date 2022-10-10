@@ -28,10 +28,10 @@
 //===== INCLUDES ==============================================================
 
 //----------
-#include "smpl/WorldTransformation.h"
-#include "definition/def.h"
-#include "toolbox/Exception.h"
-#include "toolbox/TorchEx.hpp"
+#include <smpl/WorldTransformation.h>
+#include <smpl/definition/def.h>
+#include <smpl/toolbox/Exception.h>
+#include <smpl/toolbox/TorchEx.hpp>
 //----------
 
 //===== EXTERNAL FORWARD DECLARATIONS =========================================

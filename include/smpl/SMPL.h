@@ -36,10 +36,10 @@
 #  include <nlohmann/json.hpp>
 #  include <torch/torch.h>
 //----------
-#  include "smpl/BlendShape.h"
-#  include "smpl/JointRegression.h"
-#  include "smpl/LinearBlendSkinning.h"
-#  include "smpl/WorldTransformation.h"
+#  include <smpl/BlendShape.h>
+#  include <smpl/JointRegression.h>
+#  include <smpl/LinearBlendSkinning.h>
+#  include <smpl/WorldTransformation.h>
 //----------
 
 //===== EXTERNAL FORWARD DECLARATIONS =========================================

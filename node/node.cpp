@@ -39,10 +39,10 @@
 #include <xtensor/xadapt.hpp>
 #include <xtensor/xarray.hpp>
 //----------
-#include "definition/def.h"
-#include "smpl/SMPL.h"
-#include "toolbox/Singleton.hpp"
-#include "toolbox/TorchEx.hpp"
+#include <smpl/definition/def.h>
+#include <smpl/SMPL.h>
+#include <smpl/toolbox/Singleton.hpp>
+#include <smpl/toolbox/TorchEx.hpp>
 //----------
 #include <geometry_msgs/PointStamped.h>
 #include <geometry_msgs/PoseArray.h>
