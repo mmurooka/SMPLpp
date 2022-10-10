@@ -38,7 +38,7 @@
 
 //===== NAMESPACES ============================================================
 
-namespace smpl
+namespace smplpp
 {
 
 //===== INTERNAL MACROS =======================================================
@@ -677,5 +677,5 @@ void WorldTransformation::relativeTransform(torch::Tensor & globalTransformation
 }
 
 //=============================================================================
-} // namespace smpl
+} // namespace smplpp
 //=============================================================================

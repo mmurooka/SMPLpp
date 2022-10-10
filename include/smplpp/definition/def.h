@@ -29,51 +29,51 @@
 //===== EXTERNAL MACROS =======================================================
 
 // #ifndef BATCH_SIZE
-// #define BATCH_SIZE (const size_t) smpl::batch_size
+// #define BATCH_SIZE (const size_t) smplpp::batch_size
 // #endif // BATCH_SIZE
 
 // #ifndef VERTEX_NUM
-// #define VERTEX_NUM (const size_t) smpl::vertex_num
+// #define VERTEX_NUM (const size_t) smplpp::vertex_num
 // #endif // VERTEX_NUM
 
 // #ifndef JOINT_NUM
-// #define JOINT_NUM (const size_t) smpl::joint_num
+// #define JOINT_NUM (const size_t) smplpp::joint_num
 // #endif // JOINT_NUM
 
 // #ifndef SHAPE_BASIS_DIM
-// #define SHAPE_BASIS_DIM (const size_t) smpl::shape_basis_dim
+// #define SHAPE_BASIS_DIM (const size_t) smplpp::shape_basis_dim
 // #endif // SHAPE_BASIS_DIM
 
 // #ifndef POSE_BASIS_DIM
-// #define POSE_BASIS_DIM (const size_t) smpl::pose_basis_dim
+// #define POSE_BASIS_DIM (const size_t) smplpp::pose_basis_dim
 // #endif // POSE_BASIS_DIM
 
 // #ifndef FACE_INDEX_NUM
-// #define FACE_INDEX_NUM (const size_t) smpl::face_index_num
+// #define FACE_INDEX_NUM (const size_t) smplpp::face_index_num
 // #endif // FACE_INDEX_NUM
 
 #  ifndef BATCH_SIZE
-#    define BATCH_SIZE smpl::batch_size
+#    define BATCH_SIZE smplpp::batch_size
 #  endif // BATCH_SIZE
 
 #  ifndef VERTEX_NUM
-#    define VERTEX_NUM smpl::vertex_num
+#    define VERTEX_NUM smplpp::vertex_num
 #  endif // VERTEX_NUM
 
 #  ifndef JOINT_NUM
-#    define JOINT_NUM smpl::joint_num
+#    define JOINT_NUM smplpp::joint_num
 #  endif // JOINT_NUM
 
 #  ifndef SHAPE_BASIS_DIM
-#    define SHAPE_BASIS_DIM smpl::shape_basis_dim
+#    define SHAPE_BASIS_DIM smplpp::shape_basis_dim
 #  endif // SHAPE_BASIS_DIM
 
 #  ifndef POSE_BASIS_DIM
-#    define POSE_BASIS_DIM smpl::pose_basis_dim
+#    define POSE_BASIS_DIM smplpp::pose_basis_dim
 #  endif // POSE_BASIS_DIM
 
 #  ifndef FACE_INDEX_NUM
-#    define FACE_INDEX_NUM smpl::face_index_num
+#    define FACE_INDEX_NUM smplpp::face_index_num
 #  endif // FACE_INDEX_NUM
 
 //===== INCLUDES ==============================================================
@@ -84,7 +84,7 @@
 
 //===== NAMESPACES ============================================================
 
-namespace smpl
+namespace smplpp
 {
 
 //===== INTERNAL MACROS =======================================================
@@ -99,7 +99,7 @@ extern const int64_t pose_basis_dim; // 207
 extern const int64_t face_index_num; // 13776
 
 //=============================================================================
-} // namespace smpl
+} // namespace smplpp
 //=============================================================================
 #endif // DEF_H
 //=============================================================================

@@ -2,7 +2,7 @@
 
 #include <smplpp/VPoser.h>
 
-using namespace smpl;
+using namespace smplpp;
 
 VPoserDecoderImpl::VPoserDecoderImpl()
 {

@@ -25,7 +25,7 @@
 
 //===== MACROS ================================================================
 
-#define SINGLE_SMPL smpl::Singleton<smpl::SMPL>
+#define SINGLE_SMPL smplpp::Singleton<smplpp::SMPL>
 
 //===== INCLUDES ==============================================================
 
@@ -200,7 +200,7 @@ int main(int argc, char * argv[])
     }
     else
     {
-      throw smpl::smpl_error("main", "Invalid device type: " + deviceType);
+      throw smplpp::smpl_error("main", "Invalid device type: " + deviceType);
     }
     g_device->set_index(0);
     ROS_INFO_STREAM("Device type: " << deviceType);

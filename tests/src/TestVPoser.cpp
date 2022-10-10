@@ -6,7 +6,7 @@
 
 TEST(TestDdpZmp, Test1)
 {
-  smpl::VPoserDecoder vposer;
+  smplpp::VPoserDecoder vposer;
 }
 
 int main(int argc, char ** argv)

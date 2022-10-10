@@ -5,7 +5,7 @@
 
 #include <torch/torch.h>
 
-namespace smpl
+namespace smplpp
 {
 /** \brief VPoser decoder model.
 
@@ -43,6 +43,6 @@ public:
     See "Module Ownership" section of https://pytorch.org/tutorials/advanced/cpp_frontend.html for details.
 */
 TORCH_MODULE(VPoserDecoder);
-} // namespace smpl
+} // namespace smplpp
 
 #endif // VPOSER_H
