@@ -11,7 +11,7 @@ project(smplpp)
 ##
 ## COMPILER SETTINGS
 ##
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
@@ -69,8 +69,6 @@ catkin_package(
 ## GATHER FILES
 ##
 file(GLOB HEADER
-    "include/*.h"
-    "include/*.hpp"
     "include/definition/*.h"
     "include/definition/*.hpp"
     "include/toolbox/*.h"
@@ -80,13 +78,8 @@ file(GLOB HEADER
 )
 
 file(GLOB SOURCE
-    "src/*.c"
-    "src/*.cpp"
-    "src/definition/*.c"
     "src/definition/*.cpp"
-    "src/toolbox/*.c"
     "src/toolbox/*.cpp"
-    "src/smpl/*.c"
     "src/smpl/*.cpp"
 )
 
@@ -116,6 +109,19 @@ set(PROJECT_LIBRARIES
 ##
 ## OUTPUTS
 ##
-add_executable(smplpp ${HEADER} ${SOURCE})
-target_include_directories(smplpp PRIVATE ${PROJECT_INCLUDE_DIRS})
-target_link_libraries(smplpp ${PROJECT_LIBRARIES})
+add_library(smplpp SHARED
+  ${HEADER}
+  ${SOURCE}
+)
+target_include_directories(smplpp PUBLIC
+  ${PROJECT_INCLUDE_DIRS}
+)
+target_link_libraries(smplpp PUBLIC
+  ${PROJECT_LIBRARIES}
+)
+
+add_executable(main
+  src/main.cpp)
+target_link_libraries(main PRIVATE
+  smplpp
+)
