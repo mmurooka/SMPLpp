@@ -35,9 +35,9 @@
 #include <xtensor/xarray.hpp>
 #include <xtensor/xjson.hpp>
 //----------
-#include <smpl/SMPL.h>
-#include <smpl/definition/def.h>
-#include <smpl/toolbox/TorchEx.hpp>
+#include <smplpp/SMPL.h>
+#include <smplpp/definition/def.h>
+#include <smplpp/toolbox/TorchEx.hpp>
 //----------
 
 //===== EXTERNAL FORWARD DECLARATIONS =========================================

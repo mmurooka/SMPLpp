@@ -28,10 +28,10 @@
 //===== INCLUDES ==============================================================
 
 //-----------
-#include <smpl/BlendShape.h>
-#include <smpl/definition/def.h>
-#include <smpl/toolbox/Exception.h>
-#include <smpl/toolbox/TorchEx.hpp>
+#include <smplpp/BlendShape.h>
+#include <smplpp/definition/def.h>
+#include <smplpp/toolbox/Exception.h>
+#include <smplpp/toolbox/TorchEx.hpp>
 //-----------
 
 //===== EXTERNAL FORWARD DECLARATIONS =========================================

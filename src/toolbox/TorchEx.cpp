@@ -28,7 +28,7 @@
 //===== INCLUDES ==============================================================
 
 //----------
-#include <smpl/toolbox/TorchEx.hpp>
+#include <smplpp/toolbox/TorchEx.hpp>
 //----------
 
 //===== EXTERNAL FORWARD DECLARATIONS =========================================

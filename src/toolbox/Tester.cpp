@@ -33,15 +33,15 @@
 #include <xtensor/xarray.hpp>
 #include <xtensor/xjson.hpp>
 //----------
-#include <smpl/BlendShape.h>
-#include <smpl/JointRegression.h>
-#include <smpl/LinearBlendSkinning.h>
-#include <smpl/WorldTransformation.h>
-#include <smpl/definition/def.h>
-#include <smpl/toolbox/Exception.h>
-#include <smpl/toolbox/Singleton.hpp>
-#include <smpl/toolbox/Tester.h>
-#include <smpl/toolbox/TorchEx.hpp>
+#include <smplpp/BlendShape.h>
+#include <smplpp/JointRegression.h>
+#include <smplpp/LinearBlendSkinning.h>
+#include <smplpp/WorldTransformation.h>
+#include <smplpp/definition/def.h>
+#include <smplpp/toolbox/Exception.h>
+#include <smplpp/toolbox/Singleton.hpp>
+#include <smplpp/toolbox/Tester.h>
+#include <smplpp/toolbox/TorchEx.hpp>
 //----------
 
 //===== EXTERNAL FORWARD DECLARATIONS =========================================

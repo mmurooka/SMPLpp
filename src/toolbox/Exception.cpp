@@ -28,7 +28,7 @@
 //===== INCLUDES ==============================================================
 
 //----------
-#include <smpl/toolbox/Exception.h>
+#include <smplpp/toolbox/Exception.h>
 //----------
 
 //===== EXTERNAL FORWARD DECLARATIONS =========================================

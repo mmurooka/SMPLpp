@@ -1,6 +1,6 @@
 /* Author: Masaki Murooka */
 
-#include <smpl/VPoser.h>
+#include <smplpp/VPoser.h>
 
 using namespace smpl;
 

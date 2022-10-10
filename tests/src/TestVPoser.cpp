@@ -2,7 +2,7 @@
 
 #include <gtest/gtest.h>
 
-#include <smpl/VPoser.h>
+#include <smplpp/VPoser.h>
 
 TEST(TestDdpZmp, Test1)
 {
