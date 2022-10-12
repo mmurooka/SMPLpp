@@ -4,6 +4,11 @@
 
 #include <Eigen/Dense>
 
+#include <nlohmann/json.hpp>
+
+#include <xtensor/xarray.hpp>
+#include <xtensor/xjson.hpp>
+
 #include <smplpp/VPoser.h>
 
 #include <ros/console.h>
@@ -30,19 +35,35 @@ TEST(TestVPoser, convertRotMatToAxisAngle)
 
 TEST(TestVPoser, VPoserDecoder)
 {
+  std::string vposerInOutPath = ros::package::getPath("smplpp") + "/tests/data/TestVPoser.json";
+  ROS_INFO_STREAM("Load VPoser input and output from " << vposerInOutPath);
+  std::ifstream vposerInOutFile(vposerInOutPath);
+  nlohmann::json vposerInOutJsonObj = nlohmann::json::parse(vposerInOutFile);
+  xt::xarray<float> arrIn;
+  xt::from_json(vposerInOutJsonObj["VPoserDecoder.in"], arrIn);
+  torch::Tensor tensorIn =
+      torch::from_blob(arrIn.data(), {static_cast<int64_t>(arrIn.shape(0)), static_cast<int64_t>(arrIn.shape(1))});
+  xt::xarray<float> arrOut;
+  xt::from_json(vposerInOutJsonObj["VPoserDecoder.out"], arrOut);
+  torch::Tensor tensorOutGt =
+      torch::from_blob(arrOut.data(), {static_cast<int64_t>(arrOut.shape(0)), static_cast<int64_t>(arrOut.shape(1)),
+                                       static_cast<int64_t>(arrOut.shape(2))});
+
   smplpp::VPoserDecoder vposer;
-  std::string jsonPath = ros::package::getPath("smplpp") + "/data/vposer_parameters.json";
-  ROS_INFO_STREAM("Load VPoser parameters from " << jsonPath);
-  vposer->loadParamsFromJson(jsonPath);
+  std::string vposerParamsPath = ros::package::getPath("smplpp") + "/data/vposer_parameters.json";
+  ROS_INFO_STREAM("Load VPoser parameters from " << vposerParamsPath);
+  vposer->loadParamsFromJson(vposerParamsPath);
   vposer->eval();
+  torch::Tensor tensorOutPred = vposer->forward(tensorIn);
 
-  // torch::Tensor vposerIn = torch::rand({1, vposer->latentDim_});
-  torch::Tensor vposerIn = torch::arange(vposer->latentDim_, torch::ScalarType::Float).view({1, -1});
-  torch::Tensor vposerOut = vposer->forward(vposerIn);
-  // torch::Tensor vposerOut = vposer->decoderNet_->at<torch::nn::LinearImpl>(0).forward(vposerIn);
-
-  std::cout << "vposerIn:\n" << vposerIn << std::endl;
-  std::cout << "vposerOut:\n" << vposerOut << std::endl;
+  EXPECT_LT((tensorOutPred - tensorOutGt).norm().item<float>(), 1e-6) << "tensorIn:\n"
+                                                                      << tensorIn << std::endl
+                                                                      << "tensorOutPred:\n"
+                                                                      << tensorOutPred << std::endl
+                                                                      << "tensorOutGt:\n"
+                                                                      << tensorOutGt << std::endl
+                                                                      << "tensorOutError:\n"
+                                                                      << (tensorOutPred - tensorOutGt) << std::endl;
 }
 
 int main(int argc, char ** argv)
