@@ -374,7 +374,16 @@ int main(int argc, char * argv[])
               Eigen::Map<Eigen::VectorXf>(configDataPtr, configDim).cast<double>());
         }
         Eigen::LLT<Eigen::MatrixXd> linearEqLlt(linearEqA);
-        Eigen::VectorXd deltaConfig = -1 * linearEqLlt.solve(linearEqB);
+        Eigen::VectorXd deltaConfig;
+        if(linearEqLlt.info() == Eigen::NumericalIssue)
+        {
+          deltaConfig.setZero(configDim);
+          ROS_ERROR("LLT has numerical issue!");
+        }
+        else
+        {
+          deltaConfig = -1 * linearEqLlt.solve(linearEqB);
+        }
 
         // Update config
         if(enableVposer)
