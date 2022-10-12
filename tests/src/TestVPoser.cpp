@@ -56,6 +56,13 @@ TEST(TestVPoser, VPoserDecoder)
   vposer->eval();
   torch::Tensor tensorOutPred = vposer->forward(tensorIn);
 
+  ROS_INFO_STREAM("Parameters in VPoserDecoder:");
+  for(const auto & paramKV : vposer->named_parameters())
+  {
+    std::string key = paramKV.key();
+    std::cout << "  - " << key << std::endl;
+  }
+
   EXPECT_LT((tensorOutPred - tensorOutGt).norm().item<float>(), 1e-6) << "tensorIn:\n"
                                                                       << tensorIn << std::endl
                                                                       << "tensorOutPred:\n"
@@ -64,6 +71,8 @@ TEST(TestVPoser, VPoserDecoder)
                                                                       << tensorOutGt << std::endl
                                                                       << "tensorOutError:\n"
                                                                       << (tensorOutPred - tensorOutGt) << std::endl;
+
+  EXPECT_FALSE(vposer->decoderNet_->at<torch::nn::DropoutImpl>(2).is_training());
 }
 
 int main(int argc, char ** argv)
