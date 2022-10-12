@@ -294,7 +294,7 @@ int main(int argc, char * argv[])
       torch::Tensor theta;
       if(enableVposer)
       {
-        theta = torch::empty({BATCH_SIZE, JOINT_NUM + 1, 3});
+        theta = torch::zeros({BATCH_SIZE, JOINT_NUM + 1, 3});
         theta.index_put_({at::indexing::Slice(), 0, at::indexing::Slice()},
                          g_config.index({at::indexing::Slice(), at::indexing::Slice(0, 3)}));
         theta.index_put_({at::indexing::Slice(), 1, at::indexing::Slice()},
@@ -356,10 +356,23 @@ int main(int argc, char * argv[])
         }
 
         // Solve linear equation for IK
-        double configRegWeight = 1e-6 + e.squaredNorm();
         Eigen::MatrixXd linearEqA = J.transpose() * J;
-        linearEqA.diagonal().array() += configRegWeight;
         Eigen::VectorXd linearEqB = J.transpose() * e;
+        {
+          double deltaConfigRegWeight = 1e-4 + e.squaredNorm();
+          linearEqA.diagonal().array() += 0.5 * deltaConfigRegWeight;
+        }
+        if(enableVposer)
+        {
+          double nominalConfigRegWeight = 1e-2;
+          Eigen::VectorXd nominalConfigRegWeightVec = Eigen::VectorXd::Constant(configDim, nominalConfigRegWeight);
+          nominalConfigRegWeightVec.head<6>().setZero();
+          nominalConfigRegWeightVec.tail<6>().setConstant(1e3);
+          linearEqA.diagonal() += 0.5 * nominalConfigRegWeightVec;
+          float * configDataPtr = g_config.index({0}).view({configDim}).data_ptr<float>();
+          linearEqB += nominalConfigRegWeightVec.cwiseProduct(
+              Eigen::Map<Eigen::VectorXf>(configDataPtr, configDim).cast<double>());
+        }
         Eigen::LLT<Eigen::MatrixXd> linearEqLlt(linearEqA);
         Eigen::VectorXd deltaConfig = -1 * linearEqLlt.solve(linearEqB);
 
