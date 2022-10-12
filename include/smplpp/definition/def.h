@@ -76,6 +76,10 @@
 #    define FACE_INDEX_NUM smplpp::face_index_num
 #  endif // FACE_INDEX_NUM
 
+#  ifndef LATENT_DIM
+#    define LATENT_DIM smplpp::latent_dim
+#  endif // LATENT_DIM
+
 //===== INCLUDES ==============================================================
 
 #  include <stdlib.h>
@@ -97,6 +101,7 @@ extern const int64_t joint_num; // 24
 extern const int64_t shape_basis_dim; // 10
 extern const int64_t pose_basis_dim; // 207
 extern const int64_t face_index_num; // 13776
+extern const int64_t latent_dim; // 32
 
 //=============================================================================
 } // namespace smplpp

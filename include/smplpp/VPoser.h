@@ -5,6 +5,8 @@
 
 #include <torch/torch.h>
 
+#include <smplpp/definition/def.h>
+
 namespace smplpp
 {
 /** \brief Convert rotation matrices to axis-angle representations.
@@ -50,7 +52,7 @@ public:
   VPoserDecoderImpl();
 
   /** \brief Forward model.
-      \param latent tensor representing latent variables (B, latentDim_)
+      \param latent tensor representing latent variables (B, LATENT_DIM)
       \returns tensor representing joint angles (B, jointNum_, 3)
   */
   torch::Tensor forward(const torch::Tensor & latent);
@@ -61,9 +63,6 @@ public:
   void loadParamsFromJson(const std::string & jsonPath);
 
 public:
-  //! Dimension of latent variables
-  const int64_t latentDim_ = 32;
-
   //! Dimension of hidden variables
   const int64_t hiddenDim_ = 512;
 

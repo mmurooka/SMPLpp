@@ -59,7 +59,7 @@ VPoserDecoderImpl::VPoserDecoderImpl()
   // clang-format off
   decoderNet_ = register_module(
       "decoderNet",
-      torch::nn::Sequential(torch::nn::Linear(latentDim_, hiddenDim_),
+      torch::nn::Sequential(torch::nn::Linear(LATENT_DIM, hiddenDim_),
                             torch::nn::LeakyReLU(),
                             torch::nn::Dropout(0.1),
                             torch::nn::Linear(hiddenDim_, hiddenDim_),
@@ -99,12 +99,12 @@ void VPoserDecoderImpl::loadParamsFromJson(const std::string & jsonPath)
   xt::xarray<float> layer0WeightArr;
   xt::from_json(jsonObj["decoder_net.0.weight"], layer0WeightArr);
   if(!(layer0WeightArr.dimension() == 2 && layer0WeightArr.shape(0) == hiddenDim_
-       && layer0WeightArr.shape(1) == latentDim_))
+       && layer0WeightArr.shape(1) == LATENT_DIM))
   {
     throw smpl_error("VPoser", "invalid dimension of decoder_net.0.weight from JSON file!");
   }
   decoderNet_->at<torch::nn::LinearImpl>(0).weight.copy_(
-      torch::from_blob(layer0WeightArr.data(), {hiddenDim_, latentDim_}));
+      torch::from_blob(layer0WeightArr.data(), {hiddenDim_, LATENT_DIM}));
 
   xt::xarray<float> layer0BiasArr;
   xt::from_json(jsonObj["decoder_net.0.bias"], layer0BiasArr);

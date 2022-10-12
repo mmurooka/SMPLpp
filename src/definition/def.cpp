@@ -46,6 +46,7 @@ const int64_t joint_num = 24; // 24
 const int64_t shape_basis_dim = 10; // 10
 const int64_t pose_basis_dim = 207; // 207
 const int64_t face_index_num = 13776; // 13776
+const int64_t latent_dim = 32; // 32
 
 //=============================================================================
 } // namespace smplpp
