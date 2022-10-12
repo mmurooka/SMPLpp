@@ -35,26 +35,35 @@ TEST(TestVPoser, convertRotMatToAxisAngle)
 
 TEST(TestVPoser, VPoserDecoder)
 {
-  std::string vposerInOutPath = ros::package::getPath("smplpp") + "/tests/data/TestVPoser.json";
-  ROS_INFO_STREAM("Load VPoser input and output from " << vposerInOutPath);
-  std::ifstream vposerInOutFile(vposerInOutPath);
-  nlohmann::json vposerInOutJsonObj = nlohmann::json::parse(vposerInOutFile);
+  std::string vposerDataPath = ros::package::getPath("smplpp") + "/tests/data/TestVPoser.json";
+  ROS_INFO_STREAM("Load VPoser data from " << vposerDataPath);
+  std::ifstream vposerDataFile(vposerDataPath);
+  nlohmann::json vposerDataJsonObj = nlohmann::json::parse(vposerDataFile);
   xt::xarray<float> arrIn;
-  xt::from_json(vposerInOutJsonObj["VPoserDecoder.in"], arrIn);
+  xt::from_json(vposerDataJsonObj["VPoserDecoder.in"], arrIn);
   torch::Tensor tensorIn =
       torch::from_blob(arrIn.data(), {static_cast<int64_t>(arrIn.shape(0)), static_cast<int64_t>(arrIn.shape(1))});
   xt::xarray<float> arrOut;
-  xt::from_json(vposerInOutJsonObj["VPoserDecoder.out"], arrOut);
+  xt::from_json(vposerDataJsonObj["VPoserDecoder.out"], arrOut);
   torch::Tensor tensorOutGt =
       torch::from_blob(arrOut.data(), {static_cast<int64_t>(arrOut.shape(0)), static_cast<int64_t>(arrOut.shape(1)),
                                        static_cast<int64_t>(arrOut.shape(2))});
+  xt::xarray<float> arrGrad;
+  xt::from_json(vposerDataJsonObj["VPoserDecoder.grad"], arrGrad);
+  torch::Tensor tensorGradGt = torch::from_blob(
+      arrGrad.data(), {static_cast<int64_t>(arrGrad.shape(0)), static_cast<int64_t>(arrGrad.shape(1))});
 
   smplpp::VPoserDecoder vposer;
   std::string vposerParamsPath = ros::package::getPath("smplpp") + "/data/vposer_parameters.json";
   ROS_INFO_STREAM("Load VPoser parameters from " << vposerParamsPath);
   vposer->loadParamsFromJson(vposerParamsPath);
   vposer->eval();
+
+  tensorIn.set_requires_grad(true);
   torch::Tensor tensorOutPred = vposer->forward(tensorIn);
+  torch::Tensor tensorOutPredNorm = tensorOutPred.norm();
+  tensorOutPredNorm.backward();
+  torch::Tensor tensorGradPred = tensorIn.grad();
 
   ROS_INFO_STREAM("Parameters in VPoserDecoder:");
   for(const auto & paramKV : vposer->named_parameters())
@@ -71,6 +80,15 @@ TEST(TestVPoser, VPoserDecoder)
                                                                       << tensorOutGt << std::endl
                                                                       << "tensorOutError:\n"
                                                                       << (tensorOutPred - tensorOutGt) << std::endl;
+
+  EXPECT_LT((tensorGradPred - tensorGradGt).norm().item<float>(), 1e-6) << "tensorIn:\n"
+                                                                        << tensorIn << std::endl
+                                                                        << "tensorGradPred:\n"
+                                                                        << tensorGradPred << std::endl
+                                                                        << "tensorGradGt:\n"
+                                                                        << tensorGradGt << std::endl
+                                                                        << "tensorGradError:\n"
+                                                                        << (tensorGradPred - tensorGradGt) << std::endl;
 
   EXPECT_FALSE(vposer->decoderNet_->at<torch::nn::DropoutImpl>(2).is_training());
 }
