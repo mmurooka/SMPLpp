@@ -123,6 +123,12 @@ I have tested the codes on my machine, but I'm not sure the performance on other
 
   **Note**: If you have a strange mesh visualization, remember to double-check the face indices. (MeshLab favors the face indices starting from 1. However, this rule may not be compatible with other software.)
 
+```bash
+$ rosrun smplpp preprocess_vposer.py <Path to VPoser parameters file> `rospack find smplpp`/data
+```
+`<Path to VPoser parameters file>` is, for example, `$HOME/src/vposer_v2_05/snapshots/V02_05_epoch=08_val_loss=0.03.ckpt`.
+
+
 - Build and Run
 
   After installing all packages, you can compile SMPL++ from source:
