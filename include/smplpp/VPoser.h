@@ -7,6 +7,12 @@
 
 namespace smplpp
 {
+/** \brief Convert rotation matrices to axis-angle representations.
+    \param rotMat tensor representing rotation matrices (N, 3, 3)
+    \returns tensor representing axis-angle representations (N, 3)
+*/
+torch::Tensor convertRotMatToAxisAngle(const torch::Tensor & rotMat);
+
 /** \brief VPoser decoder model.
 
     Corresponds to the model in
@@ -27,8 +33,8 @@ public:
     ContinousRotReprDecoderImpl();
 
     /** \brief Forward model.
-        \param input tensor representing two 3D vectors
-        \returns tensor representing rotation matrices
+        \param input tensor representing two 3D vectors (N, 6 * jointNum_)
+        \returns tensor representing rotation matrices (N, 3, 3)
     */
     torch::Tensor forward(const torch::Tensor & input);
   };
@@ -44,10 +50,15 @@ public:
   VPoserDecoderImpl();
 
   /** \brief Forward model.
-      \param latent tensor representing latent variables
-      \returns tensor representing joint angles
+      \param latent tensor representing latent variables (B, latentDim_)
+      \returns tensor representing joint angles (B, jointNum_, 3)
   */
   torch::Tensor forward(const torch::Tensor & latent);
+
+  /** \brief Load model parameters from JSON file.
+      \param jsonPath Path of JSON file
+  */
+  void loadParamsFromJson(const std::string & jsonPath);
 
 public:
   //! Dimension of latent variables
