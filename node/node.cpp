@@ -39,8 +39,9 @@
 #include <xtensor/xadapt.hpp>
 #include <xtensor/xarray.hpp>
 //----------
-#include <smplpp/definition/def.h>
 #include <smplpp/SMPL.h>
+#include <smplpp/VPoser.h>
+#include <smplpp/definition/def.h>
 #include <smplpp/toolbox/Singleton.hpp>
 #include <smplpp/toolbox/TorchEx.hpp>
 //----------
@@ -69,7 +70,10 @@ struct IkTarget
   IkTarget(int64_t _vertexIdx, torch::Tensor _targetPos) : vertexIdx(_vertexIdx), targetPos(_targetPos) {}
 };
 
+const int64_t CONFIG_DIM = LATENT_DIM + 12;
+
 std::unique_ptr<torch::Device> g_device;
+torch::Tensor g_config = torch::zeros({BATCH_SIZE, CONFIG_DIM});
 torch::Tensor g_theta = torch::zeros({BATCH_SIZE, JOINT_NUM + 1, 3}); // (N, 24 + 1, 3)
 torch::Tensor g_beta = torch::zeros({BATCH_SIZE, SHAPE_BASIS_DIM}); // (N, 10)
 std::unordered_map<std::string, IkTarget> g_ikTargetList;
@@ -145,6 +149,8 @@ int main(int argc, char * argv[])
   ros::NodeHandle nh;
   ros::NodeHandle pnh("~");
 
+  bool enableVposer = false;
+  pnh.getParam("enable_vposer", enableVposer);
   bool enableIk = false;
   pnh.getParam("enable_ik", enableIk);
   bool enableVertexColor = false;
@@ -166,6 +172,10 @@ int main(int argc, char * argv[])
   if(enableIk)
   {
     // Set initial root orientation
+    g_config.index_put_({0, 3}, 1.2092);
+    g_config.index_put_({0, 4}, 1.2092);
+    g_config.index_put_({0, 5}, 1.2092);
+
     g_theta.index_put_({0, 1, 0}, 1.2092);
     g_theta.index_put_({0, 1, 1}, 1.2092);
     g_theta.index_put_({0, 1, 2}, 1.2092);
@@ -205,22 +215,45 @@ int main(int argc, char * argv[])
     g_device->set_index(0);
     ROS_INFO_STREAM("Device type: " << deviceType);
 
-    std::string modelPath;
-    pnh.getParam("model_path", modelPath);
-    if(modelPath.empty())
+    std::string smplPath;
+    pnh.getParam("smpl_path", smplPath);
+    if(smplPath.empty())
     {
-      modelPath = ros::package::getPath("smplpp") + "/data/smpl_female.json";
+      smplPath = ros::package::getPath("smplpp") + "/data/smpl_male.json";
     }
-    ROS_INFO_STREAM("Load SMPL model from " << modelPath);
+    ROS_INFO_STREAM("Load SMPL model from " << smplPath);
 
     SINGLE_SMPL::get()->setDevice(*g_device);
-    SINGLE_SMPL::get()->setModelPath(modelPath);
+    SINGLE_SMPL::get()->setModelPath(smplPath);
     SINGLE_SMPL::get()->init();
 
     ROS_INFO_STREAM("Duration to load SMPL: " << std::chrono::duration_cast<std::chrono::duration<double>>(
                                                      std::chrono::system_clock::now() - startTime)
                                                      .count()
                                               << " [s]");
+  }
+
+  // Load VPoser model
+  smplpp::VPoserDecoder vposer;
+  if(enableVposer)
+  {
+    auto startTime = std::chrono::system_clock::now();
+
+    std::string vposerPath;
+    pnh.getParam("vposer_path", vposerPath);
+    if(vposerPath.empty())
+    {
+      vposerPath = ros::package::getPath("smplpp") + "/data/vposer_parameters.json";
+    }
+    ROS_INFO_STREAM("Load VPoser model from " << vposerPath);
+
+    vposer->loadParamsFromJson(vposerPath);
+    vposer->eval();
+
+    ROS_INFO_STREAM("Duration to load VPoser: " << std::chrono::duration_cast<std::chrono::duration<double>>(
+                                                       std::chrono::system_clock::now() - startTime)
+                                                       .count()
+                                                << " [s]");
   }
 
   double rateFreq = 30.0;
@@ -235,24 +268,57 @@ int main(int argc, char * argv[])
       // Setup gradient
       if(g_ikTargetList.size() > 0)
       {
-        g_theta.set_requires_grad(true);
-        auto & g_theta_grad = g_theta.mutable_grad();
-        if(g_theta_grad.defined())
+        if(enableVposer)
         {
-          g_theta_grad = g_theta_grad.detach();
-          g_theta_grad.zero_();
+          g_config.set_requires_grad(true);
+          auto & g_config_grad = g_config.mutable_grad();
+          if(g_config_grad.defined())
+          {
+            g_config_grad = g_config_grad.detach();
+            g_config_grad.zero_();
+          }
+        }
+        else
+        {
+          g_theta.set_requires_grad(true);
+          auto & g_theta_grad = g_theta.mutable_grad();
+          if(g_theta_grad.defined())
+          {
+            g_theta_grad = g_theta_grad.detach();
+            g_theta_grad.zero_();
+          }
         }
       }
 
       // Forward SMPL model
-      SINGLE_SMPL::get()->launch(g_beta, g_theta);
+      torch::Tensor theta;
+      if(enableVposer)
+      {
+        theta = torch::empty({BATCH_SIZE, JOINT_NUM + 1, 3});
+        theta.index_put_({at::indexing::Slice(), 0, at::indexing::Slice()},
+                         g_config.index({at::indexing::Slice(), at::indexing::Slice(0, 3)}));
+        theta.index_put_({at::indexing::Slice(), 1, at::indexing::Slice()},
+                         g_config.index({at::indexing::Slice(), at::indexing::Slice(3, 6)}));
+        torch::Tensor bodyTheta =
+            vposer->forward(g_config.index({at::indexing::Slice(), at::indexing::Slice(6, LATENT_DIM + 6)}));
+        theta.index_put_({at::indexing::Slice(), at::indexing::Slice(2, 2 + 21), at::indexing::Slice()}, bodyTheta);
+        theta.index_put_({at::indexing::Slice(), 23, at::indexing::Slice()},
+                         g_config.index({at::indexing::Slice(), at::indexing::Slice(LATENT_DIM + 6, LATENT_DIM + 9)}));
+        theta.index_put_({at::indexing::Slice(), 24, at::indexing::Slice()},
+                         g_config.index({at::indexing::Slice(), at::indexing::Slice(LATENT_DIM + 9, LATENT_DIM + 12)}));
+      }
+      else
+      {
+        theta = g_theta;
+      }
+      SINGLE_SMPL::get()->launch(g_beta, theta);
 
       // Solve IK
       if(g_ikTargetList.size() > 0)
       {
-        int64_t thetaDim = 3 * (JOINT_NUM + 1);
+        int64_t configDim = (enableVposer ? CONFIG_DIM : 3 * (JOINT_NUM + 1));
         Eigen::VectorXd e(3 * g_ikTargetList.size());
-        Eigen::MatrixXd J(3 * g_ikTargetList.size(), thetaDim);
+        Eigen::MatrixXd J(3 * g_ikTargetList.size(), configDim);
         int64_t rowIdx = 0;
 
         // Add end-effector position error
@@ -272,26 +338,46 @@ int main(int argc, char * argv[])
             select.index_put_({0, i}, 1);
             actualPos.backward(select, true);
 
-            float * gradDataPtr = g_theta.grad().index({0}).view({thetaDim}).data_ptr<float>();
-            J.row(rowIdx) = Eigen::Map<Eigen::VectorXf>(gradDataPtr, thetaDim).cast<double>();
-            g_theta.mutable_grad().zero_();
+            if(enableVposer)
+            {
+              float * gradDataPtr = g_config.grad().index({0}).view({configDim}).data_ptr<float>();
+              J.row(rowIdx) = Eigen::Map<Eigen::VectorXf>(gradDataPtr, configDim).cast<double>();
+              g_config.mutable_grad().zero_();
+            }
+            else
+            {
+              float * gradDataPtr = g_theta.grad().index({0}).view({configDim}).data_ptr<float>();
+              J.row(rowIdx) = Eigen::Map<Eigen::VectorXf>(gradDataPtr, configDim).cast<double>();
+              g_theta.mutable_grad().zero_();
+            }
 
             rowIdx++;
           }
         }
 
         // Solve linear equation for IK
-        double thetaRegWeight = 1e-6 + e.squaredNorm();
+        double configRegWeight = 1e-6 + e.squaredNorm();
         Eigen::MatrixXd linearEqA = J.transpose() * J;
-        linearEqA.diagonal().array() += thetaRegWeight;
+        linearEqA.diagonal().array() += configRegWeight;
         Eigen::VectorXd linearEqB = J.transpose() * e;
         Eigen::LLT<Eigen::MatrixXd> linearEqLlt(linearEqA);
-        Eigen::VectorXd deltaTheta = -1 * linearEqLlt.solve(linearEqB);
+        Eigen::VectorXd deltaConfig = -1 * linearEqLlt.solve(linearEqB);
 
-        // Update theta
-        g_theta.set_requires_grad(false);
-        g_theta += torch::from_blob(const_cast<float *>(deltaTheta.cast<float>().eval().data()), {deltaTheta.size()})
-                       .view_as(g_theta);
+        // Update config
+        if(enableVposer)
+        {
+          g_config.set_requires_grad(false);
+          g_config +=
+              torch::from_blob(const_cast<float *>(deltaConfig.cast<float>().eval().data()), {deltaConfig.size()})
+                  .view_as(g_config);
+        }
+        else
+        {
+          g_theta.set_requires_grad(false);
+          g_theta +=
+              torch::from_blob(const_cast<float *>(deltaConfig.cast<float>().eval().data()), {deltaConfig.size()})
+                  .view_as(g_theta);
+        }
       }
 
       ROS_INFO_STREAM_THROTTLE(10.0,

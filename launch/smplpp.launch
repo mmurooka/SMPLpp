@@ -1,13 +1,16 @@
 <launch>
+  <arg name="enable_vposer" default="true" />
   <arg name="enable_ik" default="true" />
   <arg name="enable_vertex_color" default="true" />
   <arg name="device" default="CPU" />
 
   <node pkg="smplpp" type="node" name="smplpp" output="screen">
     <rosparam subst_value="true">
+      enable_vposer: $(arg enable_vposer)
       enable_ik: $(arg enable_ik)
       enable_vertex_color: $(arg enable_vertex_color)
-      model_path: $(find smplpp)/data/smpl_male.json
+      smpl_path: $(find smplpp)/data/smpl_male.json
+      vposer_path: $(find smplpp)/data/vposer_parameters.json
       device: $(arg device)
       rate: 30.0
     </rosparam>
