@@ -11,13 +11,21 @@
 
 TEST(TestVPoser, convertRotMatToAxisAngle)
 {
-  Eigen::AngleAxisd aa(0.5, Eigen::Vector3d(1.0, 2.0, 3.0).normalized());
-  Eigen::Matrix<double, 3, 3, Eigen::RowMajor> rotMat = aa.toRotationMatrix();
-  torch::Tensor tensorIn = torch::from_blob(const_cast<float *>(rotMat.cast<float>().eval().data()), {1, 3, 3}).clone();
-  torch::Tensor tensorOut = smplpp::convertRotMatToAxisAngle(tensorIn);
-  std::cout << "tensorIn:\n" << tensorIn << std::endl;
-  std::cout << "tensorOut:\n" << tensorOut << std::endl;
-  std::cout << "expected out:\n" << aa.angle() * aa.axis().transpose() << std::endl;
+  for(int i = 0; i < 1000; i++)
+  {
+    Eigen::AngleAxisd aa(Eigen::Quaterniond::UnitRandom());
+    Eigen::Matrix<float, 3, 3, Eigen::RowMajor> rotMat = aa.toRotationMatrix().cast<float>();
+    torch::Tensor tensorIn = torch::from_blob(rotMat.data(), {1, 3, 3}).clone();
+    torch::Tensor tensorOut = smplpp::convertRotMatToAxisAngle(tensorIn);
+    Eigen::Vector3d aaRestored(Eigen::Map<Eigen::Vector3f>(tensorOut.data_ptr<float>(), 3, 1).cast<double>());
+
+    EXPECT_FALSE(aaRestored.array().isNaN().any());
+    EXPECT_LT((aa.angle() * aa.axis() - aaRestored).norm(), 1e-3)
+        << "angle: " << aa.angle() << ", axis: " << aa.axis().transpose() << std::endl
+        << "aa: " << aa.angle() * aa.axis().transpose() << std::endl
+        << "aaRestored: " << aaRestored.transpose() << std::endl
+        << "error: " << (aa.angle() * aa.axis() - aaRestored).transpose() << std::endl;
+  }
 }
 
 TEST(TestVPoser, VPoserDecoder)
