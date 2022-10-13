@@ -210,7 +210,7 @@ int main(int argc, char * argv[])
     }
     else
     {
-      throw smplpp::smpl_error("main", "Invalid device type: " + deviceType);
+      throw smplpp::smpl_error("node", "Invalid device type: " + deviceType);
     }
     g_device->set_index(0);
     ROS_INFO_STREAM("Device type: " << deviceType);
