@@ -14,22 +14,35 @@
 #include <ros/console.h>
 #include <ros/package.h>
 
+void testConvertRotMatToAxisAngleOnce(const Eigen::AngleAxisd & aa)
+{
+  Eigen::Matrix<float, 3, 3, Eigen::RowMajor> rotMat = aa.toRotationMatrix().cast<float>();
+  torch::Tensor tensorIn = torch::from_blob(rotMat.data(), {1, 3, 3}).clone();
+  torch::Tensor tensorOut = smplpp::convertRotMatToAxisAngle(tensorIn);
+  Eigen::Vector3d aaRestored(Eigen::Map<Eigen::Vector3f>(tensorOut.data_ptr<float>(), 3, 1).cast<double>());
+
+  EXPECT_FALSE(aaRestored.array().isNaN().any());
+  EXPECT_LT((aa.angle() * aa.axis() - aaRestored).norm(), 1e-3)
+      << "angle: " << aa.angle() << ", axis: " << aa.axis().transpose() << std::endl
+      << "aa: " << aa.angle() * aa.axis().transpose() << std::endl
+      << "aaRestored: " << aaRestored.transpose() << std::endl
+      << "error: " << (aa.angle() * aa.axis() - aaRestored).transpose() << std::endl;
+}
+
 TEST(TestVPoser, convertRotMatToAxisAngle)
 {
-  for(int i = 0; i < 1000; i++)
+  testConvertRotMatToAxisAngleOnce(Eigen::AngleAxisd::Identity());
+  for(int axisIdx = 0; axisIdx < 3; axisIdx++)
   {
-    Eigen::AngleAxisd aa(Eigen::Quaterniond::UnitRandom());
-    Eigen::Matrix<float, 3, 3, Eigen::RowMajor> rotMat = aa.toRotationMatrix().cast<float>();
-    torch::Tensor tensorIn = torch::from_blob(rotMat.data(), {1, 3, 3}).clone();
-    torch::Tensor tensorOut = smplpp::convertRotMatToAxisAngle(tensorIn);
-    Eigen::Vector3d aaRestored(Eigen::Map<Eigen::Vector3f>(tensorOut.data_ptr<float>(), 3, 1).cast<double>());
+    testConvertRotMatToAxisAngleOnce(Eigen::AngleAxisd(0.0, Eigen::Vector3d::Unit(axisIdx)));
+    testConvertRotMatToAxisAngleOnce(Eigen::AngleAxisd(M_PI / 4.0, Eigen::Vector3d::Unit(axisIdx)));
+    testConvertRotMatToAxisAngleOnce(Eigen::AngleAxisd(M_PI / 2.0, Eigen::Vector3d::Unit(axisIdx)));
+    testConvertRotMatToAxisAngleOnce(Eigen::AngleAxisd(M_PI, Eigen::Vector3d::Unit(axisIdx)));
+  }
 
-    EXPECT_FALSE(aaRestored.array().isNaN().any());
-    EXPECT_LT((aa.angle() * aa.axis() - aaRestored).norm(), 1e-3)
-        << "angle: " << aa.angle() << ", axis: " << aa.axis().transpose() << std::endl
-        << "aa: " << aa.angle() * aa.axis().transpose() << std::endl
-        << "aaRestored: " << aaRestored.transpose() << std::endl
-        << "error: " << (aa.angle() * aa.axis() - aaRestored).transpose() << std::endl;
+  for(int randomIdx = 0; randomIdx < 1000; randomIdx++)
+  {
+    testConvertRotMatToAxisAngleOnce(Eigen::AngleAxisd(Eigen::Quaterniond::UnitRandom()));
   }
 }
 
