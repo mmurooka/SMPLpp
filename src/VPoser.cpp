@@ -14,23 +14,22 @@ using namespace smplpp;
 
 torch::Tensor smplpp::convertRotMatToAxisAngle(const torch::Tensor & rotMat)
 {
-  // \todo Support corner cases (zero angle, 180 degrees angle)
+  // Ref.
+  // https://github.com/jrl-umi3218/SpaceVecAlg/blob/676a64c47d650ba5de6a4b0ff4f2aaf7262ffafe/src/SpaceVecAlg/PTransform.h#L293-L342
   torch::Tensor trace = rotMat.index({at::indexing::Slice(), 0, 0}) + rotMat.index({at::indexing::Slice(), 1, 1})
                         + rotMat.index({at::indexing::Slice(), 2, 2});
-  torch::Tensor angle = at::arccos((trace - 1.0) / 2.0);
-  torch::Tensor axis = torch::empty({rotMat.sizes()[0], 3});
-  axis.index_put_({at::indexing::Slice(), 0},
-                  rotMat.index({at::indexing::Slice(), 2, 1}) - rotMat.index({at::indexing::Slice(), 1, 2}));
-  axis.index_put_({at::indexing::Slice(), 1},
-                  rotMat.index({at::indexing::Slice(), 0, 2}) - rotMat.index({at::indexing::Slice(), 2, 0}));
-  axis.index_put_({at::indexing::Slice(), 2},
-                  rotMat.index({at::indexing::Slice(), 1, 0}) - rotMat.index({at::indexing::Slice(), 0, 1}));
-  torch::Tensor denom = 2.0 * at::sin(angle);
-  axis.index_put_({at::indexing::Slice(), 0}, axis.index({at::indexing::Slice(), 0}));
-  axis.index_put_({at::indexing::Slice(), 1}, axis.index({at::indexing::Slice(), 1}));
-  axis.index_put_({at::indexing::Slice(), 2}, axis.index({at::indexing::Slice(), 2}));
-  axis /= denom.view({-1, 1});
-  return angle.view({-1, 1}) * axis;
+  torch::Tensor theta = at::arccos(at::clamp((trace - 1.0) / 2.0, -1.0, 1.0));
+
+  torch::Tensor w = torch::empty({rotMat.sizes()[0], 3});
+  w.index_put_({at::indexing::Slice(), 0},
+               rotMat.index({at::indexing::Slice(), 2, 1}) - rotMat.index({at::indexing::Slice(), 1, 2}));
+  w.index_put_({at::indexing::Slice(), 1},
+               rotMat.index({at::indexing::Slice(), 0, 2}) - rotMat.index({at::indexing::Slice(), 2, 0}));
+  w.index_put_({at::indexing::Slice(), 2},
+               rotMat.index({at::indexing::Slice(), 1, 0}) - rotMat.index({at::indexing::Slice(), 0, 1}));
+
+  w *= at::div(theta, 2.0 * at::sin(theta)).view({-1, 1});
+  return w;
 }
 
 VPoserDecoderImpl::ContinousRotReprDecoderImpl::ContinousRotReprDecoderImpl()

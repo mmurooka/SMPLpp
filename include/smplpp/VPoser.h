@@ -12,6 +12,10 @@ namespace smplpp
 /** \brief Convert rotation matrices to axis-angle representations.
     \param rotMat tensor representing rotation matrices (N, 3, 3)
     \returns tensor representing axis-angle representations (N, 3)
+
+    See
+    https://github.com/jrl-umi3218/SpaceVecAlg/blob/676a64c47d650ba5de6a4b0ff4f2aaf7262ffafe/src/SpaceVecAlg/PTransform.h#L293-L342
+    for the algorithm.
 */
 torch::Tensor convertRotMatToAxisAngle(const torch::Tensor & rotMat);
 
