@@ -72,9 +72,9 @@ struct IkTarget
 
 constexpr int64_t CONFIG_DIM = smplpp::LATENT_DIM + 12;
 
-torch::Tensor g_config = torch::zeros({smplpp::BATCH_SIZE, CONFIG_DIM});
-torch::Tensor g_theta = torch::zeros({smplpp::BATCH_SIZE, smplpp::JOINT_NUM + 1, 3});
-torch::Tensor g_beta = torch::zeros({smplpp::BATCH_SIZE, smplpp::SHAPE_BASIS_DIM});
+torch::Tensor g_config = torch::zeros({CONFIG_DIM});
+torch::Tensor g_theta = torch::zeros({smplpp::JOINT_NUM + 1, 3});
+torch::Tensor g_beta = torch::zeros({smplpp::SHAPE_BASIS_DIM});
 std::unordered_map<std::string, IkTarget> g_ikTargetList;
 int64_t g_torsoVertexIdx = 3500;
 
@@ -89,7 +89,7 @@ void configParamCallback(const std_msgs::Float64MultiArray::ConstPtr & msg)
 
   for(int64_t i = 0; i < CONFIG_DIM; i++)
   {
-    g_config.index_put_({0, i}, msg->data[i]);
+    g_config.index_put_({i}, msg->data[i]);
   }
 }
 
@@ -104,9 +104,9 @@ void poseParamCallback(const smplpp::PoseParam::ConstPtr & msg)
 
   for(int64_t i = 0; i < smplpp::JOINT_NUM + 1; i++)
   {
-    g_theta.index_put_({0, i, 0}, msg->angles[i].x);
-    g_theta.index_put_({0, i, 1}, msg->angles[i].y);
-    g_theta.index_put_({0, i, 2}, msg->angles[i].z);
+    g_theta.index_put_({i, 0}, msg->angles[i].x);
+    g_theta.index_put_({i, 1}, msg->angles[i].y);
+    g_theta.index_put_({i, 2}, msg->angles[i].z);
   }
 }
 
@@ -121,7 +121,7 @@ void shapeParamCallback(const std_msgs::Float64MultiArray::ConstPtr & msg)
 
   for(int64_t i = 0; i < smplpp::SHAPE_BASIS_DIM; i++)
   {
-    g_beta.index_put_({0, i}, msg->data[i]);
+    g_beta.index_put_({i}, msg->data[i]);
   }
 }
 
@@ -182,13 +182,13 @@ int main(int argc, char * argv[])
   if(enableIk)
   {
     // Set initial root orientation
-    g_config.index_put_({0, 3}, 1.2092);
-    g_config.index_put_({0, 4}, 1.2092);
-    g_config.index_put_({0, 5}, 1.2092);
+    g_config.index_put_({3}, 1.2092);
+    g_config.index_put_({4}, 1.2092);
+    g_config.index_put_({5}, 1.2092);
 
-    g_theta.index_put_({0, 1, 0}, 1.2092);
-    g_theta.index_put_({0, 1, 1}, 1.2092);
-    g_theta.index_put_({0, 1, 2}, 1.2092);
+    g_theta.index_put_({1, 0}, 1.2092);
+    g_theta.index_put_({1, 1}, 1.2092);
+    g_theta.index_put_({1, 2}, 1.2092);
 
     auto makeTensor3d = [](const std::vector<double> & vec) -> torch::Tensor {
       torch::Tensor tensor = torch::empty({3});
@@ -309,27 +309,20 @@ int main(int argc, char * argv[])
       torch::Tensor theta;
       if(enableVposer)
       {
-        theta = torch::zeros({smplpp::BATCH_SIZE, smplpp::JOINT_NUM + 1, 3});
-        theta.index_put_({at::indexing::Slice(), 0, at::indexing::Slice()},
-                         g_config.index({at::indexing::Slice(), at::indexing::Slice(0, 3)}));
-        theta.index_put_({at::indexing::Slice(), 1, at::indexing::Slice()},
-                         g_config.index({at::indexing::Slice(), at::indexing::Slice(3, 6)}));
-        torch::Tensor vposerIn =
-            g_config.index({at::indexing::Slice(), at::indexing::Slice(6, smplpp::LATENT_DIM + 6)}).clone().to(*device);
-        torch::Tensor vposerOut = vposer->forward(vposerIn);
-        theta.index_put_({at::indexing::Slice(), at::indexing::Slice(2, 2 + 21), at::indexing::Slice()}, vposerOut);
-        theta.index_put_({at::indexing::Slice(), 23, at::indexing::Slice()},
-                         g_config.index({at::indexing::Slice(),
-                                         at::indexing::Slice(smplpp::LATENT_DIM + 6, smplpp::LATENT_DIM + 9)}));
-        theta.index_put_({at::indexing::Slice(), 24, at::indexing::Slice()},
-                         g_config.index({at::indexing::Slice(),
-                                         at::indexing::Slice(smplpp::LATENT_DIM + 9, smplpp::LATENT_DIM + 12)}));
+        theta = torch::zeros_like(g_theta);
+        theta.index_put_({0}, g_config.index({at::indexing::Slice(0, 3)}));
+        theta.index_put_({1}, g_config.index({at::indexing::Slice(3, 6)}));
+        torch::Tensor vposerIn = g_config.index({at::indexing::Slice(6, smplpp::LATENT_DIM + 6)}).clone().to(*device);
+        torch::Tensor vposerOut = vposer->forward(vposerIn.view({1, -1})).index({0});
+        theta.index_put_({at::indexing::Slice(2, 2 + 21)}, vposerOut);
+        theta.index_put_({23}, g_config.index({at::indexing::Slice(smplpp::LATENT_DIM + 6, smplpp::LATENT_DIM + 9)}));
+        theta.index_put_({24}, g_config.index({at::indexing::Slice(smplpp::LATENT_DIM + 9, smplpp::LATENT_DIM + 12)}));
       }
       else
       {
         theta = g_theta;
       }
-      SINGLE_SMPL::get()->launch(g_beta, theta);
+      SINGLE_SMPL::get()->launch(g_beta.view({1, -1}), theta.view({1, theta.size(0), theta.size(1)}));
 
       // Solve IK
       if(g_ikTargetList.size() > 0)
@@ -358,13 +351,13 @@ int main(int argc, char * argv[])
 
             if(enableVposer)
             {
-              float * gradDataPtr = g_config.grad().index({0}).view({configDim}).data_ptr<float>();
+              float * gradDataPtr = g_config.grad().view({configDim}).data_ptr<float>();
               J.row(rowIdx) = Eigen::Map<Eigen::VectorXf>(gradDataPtr, configDim).cast<double>();
               g_config.mutable_grad().zero_();
             }
             else
             {
-              float * gradDataPtr = g_theta.grad().index({0}).view({configDim}).data_ptr<float>();
+              float * gradDataPtr = g_theta.grad().view({configDim}).data_ptr<float>();
               J.row(rowIdx) = Eigen::Map<Eigen::VectorXf>(gradDataPtr, configDim).cast<double>();
               g_theta.mutable_grad().zero_();
             }
@@ -387,7 +380,7 @@ int main(int argc, char * argv[])
           nominalConfigRegWeightVec.head<6>().setZero();
           nominalConfigRegWeightVec.tail<6>().setConstant(1e3);
           linearEqA.diagonal() += nominalConfigRegWeightVec;
-          float * configDataPtr = g_config.index({0}).view({configDim}).data_ptr<float>();
+          float * configDataPtr = g_config.data_ptr<float>();
           linearEqB += nominalConfigRegWeightVec.cwiseProduct(
               Eigen::Map<Eigen::VectorXf>(configDataPtr, configDim).cast<double>());
         }
