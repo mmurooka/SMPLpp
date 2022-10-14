@@ -126,20 +126,8 @@ void clickedPointCallback(const geometry_msgs::PointStamped::ConstPtr & msg)
   clickedPos.index_put_({2}, msg->point.z);
 
   torch::Tensor vertexTensor = SINGLE_SMPL::get()->getVertex().index({0}).to(torch::kCPU);
-
-  double posErrMin = 1e10;
-  int64_t vertexIdxMin = 0;
-  for(int64_t vertexIdx = 0; vertexIdx < smplpp::VERTEX_NUM; vertexIdx++)
-  {
-    double posErr = torch::nn::functional::mse_loss(vertexTensor.index({vertexIdx}), clickedPos).item<float>();
-    if(posErr < posErrMin)
-    {
-      posErrMin = posErr;
-      vertexIdxMin = vertexIdx;
-    }
-  }
-
-  ROS_INFO_STREAM("Vertex idx closest to clicked point: " << vertexIdxMin);
+  int64_t vertexIdx = at::argmin((vertexTensor - clickedPos.expand({smplpp::VERTEX_NUM, -1})).norm(2, 1)).item<float>();
+  ROS_INFO_STREAM("Vertex idx closest to clicked point: " << vertexIdx);
 }
 
 int main(int argc, char * argv[])
