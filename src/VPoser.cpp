@@ -1,6 +1,7 @@
 /* Author: Masaki Murooka */
 
 #include <experimental/filesystem>
+#include <limits>
 
 #include <nlohmann/json.hpp>
 
@@ -16,9 +17,13 @@ torch::Tensor smplpp::convertRotMatToAxisAngle(const torch::Tensor & rotMat)
 {
   // Ref.
   // https://github.com/jrl-umi3218/SpaceVecAlg/blob/676a64c47d650ba5de6a4b0ff4f2aaf7262ffafe/src/SpaceVecAlg/PTransform.h#L293-L342
-  torch::Tensor trace = rotMat.index({at::indexing::Slice(), 0, 0}) + rotMat.index({at::indexing::Slice(), 1, 1})
-                        + rotMat.index({at::indexing::Slice(), 2, 2});
-  torch::Tensor theta = at::arccos(at::clamp((trace - 1.0) / 2.0, -1.0, 1.0));
+
+  constexpr double eps = std::numeric_limits<float>::epsilon();
+  constexpr double epsSqrt = std::sqrt(eps);
+  constexpr double epsSqrt2 = std::sqrt(epsSqrt);
+
+  torch::Tensor trace = rotMat.index({at::indexing::Slice()}).diagonal(0, 1, 2).sum(-1);
+  torch::Tensor theta = at::arccos(at::clamp(0.5 * (trace - 1.0), -1.0, 1.0));
 
   torch::Tensor w = torch::empty({rotMat.sizes()[0], 3});
   w.index_put_({at::indexing::Slice(), 0},
@@ -28,8 +33,72 @@ torch::Tensor smplpp::convertRotMatToAxisAngle(const torch::Tensor & rotMat)
   w.index_put_({at::indexing::Slice(), 2},
                rotMat.index({at::indexing::Slice(), 1, 0}) - rotMat.index({at::indexing::Slice(), 0, 1}));
 
-  w *= at::div(theta, 2.0 * at::sin(theta)).view({-1, 1});
-  return w;
+  torch::Tensor aa = torch::empty_like(w);
+
+  auto thetaPiCondRes = (1.0 + trace < epsSqrt2);
+  torch::Tensor s = (2.0 * rotMat.index({thetaPiCondRes}).diagonal(0, 1, 2)
+                     + (1.0 - trace.index({thetaPiCondRes})).view({-1, 1}).expand({-1, 3}))
+                    / (3.0 - trace.index({thetaPiCondRes})).view({-1, 1});
+  torch::Tensor tn2 = at::sqrt(s) * theta.index({thetaPiCondRes}).view({-1, 1});
+
+  auto thetaPiCondRes1 = theta.index({thetaPiCondRes}) > M_PI - 1e-4;
+
+  auto thetaPiCondRes1Y1 = tn2.index({at::indexing::Slice(), 0}).index({thetaPiCondRes1}) > 0.0;
+  auto thetaPiCondRes1Y1Y1 =
+      rotMat.index({thetaPiCondRes}).index({thetaPiCondRes1}).index({thetaPiCondRes1Y1, 0, 1})
+          + rotMat.index({thetaPiCondRes}).index({thetaPiCondRes1}).index({thetaPiCondRes1Y1, 1, 0})
+      < 0.0;
+  auto thetaPiCondRes1Y1Y2 =
+      rotMat.index({thetaPiCondRes}).index({thetaPiCondRes1}).index({thetaPiCondRes1Y1, 0, 2})
+          + rotMat.index({thetaPiCondRes}).index({thetaPiCondRes1}).index({thetaPiCondRes1Y1, 2, 0})
+      < 0.0;
+  auto thetaPiCondRes1Y1N1 =
+      tn2.index({at::indexing::Slice(), 1}).index({thetaPiCondRes1}).index({~thetaPiCondRes1Y1}) > 0.0;
+  auto thetaPiCondRes1Y1N1Y1 = rotMat.index({thetaPiCondRes})
+                                       .index({thetaPiCondRes1})
+                                       .index({~thetaPiCondRes1Y1})
+                                       .index({thetaPiCondRes1Y1N1, 1, 2})
+                                   + rotMat.index({thetaPiCondRes})
+                                         .index({thetaPiCondRes1})
+                                         .index({~thetaPiCondRes1Y1})
+                                         .index({thetaPiCondRes1Y1N1, 2, 1})
+                               < 0.0;
+  torch::Tensor tn2ThetaPiCondRes1Y = tn2.index({thetaPiCondRes1});
+  torch::Tensor tn2ThetaPiCondRes1Y1Y = tn2ThetaPiCondRes1Y.index({thetaPiCondRes1Y1});
+  tn2ThetaPiCondRes1Y1Y.index_put_({thetaPiCondRes1Y1Y1, 1},
+                                   -1.0 * tn2ThetaPiCondRes1Y1Y.index({thetaPiCondRes1Y1Y1, 1}));
+  tn2ThetaPiCondRes1Y1Y.index_put_({thetaPiCondRes1Y1Y2, 2},
+                                   -1.0 * tn2ThetaPiCondRes1Y1Y.index({thetaPiCondRes1Y1Y2, 2}));
+  torch::Tensor tn2ThetaPiCondRes1Y1N = tn2ThetaPiCondRes1Y.index({~thetaPiCondRes1Y1});
+  torch::Tensor tn2ThetaPiCondRes1Y1N1Y = tn2ThetaPiCondRes1Y1N.index({thetaPiCondRes1Y1N1});
+  tn2ThetaPiCondRes1Y1N1Y.index_put_({thetaPiCondRes1Y1N1Y1, 2},
+                                     -1.0 * tn2ThetaPiCondRes1Y1N1Y.index({thetaPiCondRes1Y1N1Y1, 2}));
+  tn2ThetaPiCondRes1Y1N.index_put_({thetaPiCondRes1Y1N1}, tn2ThetaPiCondRes1Y1N1Y);
+  tn2ThetaPiCondRes1Y.index_put_({thetaPiCondRes1Y1}, tn2ThetaPiCondRes1Y1Y);
+  tn2.index_put_({thetaPiCondRes1}, tn2ThetaPiCondRes1Y);
+
+  auto thetaPiCondRes1N1 = w.index({thetaPiCondRes}).index({~thetaPiCondRes1}) >= 0.0;
+  torch::Tensor tn2ThetaPiCondRes1N = tn2.index({~thetaPiCondRes1});
+  tn2ThetaPiCondRes1N.index_put_({~thetaPiCondRes1N1}, -1.0 * tn2ThetaPiCondRes1N.index({~thetaPiCondRes1N1}));
+  tn2.index_put_({~thetaPiCondRes1}, tn2ThetaPiCondRes1N);
+
+  aa.index_put_({thetaPiCondRes}, tn2);
+
+  auto thetaZeroCondRes = (at::abs(3.0 - trace.index({~thetaPiCondRes})) < epsSqrt);
+  torch::Tensor aaThetaPiCondResN = torch::empty_like(aa.index({~thetaPiCondRes}));
+  aaThetaPiCondResN.index_put_(
+      {thetaZeroCondRes}, 0.5 * w.index({~thetaPiCondRes}).index({thetaZeroCondRes})
+                              * (1.0 + at::pow(theta.index({~thetaPiCondRes}).index({thetaZeroCondRes}), 2) / 6.0
+                                 + at::pow(theta.index({~thetaPiCondRes}).index({thetaZeroCondRes}), 4) * 7.0 / 360.0)
+                                    .view({-1, 1}));
+  aaThetaPiCondResN.index_put_({~thetaZeroCondRes},
+                               w.index({~thetaPiCondRes}).index({~thetaZeroCondRes})
+                                   * at::div(theta.index({~thetaPiCondRes}).index({~thetaZeroCondRes}),
+                                             2.0 * at::sin(theta.index({~thetaPiCondRes}).index({~thetaZeroCondRes})))
+                                         .view({-1, 1}));
+  aa.index_put_({~thetaPiCondRes}, aaThetaPiCondResN);
+
+  return aa;
 }
 
 VPoserDecoderImpl::ContinousRotReprDecoderImpl::ContinousRotReprDecoderImpl()

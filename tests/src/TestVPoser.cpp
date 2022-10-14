@@ -14,35 +14,47 @@
 #include <ros/console.h>
 #include <ros/package.h>
 
-void testConvertRotMatToAxisAngleOnce(const Eigen::AngleAxisd & aa)
+void testConvertRotMatToAxisAngleOnce(const Eigen::Matrix3d & rotMat)
 {
-  Eigen::Matrix<float, 3, 3, Eigen::RowMajor> rotMat = aa.toRotationMatrix().cast<float>();
-  torch::Tensor tensorIn = torch::from_blob(rotMat.data(), {1, 3, 3}).clone();
+  Eigen::AngleAxisd aa(rotMat);
+  Eigen::Matrix<float, 3, 3, Eigen::RowMajor> rotMatFloatRowMajor = rotMat.cast<float>();
+  torch::Tensor tensorIn = torch::from_blob(rotMatFloatRowMajor.data(), {1, 3, 3}).clone();
   torch::Tensor tensorOut = smplpp::convertRotMatToAxisAngle(tensorIn);
   Eigen::Vector3d aaRestored(Eigen::Map<Eigen::Vector3f>(tensorOut.data_ptr<float>(), 3, 1).cast<double>());
 
   EXPECT_FALSE(aaRestored.array().isNaN().any());
-  EXPECT_LT((aa.angle() * aa.axis() - aaRestored).norm(), 1e-3)
+  EXPECT_TRUE((aa.angle() * aa.axis() - aaRestored).norm() < 1e-3
+              || (std::abs(aa.angle() - M_PI) < 1e-3 && (aa.angle() * aa.axis() + aaRestored).norm() < 1e-3))
       << "angle: " << aa.angle() << ", axis: " << aa.axis().transpose() << std::endl
       << "aa: " << aa.angle() * aa.axis().transpose() << std::endl
       << "aaRestored: " << aaRestored.transpose() << std::endl
-      << "error: " << (aa.angle() * aa.axis() - aaRestored).transpose() << std::endl;
+      << "error: " << (aa.angle() * aa.axis() - aaRestored).norm() << std::endl;
 }
 
 TEST(TestVPoser, convertRotMatToAxisAngle)
 {
-  testConvertRotMatToAxisAngleOnce(Eigen::AngleAxisd::Identity());
+  testConvertRotMatToAxisAngleOnce(Eigen::Matrix3d::Identity());
   for(int axisIdx = 0; axisIdx < 3; axisIdx++)
   {
-    testConvertRotMatToAxisAngleOnce(Eigen::AngleAxisd(0.0, Eigen::Vector3d::Unit(axisIdx)));
-    testConvertRotMatToAxisAngleOnce(Eigen::AngleAxisd(M_PI / 4.0, Eigen::Vector3d::Unit(axisIdx)));
-    testConvertRotMatToAxisAngleOnce(Eigen::AngleAxisd(M_PI / 2.0, Eigen::Vector3d::Unit(axisIdx)));
-    testConvertRotMatToAxisAngleOnce(Eigen::AngleAxisd(M_PI, Eigen::Vector3d::Unit(axisIdx)));
+    for(double epsAbs : std::vector<double>{0.0, 1e-12, 1e-9, 1e-6, 1e-3, 1e-2, 1e-1})
+    {
+      for(int epsSign : std::vector<int>{1, -1})
+      {
+        double eps = epsSign * epsAbs;
+        testConvertRotMatToAxisAngleOnce(Eigen::AngleAxisd(eps, Eigen::Vector3d::Unit(axisIdx)).toRotationMatrix());
+        testConvertRotMatToAxisAngleOnce(
+            Eigen::AngleAxisd(M_PI / 4.0 + eps, Eigen::Vector3d::Unit(axisIdx)).toRotationMatrix());
+        testConvertRotMatToAxisAngleOnce(
+            Eigen::AngleAxisd(M_PI / 2.0 + eps, Eigen::Vector3d::Unit(axisIdx)).toRotationMatrix());
+        testConvertRotMatToAxisAngleOnce(
+            Eigen::AngleAxisd(M_PI + eps, Eigen::Vector3d::Unit(axisIdx)).toRotationMatrix());
+      }
+    }
   }
 
-  for(int randomIdx = 0; randomIdx < 1000; randomIdx++)
+  for(int randomIdx = 0; randomIdx < 10000; randomIdx++)
   {
-    testConvertRotMatToAxisAngleOnce(Eigen::AngleAxisd(Eigen::Quaterniond::UnitRandom()));
+    testConvertRotMatToAxisAngleOnce(Eigen::Quaterniond::UnitRandom().toRotationMatrix());
   }
 }
 
