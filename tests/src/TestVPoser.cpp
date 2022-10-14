@@ -18,10 +18,12 @@ void testConvertRotMatToAxisAngleOnce(const Eigen::Matrix3d & rotMat)
 {
   Eigen::AngleAxisd aa(rotMat);
   Eigen::Matrix<float, 3, 3, Eigen::RowMajor> rotMatFloatRowMajor = rotMat.cast<float>();
-  torch::Tensor tensorIn = torch::from_blob(rotMatFloatRowMajor.data(), {1, 3, 3}).clone();
+  torch::Tensor tensorIn =
+      torch::from_blob(rotMatFloatRowMajor.data(), {1, 3, 3}, torch::TensorOptions().requires_grad(true));
   torch::Tensor tensorOut = smplpp::convertRotMatToAxisAngle(tensorIn);
-  Eigen::Vector3d aaRestored(Eigen::Map<Eigen::Vector3f>(tensorOut.data_ptr<float>(), 3, 1).cast<double>());
 
+  Eigen::Vector3d aaRestored(Eigen::Map<Eigen::Vector3f>(tensorOut.data_ptr<float>(), 3, 1).cast<double>());
+  EXPECT_FALSE(at::isnan(tensorOut).any().item<bool>());
   EXPECT_FALSE(aaRestored.array().isNaN().any());
   EXPECT_TRUE((aa.angle() * aa.axis() - aaRestored).norm() < 1e-3
               || (std::abs(aa.angle() - M_PI) < 1e-3 && (aa.angle() * aa.axis() + aaRestored).norm() < 1e-3))
@@ -29,6 +31,15 @@ void testConvertRotMatToAxisAngleOnce(const Eigen::Matrix3d & rotMat)
       << "aa: " << aa.angle() * aa.axis().transpose() << std::endl
       << "aaRestored: " << aaRestored.transpose() << std::endl
       << "error: " << (aa.angle() * aa.axis() - aaRestored).norm() << std::endl;
+
+  // \todo Gradient tests fails in conrer cases (i.e., rotation of 180 degrees)
+  // torch::Tensor tensorOutNorm = tensorOut.norm();
+  // tensorOutNorm.backward();
+  // EXPECT_FALSE(at::isnan(tensorIn.grad()).any().item<bool>())
+  //     << "angle: " << aa.angle() << ", axis: " << aa.axis().transpose() << std::endl
+  //     << "tensorIn: " << tensorIn << std::endl
+  //     << "tensorOut: " << tensorOut << std::endl
+  //     << "grad: " << tensorIn.grad() << std::endl;
 }
 
 TEST(TestVPoser, convertRotMatToAxisAngle)
