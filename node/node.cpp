@@ -90,9 +90,9 @@ void poseParamCallback(const smplpp::PoseParam::ConstPtr & msg)
 
   for(int64_t i = 0; i < smplpp::JOINT_NUM + 1; i++)
   {
-    g_theta.index({0, i, 0}) = msg->angles[i].x;
-    g_theta.index({0, i, 1}) = msg->angles[i].y;
-    g_theta.index({0, i, 2}) = msg->angles[i].z;
+    g_theta.index_put_({0, i, 0}, msg->angles[i].x);
+    g_theta.index_put_({0, i, 1}, msg->angles[i].y);
+    g_theta.index_put_({0, i, 2}, msg->angles[i].z);
   }
 }
 
@@ -107,7 +107,7 @@ void shapeParamCallback(const std_msgs::Float64MultiArray::ConstPtr & msg)
 
   for(int64_t i = 0; i < smplpp::SHAPE_BASIS_DIM; i++)
   {
-    g_beta.index({0, i}) = msg->data[i];
+    g_beta.index_put_({0, i}, msg->data[i]);
   }
 }
 
