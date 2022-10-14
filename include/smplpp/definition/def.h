@@ -5,8 +5,8 @@
 
 namespace smplpp
 {
-constexpr int64_t BATCH_SIZE = 1;
-constexpr int64_t VERTEX_NUM = 6890;
+static int64_t BATCH_SIZE = 1;
+static int64_t VERTEX_NUM = 6890;
 constexpr int64_t JOINT_NUM = 24;
 constexpr int64_t SHAPE_BASIS_DIM = 10;
 constexpr int64_t POSE_BASIS_DIM = 207;

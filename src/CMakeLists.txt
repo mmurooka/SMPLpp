@@ -6,7 +6,7 @@ add_library(smplpp SHARED
   VPoser.cpp
   WorldTransformation.cpp
   toolbox/Exception.cpp
-  # toolbox/Tester.cpp
+  toolbox/Tester.cpp
   toolbox/TorchEx.cpp
 )
 target_include_directories(smplpp PUBLIC
