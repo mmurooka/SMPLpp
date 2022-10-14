@@ -181,11 +181,9 @@ int main(int argc, char * argv[])
     g_ikTargetList.emplace("RightFoot", IkTarget(6838, makeTensor3d({0.0, -0.2, 0.0})));
   }
 
-  // Load SMPL model
+  // Set device
+  std::unique_ptr<torch::Device> device;
   {
-    auto startTime = std::chrono::system_clock::now();
-
-    std::unique_ptr<torch::Device> device;
     std::string deviceType = "CPU";
     pnh.getParam("device", deviceType);
     if(deviceType == "CPU")
@@ -202,6 +200,11 @@ int main(int argc, char * argv[])
     }
     device->set_index(0);
     ROS_INFO_STREAM("Device type: " << deviceType);
+  }
+
+  // Load SMPL model
+  {
+    auto startTime = std::chrono::system_clock::now();
 
     std::string smplPath;
     pnh.getParam("smpl_path", smplPath);
@@ -237,6 +240,7 @@ int main(int argc, char * argv[])
 
     vposer->loadParamsFromJson(vposerPath);
     vposer->eval();
+    vposer->to(*device);
 
     ROS_INFO_STREAM("Duration to load VPoser: " << std::chrono::duration_cast<std::chrono::duration<double>>(
                                                        std::chrono::system_clock::now() - startTime)
@@ -287,9 +291,10 @@ int main(int argc, char * argv[])
                          g_config.index({at::indexing::Slice(), at::indexing::Slice(0, 3)}));
         theta.index_put_({at::indexing::Slice(), 1, at::indexing::Slice()},
                          g_config.index({at::indexing::Slice(), at::indexing::Slice(3, 6)}));
-        torch::Tensor bodyTheta =
-            vposer->forward(g_config.index({at::indexing::Slice(), at::indexing::Slice(6, smplpp::LATENT_DIM + 6)}));
-        theta.index_put_({at::indexing::Slice(), at::indexing::Slice(2, 2 + 21), at::indexing::Slice()}, bodyTheta);
+        torch::Tensor vposerIn =
+            g_config.index({at::indexing::Slice(), at::indexing::Slice(6, smplpp::LATENT_DIM + 6)}).clone().to(*device);
+        torch::Tensor vposerOut = vposer->forward(vposerIn);
+        theta.index_put_({at::indexing::Slice(), at::indexing::Slice(2, 2 + 21), at::indexing::Slice()}, vposerOut);
         theta.index_put_({at::indexing::Slice(), 23, at::indexing::Slice()},
                          g_config.index({at::indexing::Slice(),
                                          at::indexing::Slice(smplpp::LATENT_DIM + 6, smplpp::LATENT_DIM + 9)}));

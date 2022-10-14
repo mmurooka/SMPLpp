@@ -27,6 +27,8 @@ torch::Tensor smplpp::convertRotMatToAxisAngle(const torch::Tensor & rotMat)
   // Ref.
   // https://github.com/jrl-umi3218/SpaceVecAlg/blob/676a64c47d650ba5de6a4b0ff4f2aaf7262ffafe/src/SpaceVecAlg/PTransform.h#L293-L342
 
+  torch::Device device = rotMat.device();
+
   constexpr double eps = std::numeric_limits<float>::epsilon();
   constexpr double epsSqrt = std::sqrt(eps);
   constexpr double epsSqrt2 = std::sqrt(epsSqrt);
@@ -35,7 +37,7 @@ torch::Tensor smplpp::convertRotMatToAxisAngle(const torch::Tensor & rotMat)
   // See https://github.com/pytorch/pytorch/issues/8069
   torch::Tensor theta = at::arccos(at::clamp(0.5 * (trace - 1.0), -1.0 + eps, 1.0 - eps));
 
-  torch::Tensor w = torch::empty({rotMat.sizes()[0], 3});
+  torch::Tensor w = torch::empty({rotMat.sizes()[0], 3}, device);
   w.index_put_({at::indexing::Slice(), 0},
                rotMat.index({at::indexing::Slice(), 2, 1}) - rotMat.index({at::indexing::Slice(), 1, 2}));
   w.index_put_({at::indexing::Slice(), 1},
@@ -43,7 +45,7 @@ torch::Tensor smplpp::convertRotMatToAxisAngle(const torch::Tensor & rotMat)
   w.index_put_({at::indexing::Slice(), 2},
                rotMat.index({at::indexing::Slice(), 1, 0}) - rotMat.index({at::indexing::Slice(), 0, 1}));
 
-  torch::Tensor aa = torch::empty_like(w);
+  torch::Tensor aa = torch::empty_like(w, device);
 
   auto thetaPiCondRes = (1.0 + trace < epsSqrt2);
   torch::Tensor s = (2.0 * rotMat.index({thetaPiCondRes}).diagonal(0, 1, 2)
@@ -130,7 +132,7 @@ torch::Tensor VPoserDecoderImpl::ContinousRotReprDecoderImpl::forward(const torc
                                                          torch::nn::functional::NormalizeFuncOptions().dim(-1));
   torch::Tensor axis3 = at::cross(axis1, axis2, 1);
 
-  return at::stack({axis1, axis2, axis3}, -1);
+  return at::stack({axis1, axis2, axis3}, -1).view({-1, 3, 3});
 }
 
 VPoserDecoderImpl::VPoserDecoderImpl()
@@ -156,7 +158,7 @@ VPoserDecoderImpl::VPoserDecoderImpl()
 torch::Tensor VPoserDecoderImpl::forward(const torch::Tensor & latent)
 {
   int64_t batchSize = latent.sizes()[0];
-  return convertRotMatToAxisAngle(decoderNet_->forward(latent).view({-1, 3, 3})).view({batchSize, -1, 3});
+  return convertRotMatToAxisAngle(decoderNet_->forward(latent)).view({batchSize, -1, 3});
 }
 
 void VPoserDecoderImpl::loadParamsFromJson(const std::string & jsonPath)
