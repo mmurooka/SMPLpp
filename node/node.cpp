@@ -182,13 +182,14 @@ int main(int argc, char * argv[])
   if(enableIk)
   {
     // Set initial root orientation
-    g_config.index_put_({3}, 1.2092);
-    g_config.index_put_({4}, 1.2092);
-    g_config.index_put_({5}, 1.2092);
-
-    g_theta.index_put_({1, 0}, 1.2092);
-    g_theta.index_put_({1, 1}, 1.2092);
-    g_theta.index_put_({1, 2}, 1.2092);
+    if(enableVposer)
+    {
+      g_config.index({at::indexing::Slice(3, 6)}).fill_(1.2092);
+    }
+    else
+    {
+      g_theta.index({1}).fill_(1.2092);
+    }
 
     auto makeTensor3d = [](const std::vector<double> & vec) -> torch::Tensor {
       torch::Tensor tensor = torch::empty({3});
