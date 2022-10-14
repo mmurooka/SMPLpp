@@ -70,25 +70,25 @@ struct IkTarget
   IkTarget(int64_t _vertexIdx, torch::Tensor _targetPos) : vertexIdx(_vertexIdx), targetPos(_targetPos) {}
 };
 
-const int64_t CONFIG_DIM = LATENT_DIM + 12;
+constexpr int64_t CONFIG_DIM = smplpp::LATENT_DIM + 12;
 
 std::unique_ptr<torch::Device> g_device;
-torch::Tensor g_config = torch::zeros({BATCH_SIZE, CONFIG_DIM});
-torch::Tensor g_theta = torch::zeros({BATCH_SIZE, JOINT_NUM + 1, 3}); // (N, 24 + 1, 3)
-torch::Tensor g_beta = torch::zeros({BATCH_SIZE, SHAPE_BASIS_DIM}); // (N, 10)
+torch::Tensor g_config = torch::zeros({smplpp::BATCH_SIZE, CONFIG_DIM});
+torch::Tensor g_theta = torch::zeros({smplpp::BATCH_SIZE, smplpp::JOINT_NUM + 1, 3});
+torch::Tensor g_beta = torch::zeros({smplpp::BATCH_SIZE, smplpp::SHAPE_BASIS_DIM});
 std::unordered_map<std::string, IkTarget> g_ikTargetList;
 int64_t g_torsoVertexIdx = 3500;
 
 void poseParamCallback(const smplpp::PoseParam::ConstPtr & msg)
 {
-  if(msg->angles.size() != JOINT_NUM + 1)
+  if(msg->angles.size() != smplpp::JOINT_NUM + 1)
   {
     ROS_WARN_STREAM("Invalid pose param size: " << std::to_string(msg->angles.size())
-                                                << " != " << std::to_string(JOINT_NUM + 1));
+                                                << " != " << std::to_string(smplpp::JOINT_NUM + 1));
     return;
   }
 
-  for(int64_t i = 0; i < JOINT_NUM + 1; i++)
+  for(int64_t i = 0; i < smplpp::JOINT_NUM + 1; i++)
   {
     g_theta.index({0, i, 0}) = msg->angles[i].x;
     g_theta.index({0, i, 1}) = msg->angles[i].y;
@@ -98,14 +98,14 @@ void poseParamCallback(const smplpp::PoseParam::ConstPtr & msg)
 
 void shapeParamCallback(const std_msgs::Float64MultiArray::ConstPtr & msg)
 {
-  if(msg->data.size() != SHAPE_BASIS_DIM)
+  if(msg->data.size() != smplpp::SHAPE_BASIS_DIM)
   {
     ROS_WARN_STREAM("Invalid shape param size: " << std::to_string(msg->data.size())
-                                                 << " != " << std::to_string(SHAPE_BASIS_DIM));
+                                                 << " != " << std::to_string(smplpp::SHAPE_BASIS_DIM));
     return;
   }
 
-  for(int64_t i = 0; i < SHAPE_BASIS_DIM; i++)
+  for(int64_t i = 0; i < smplpp::SHAPE_BASIS_DIM; i++)
   {
     g_beta.index({0, i}) = msg->data[i];
   }
@@ -129,7 +129,7 @@ void clickedPointCallback(const geometry_msgs::PointStamped::ConstPtr & msg)
 
   double posErrMin = 1e10;
   int64_t vertexIdxMin = 0;
-  for(int64_t vertexIdx = 0; vertexIdx < VERTEX_NUM; vertexIdx++)
+  for(int64_t vertexIdx = 0; vertexIdx < smplpp::VERTEX_NUM; vertexIdx++)
   {
     double posErr = torch::nn::functional::mse_loss(vertexTensor.index({vertexIdx}), clickedPos).item<float>();
     if(posErr < posErrMin)
@@ -294,18 +294,20 @@ int main(int argc, char * argv[])
       torch::Tensor theta;
       if(enableVposer)
       {
-        theta = torch::zeros({BATCH_SIZE, JOINT_NUM + 1, 3});
+        theta = torch::zeros({smplpp::BATCH_SIZE, smplpp::JOINT_NUM + 1, 3});
         theta.index_put_({at::indexing::Slice(), 0, at::indexing::Slice()},
                          g_config.index({at::indexing::Slice(), at::indexing::Slice(0, 3)}));
         theta.index_put_({at::indexing::Slice(), 1, at::indexing::Slice()},
                          g_config.index({at::indexing::Slice(), at::indexing::Slice(3, 6)}));
         torch::Tensor bodyTheta =
-            vposer->forward(g_config.index({at::indexing::Slice(), at::indexing::Slice(6, LATENT_DIM + 6)}));
+            vposer->forward(g_config.index({at::indexing::Slice(), at::indexing::Slice(6, smplpp::LATENT_DIM + 6)}));
         theta.index_put_({at::indexing::Slice(), at::indexing::Slice(2, 2 + 21), at::indexing::Slice()}, bodyTheta);
         theta.index_put_({at::indexing::Slice(), 23, at::indexing::Slice()},
-                         g_config.index({at::indexing::Slice(), at::indexing::Slice(LATENT_DIM + 6, LATENT_DIM + 9)}));
+                         g_config.index({at::indexing::Slice(),
+                                         at::indexing::Slice(smplpp::LATENT_DIM + 6, smplpp::LATENT_DIM + 9)}));
         theta.index_put_({at::indexing::Slice(), 24, at::indexing::Slice()},
-                         g_config.index({at::indexing::Slice(), at::indexing::Slice(LATENT_DIM + 9, LATENT_DIM + 12)}));
+                         g_config.index({at::indexing::Slice(),
+                                         at::indexing::Slice(smplpp::LATENT_DIM + 9, smplpp::LATENT_DIM + 12)}));
       }
       else
       {
@@ -316,7 +318,7 @@ int main(int argc, char * argv[])
       // Solve IK
       if(g_ikTargetList.size() > 0)
       {
-        int64_t configDim = (enableVposer ? CONFIG_DIM : 3 * (JOINT_NUM + 1));
+        int64_t configDim = (enableVposer ? CONFIG_DIM : 3 * (smplpp::JOINT_NUM + 1));
         Eigen::VectorXd e(3 * g_ikTargetList.size());
         Eigen::MatrixXd J(3 * g_ikTargetList.size(), configDim);
         int64_t rowIdx = 0;
@@ -433,14 +435,15 @@ int main(int argc, char * argv[])
 
       torch::Tensor vertexTensor = SINGLE_SMPL::get()->getVertex().index({0}).to(torch::kCPU);
       torch::Tensor faceIndexTensor = SINGLE_SMPL::get()->getFaceIndex().to(torch::kCPU);
-      assert(vertexTensor.sizes() == torch::IntArrayRef({VERTEX_NUM, 3}));
-      assert(faceIndexTensor.sizes() == torch::IntArrayRef({FACE_INDEX_NUM, 3}));
+      assert(vertexTensor.sizes() == torch::IntArrayRef({smplpp::VERTEX_NUM, 3}));
+      assert(faceIndexTensor.sizes() == torch::IntArrayRef({smplpp::FACE_INDEX_NUM, 3}));
 
-      xt::xarray<float> vertexArr = xt::adapt(
-          vertexTensor.data_ptr<float>(), xt::xarray<float>::shape_type({static_cast<const size_t>(VERTEX_NUM), 3}));
+      xt::xarray<float> vertexArr =
+          xt::adapt(vertexTensor.data_ptr<float>(),
+                    xt::xarray<float>::shape_type({static_cast<const size_t>(smplpp::VERTEX_NUM), 3}));
       xt::xarray<int32_t> faceIndexArr =
           xt::adapt(faceIndexTensor.data_ptr<int32_t>(),
-                    xt::xarray<int32_t>::shape_type({static_cast<const size_t>(FACE_INDEX_NUM), 3}));
+                    xt::xarray<int32_t>::shape_type({static_cast<const size_t>(smplpp::FACE_INDEX_NUM), 3}));
 
       double zMin = 0.0;
       double zMax = 0.0;
@@ -460,7 +463,7 @@ int main(int argc, char * argv[])
         return colorMsg;
       };
 
-      for(int64_t i = 0; i < FACE_INDEX_NUM; i++)
+      for(int64_t i = 0; i < smplpp::FACE_INDEX_NUM; i++)
       {
         for(int64_t j = 0; j < 3; j++)
         {
