@@ -6,6 +6,7 @@ add_library(smplpp SHARED
   VPoser.cpp
   WorldTransformation.cpp
   toolbox/Exception.cpp
+  # \todo Move Tester.cpp to tests directory
   toolbox/Tester.cpp
   toolbox/TorchEx.cpp
 )
