@@ -24,10 +24,16 @@
   <node pkg="rviz" type="rviz" name="$(anon rviz)"
         args="-d $(find smplpp)/rviz/smplpp.rviz" />
 
-  <node unless="$(arg enable_ik)"
-        pkg="rqt_ez_publisher" type="rqt_ez_publisher" name="rqt_ez_publisher_pose"
-        args="--slider-file $(find smplpp)/rqt/smplpp_pose.yaml"
-        output="log" clear_params="true" />
+  <group unless="$(arg enable_ik)" >
+    <node if="$(arg enable_vposer)"
+          pkg="rqt_ez_publisher" type="rqt_ez_publisher" name="rqt_ez_publisher_config"
+          args="--slider-file $(find smplpp)/rqt/smplpp_config.yaml"
+          output="log" clear_params="true" />
+    <node unless="$(arg enable_vposer)"
+          pkg="rqt_ez_publisher" type="rqt_ez_publisher" name="rqt_ez_publisher_pose"
+          args="--slider-file $(find smplpp)/rqt/smplpp_pose.yaml"
+          output="log" clear_params="true" />
+  </group>
 
   <node pkg="rqt_ez_publisher" type="rqt_ez_publisher" name="rqt_ez_publisher_shape"
         args="--slider-file $(find smplpp)/rqt/smplpp_shape.yaml"

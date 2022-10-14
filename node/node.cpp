@@ -78,6 +78,21 @@ torch::Tensor g_beta = torch::zeros({smplpp::BATCH_SIZE, smplpp::SHAPE_BASIS_DIM
 std::unordered_map<std::string, IkTarget> g_ikTargetList;
 int64_t g_torsoVertexIdx = 3500;
 
+void configParamCallback(const std_msgs::Float64MultiArray::ConstPtr & msg)
+{
+  if(msg->data.size() != CONFIG_DIM)
+  {
+    ROS_WARN_STREAM("Invalid config param size: " << std::to_string(msg->data.size())
+                                                  << " != " << std::to_string(CONFIG_DIM));
+    return;
+  }
+
+  for(int64_t i = 0; i < CONFIG_DIM; i++)
+  {
+    g_config.index_put_({0, i}, msg->data[i]);
+  }
+}
+
 void poseParamCallback(const smplpp::PoseParam::ConstPtr & msg)
 {
   if(msg->angles.size() != smplpp::JOINT_NUM + 1)
@@ -146,10 +161,18 @@ int main(int argc, char * argv[])
   ros::Publisher markerArrPub = nh.advertise<visualization_msgs::MarkerArray>("smplpp/marker_arr", 1);
   ros::Publisher targetPoseArrPub = nh.advertise<geometry_msgs::PoseArray>("smplpp/target_pose_arr", 1);
   ros::Publisher actualPoseArrPub = nh.advertise<geometry_msgs::PoseArray>("smplpp/actual_pose_arr", 1);
+  ros::Subscriber configParamSub;
   ros::Subscriber poseParamSub;
   if(!enableIk)
   {
-    poseParamSub = nh.subscribe("smplpp/pose_param", 1, poseParamCallback);
+    if(enableVposer)
+    {
+      configParamSub = nh.subscribe("smplpp/config_param", 1, configParamCallback);
+    }
+    else
+    {
+      poseParamSub = nh.subscribe("smplpp/pose_param", 1, poseParamCallback);
+    }
   }
   ros::Subscriber shapeParamSub = nh.subscribe("smplpp/shape_param", 1, shapeParamCallback);
   ros::Subscriber ikTargetPoseSub = nh.subscribe("smplpp/ik_target_pose", 1, ikTargetPoseCallback);
