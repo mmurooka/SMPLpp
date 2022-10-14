@@ -22,24 +22,25 @@ void testConvertRotMatToAxisAngleOnce(const Eigen::Matrix3d & rotMat)
       torch::from_blob(rotMatFloatRowMajor.data(), {1, 3, 3}, torch::TensorOptions().requires_grad(true));
   torch::Tensor tensorOut = smplpp::convertRotMatToAxisAngle(tensorIn);
 
-  Eigen::Vector3d aaRestored(Eigen::Map<Eigen::Vector3f>(tensorOut.data_ptr<float>(), 3, 1).cast<double>());
+  Eigen::Vector3d aaVec = aa.angle() * aa.axis();
+  Eigen::Vector3d aaVecRestored(Eigen::Map<Eigen::Vector3f>(tensorOut.data_ptr<float>(), 3, 1).cast<double>());
   EXPECT_FALSE(at::isnan(tensorOut).any().item<bool>());
-  EXPECT_FALSE(aaRestored.array().isNaN().any());
-  EXPECT_TRUE((aa.angle() * aa.axis() - aaRestored).norm() < 1e-3
-              || (std::abs(aa.angle() - M_PI) < 1e-3 && (aa.angle() * aa.axis() + aaRestored).norm() < 1e-3))
+  EXPECT_FALSE(aaVecRestored.array().isNaN().any());
+  constexpr double threshold = 5e-3;
+  EXPECT_TRUE((aaVec - aaVecRestored).norm() < threshold
+              || (std::abs(aa.angle() - M_PI) < 1e-4 && (aaVec + aaVecRestored).norm() < threshold))
       << "angle: " << aa.angle() << ", axis: " << aa.axis().transpose() << std::endl
-      << "aa: " << aa.angle() * aa.axis().transpose() << std::endl
-      << "aaRestored: " << aaRestored.transpose() << std::endl
-      << "error: " << (aa.angle() * aa.axis() - aaRestored).norm() << std::endl;
+      << "aa: " << aaVec.transpose() << std::endl
+      << "aaVecRestored: " << aaVecRestored.transpose() << std::endl
+      << "error: " << (aaVec - aaVecRestored).norm() << std::endl;
 
-  // \todo Gradient tests fails in conrer cases (i.e., rotation of 180 degrees)
-  // torch::Tensor tensorOutNorm = tensorOut.norm();
-  // tensorOutNorm.backward();
-  // EXPECT_FALSE(at::isnan(tensorIn.grad()).any().item<bool>())
-  //     << "angle: " << aa.angle() << ", axis: " << aa.axis().transpose() << std::endl
-  //     << "tensorIn: " << tensorIn << std::endl
-  //     << "tensorOut: " << tensorOut << std::endl
-  //     << "grad: " << tensorIn.grad() << std::endl;
+  torch::Tensor tensorOutNorm = tensorOut.norm();
+  tensorOutNorm.backward();
+  EXPECT_FALSE(at::isnan(tensorIn.grad()).any().item<bool>())
+      << "angle: " << aa.angle() << ", axis: " << aa.axis().transpose() << std::endl
+      << "tensorIn: " << tensorIn << std::endl
+      << "tensorOut: " << tensorOut << std::endl
+      << "grad: " << tensorIn.grad() << std::endl;
 }
 
 TEST(TestVPoser, convertRotMatToAxisAngle)

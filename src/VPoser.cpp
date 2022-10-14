@@ -49,7 +49,8 @@ torch::Tensor smplpp::convertRotMatToAxisAngle(const torch::Tensor & rotMat)
   torch::Tensor s = (2.0 * rotMat.index({thetaPiCondRes}).diagonal(0, 1, 2)
                      + (1.0 - trace.index({thetaPiCondRes})).view({-1, 1}).expand({-1, 3}))
                     / (3.0 - trace.index({thetaPiCondRes})).view({-1, 1});
-  torch::Tensor tn2 = at::sqrt(s) * theta.index({thetaPiCondRes}).view({-1, 1});
+  // Apply clamp_min to avoid NaN gradient. However, this reduces accuracy
+  torch::Tensor tn2 = at::sqrt(at::clamp_min(s, eps)) * theta.index({thetaPiCondRes}).view({-1, 1});
 
   auto thetaPiCondRes1 = theta.index({thetaPiCondRes}) > M_PI - 1e-4;
 
