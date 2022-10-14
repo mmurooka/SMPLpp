@@ -359,16 +359,16 @@ int main(int argc, char * argv[])
         Eigen::MatrixXd linearEqA = J.transpose() * J;
         Eigen::VectorXd linearEqB = J.transpose() * e;
         {
-          double deltaConfigRegWeight = 1e-4 + e.squaredNorm();
-          linearEqA.diagonal().array() += 0.5 * deltaConfigRegWeight;
+          double deltaConfigRegWeight = 1e-3 + e.squaredNorm();
+          linearEqA.diagonal().array() += deltaConfigRegWeight;
         }
         if(enableVposer)
         {
-          double nominalConfigRegWeight = 1e-2;
+          double nominalConfigRegWeight = 1e-5;
           Eigen::VectorXd nominalConfigRegWeightVec = Eigen::VectorXd::Constant(configDim, nominalConfigRegWeight);
           nominalConfigRegWeightVec.head<6>().setZero();
           nominalConfigRegWeightVec.tail<6>().setConstant(1e3);
-          linearEqA.diagonal() += 0.5 * nominalConfigRegWeightVec;
+          linearEqA.diagonal() += nominalConfigRegWeightVec;
           float * configDataPtr = g_config.index({0}).view({configDim}).data_ptr<float>();
           linearEqB += nominalConfigRegWeightVec.cwiseProduct(
               Eigen::Map<Eigen::VectorXf>(configDataPtr, configDim).cast<double>());
