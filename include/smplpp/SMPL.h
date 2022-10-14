@@ -238,7 +238,7 @@ public: // PUBLIC METHODS
 
   // %% Modeling %%
   void init() noexcept(false);
-  void launch(torch::Tensor & beta, torch::Tensor & theta) noexcept(false);
+  void launch(const torch::Tensor & beta, const torch::Tensor & theta) noexcept(false);
   void out(int64_t index) noexcept(false);
 };
 

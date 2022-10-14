@@ -606,7 +606,7 @@ void SMPL::init() noexcept(false)
  *
  *
  */
-void SMPL::launch(torch::Tensor & beta, torch::Tensor & theta) noexcept(false)
+void SMPL::launch(const torch::Tensor & beta, const torch::Tensor & theta) noexcept(false)
 {
   if(m__model.is_null() && beta.sizes() != torch::IntArrayRef({BATCH_SIZE, SHAPE_BASIS_DIM})
      && theta.sizes() != torch::IntArrayRef({BATCH_SIZE, JOINT_NUM + 1, 3}))
