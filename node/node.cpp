@@ -72,7 +72,6 @@ struct IkTarget
 
 constexpr int64_t CONFIG_DIM = smplpp::LATENT_DIM + 12;
 
-std::unique_ptr<torch::Device> g_device;
 torch::Tensor g_config = torch::zeros({smplpp::BATCH_SIZE, CONFIG_DIM});
 torch::Tensor g_theta = torch::zeros({smplpp::BATCH_SIZE, smplpp::JOINT_NUM + 1, 3});
 torch::Tensor g_beta = torch::zeros({smplpp::BATCH_SIZE, smplpp::SHAPE_BASIS_DIM});
@@ -186,21 +185,22 @@ int main(int argc, char * argv[])
   {
     auto startTime = std::chrono::system_clock::now();
 
+    std::unique_ptr<torch::Device> device;
     std::string deviceType = "CPU";
     pnh.getParam("device", deviceType);
     if(deviceType == "CPU")
     {
-      g_device = std::make_unique<torch::Device>(torch::kCPU);
+      device = std::make_unique<torch::Device>(torch::kCPU);
     }
     else if(deviceType == "CUDA")
     {
-      g_device = std::make_unique<torch::Device>(torch::kCUDA);
+      device = std::make_unique<torch::Device>(torch::kCUDA);
     }
     else
     {
       throw smplpp::smpl_error("node", "Invalid device type: " + deviceType);
     }
-    g_device->set_index(0);
+    device->set_index(0);
     ROS_INFO_STREAM("Device type: " << deviceType);
 
     std::string smplPath;
@@ -211,7 +211,7 @@ int main(int argc, char * argv[])
     }
     ROS_INFO_STREAM("Load SMPL model from " << smplPath);
 
-    SINGLE_SMPL::get()->setDevice(*g_device);
+    SINGLE_SMPL::get()->setDevice(*device);
     SINGLE_SMPL::get()->setModelPath(smplPath);
     SINGLE_SMPL::get()->init();
 
