@@ -23,7 +23,8 @@ torch::Tensor smplpp::convertRotMatToAxisAngle(const torch::Tensor & rotMat)
   constexpr double epsSqrt2 = std::sqrt(epsSqrt);
 
   torch::Tensor trace = rotMat.index({at::indexing::Slice()}).diagonal(0, 1, 2).sum(-1);
-  torch::Tensor theta = at::arccos(at::clamp(0.5 * (trace - 1.0), -1.0, 1.0));
+  // See https://github.com/pytorch/pytorch/issues/8069
+  torch::Tensor theta = at::arccos(at::clamp(0.5 * (trace - 1.0), -1.0 + eps, 1.0 - eps));
 
   torch::Tensor w = torch::empty({rotMat.sizes()[0], 3});
   w.index_put_({at::indexing::Slice(), 0},
