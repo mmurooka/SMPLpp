@@ -13,6 +13,15 @@
 
 using namespace smplpp;
 
+void smplpp::checkTensorNan(const torch::Tensor & tensor, const std::string & tensorName)
+{
+  if(at::isnan(tensor).any().item<bool>())
+  {
+    std::cout << tensorName << ":\n" << tensor << std::endl;
+    throw smplpp::smpl_error("checkTensorNan", tensorName + " has NaN!");
+  }
+}
+
 torch::Tensor smplpp::convertRotMatToAxisAngle(const torch::Tensor & rotMat)
 {
   // Ref.

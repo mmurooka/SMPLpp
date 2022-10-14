@@ -9,6 +9,12 @@
 
 namespace smplpp
 {
+/** \brief Check whether tensor contains NaN.
+    \param tensor tensor
+    \param tensorName tensor name
+*/
+void checkTensorNan(const torch::Tensor & tensor, const std::string & tensorName);
+
 /** \brief Convert rotation matrices to axis-angle representations.
     \param rotMat tensor representing rotation matrices (N, 3, 3)
     \returns tensor representing axis-angle representations (N, 3)
