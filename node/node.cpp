@@ -36,9 +36,6 @@
 //----------
 #include <torch/torch.h>
 //----------
-#include <xtensor/xadapt.hpp>
-#include <xtensor/xarray.hpp>
-//----------
 #include <smplpp/SMPL.h>
 #include <smplpp/VPoser.h>
 #include <smplpp/definition/def.h>
@@ -394,12 +391,12 @@ int main(int argc, char * argv[])
         if(enableVposer)
         {
           g_config.set_requires_grad(false);
-          g_config += smplpp::toTorchTensor(deltaConfig.cast<float>(), true).view_as(g_config);
+          g_config += smplpp::toTorchTensor<float>(deltaConfig.cast<float>(), true).view_as(g_config);
         }
         else
         {
           g_theta.set_requires_grad(false);
-          g_theta += smplpp::toTorchTensor(deltaConfig.cast<float>(), true).view_as(g_theta);
+          g_theta += smplpp::toTorchTensor<float>(deltaConfig.cast<float>(), true).view_as(g_theta);
         }
       }
 
@@ -433,16 +430,9 @@ int main(int argc, char * argv[])
       markerMsg.color.a = 1.0;
 
       torch::Tensor vertexTensor = SINGLE_SMPL::get()->getVertex().index({0}).to(torch::kCPU);
+      Eigen::MatrixX3d vertexMat = smplpp::toEigenMatrix(vertexTensor).cast<double>();
       torch::Tensor faceIndexTensor = SINGLE_SMPL::get()->getFaceIndex().to(torch::kCPU);
-      assert(vertexTensor.sizes() == torch::IntArrayRef({smplpp::VERTEX_NUM, 3}));
-      assert(faceIndexTensor.sizes() == torch::IntArrayRef({smplpp::FACE_INDEX_NUM, 3}));
-
-      xt::xarray<float> vertexArr =
-          xt::adapt(vertexTensor.data_ptr<float>(),
-                    xt::xarray<float>::shape_type({static_cast<const size_t>(smplpp::VERTEX_NUM), 3}));
-      xt::xarray<int32_t> faceIndexArr =
-          xt::adapt(faceIndexTensor.data_ptr<int32_t>(),
-                    xt::xarray<int32_t>::shape_type({static_cast<const size_t>(smplpp::FACE_INDEX_NUM), 3}));
+      Eigen::MatrixX3i faceIndexMat = smplpp::toEigenMatrix<int>(faceIndexTensor);
 
       double zMin = 0.0;
       double zMax = 0.0;
@@ -466,11 +456,11 @@ int main(int argc, char * argv[])
       {
         for(int64_t j = 0; j < 3; j++)
         {
-          int64_t idx = faceIndexArr(i, j) - 1;
+          int64_t idx = faceIndexMat(i, j) - 1;
           geometry_msgs::Point pointMsg;
-          pointMsg.x = vertexArr(idx, 0);
-          pointMsg.y = vertexArr(idx, 1);
-          pointMsg.z = vertexArr(idx, 2);
+          pointMsg.x = vertexMat(idx, 0);
+          pointMsg.y = vertexMat(idx, 1);
+          pointMsg.z = vertexMat(idx, 2);
           markerMsg.points.push_back(pointMsg);
           if(enableVertexColor)
           {

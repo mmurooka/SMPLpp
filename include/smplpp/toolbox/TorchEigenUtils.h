@@ -11,42 +11,42 @@
 
 namespace smplpp
 {
-/** \brief Row major version of Eige::MatrixXf. */
-using MatrixXfRowMajor = Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>;
-/** \brief Row major version of Eige::MatrixXd. */
-using MatrixXdRowMajor = Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>;
-
-/** \brief Convert to torch::Tensor.
-    \param mat input (Eigen::MatrixXf)
+/** \brief Convert to torch tensor.
+    \param mat Eigen matrix
     \param tensor1d whether to convert to 1D tensor
 
     Even if the matrix of colum major is passed as an argument, it is automatically converted to row major.
 */
-inline torch::Tensor toTorchTensor(const MatrixXfRowMajor & mat, bool tensor1d = false)
+template<typename Scalar = float>
+inline torch::Tensor toTorchTensor(const Eigen::Matrix<Scalar, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> & mat,
+                                   bool tensor1d = false)
 {
   if(tensor1d)
   {
-    return torch::from_blob(const_cast<float *>(mat.data()), {mat.size()}).clone();
+    return torch::from_blob(const_cast<Scalar *>(mat.data()), {mat.size()}).clone();
   }
   else
   {
-    return torch::from_blob(const_cast<float *>(mat.data()), {mat.rows(), mat.cols()}).clone();
+    return torch::from_blob(const_cast<Scalar *>(mat.data()), {mat.rows(), mat.cols()}).clone();
   }
 }
 
-/** \brief Convert to Eigen::MatrixXf.
-    \param tensor input (torch::Tensor)
+/** \brief Convert to Eigen matrix.
+    \param tensor torch tensor
 */
-inline Eigen::MatrixXf toEigenMatrix(const torch::Tensor & tensor)
+template<typename Scalar = float>
+inline Eigen::Matrix<Scalar, Eigen::Dynamic, Eigen::Dynamic> toEigenMatrix(const torch::Tensor & tensor)
 {
-  float * tensorDataPtr = const_cast<float *>(tensor.data_ptr<float>());
+  Scalar * tensorDataPtr = const_cast<Scalar *>(tensor.data_ptr<Scalar>());
   if(tensor.dim() == 1)
   {
-    return Eigen::Map<Eigen::VectorXf>(tensorDataPtr, tensor.size(0));
+    return Eigen::Map<Eigen::Matrix<Scalar, Eigen::Dynamic, 1>>(tensorDataPtr, tensor.size(0));
   }
   else if(tensor.dim() == 2)
   {
-    return Eigen::MatrixXf(Eigen::Map<MatrixXfRowMajor>(tensorDataPtr, tensor.size(0), tensor.size(1)));
+    return Eigen::Matrix<Scalar, Eigen::Dynamic, Eigen::Dynamic>(
+        Eigen::Map<Eigen::Matrix<Scalar, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
+            tensorDataPtr, tensor.size(0), tensor.size(1)));
   }
   else
   {
