@@ -43,6 +43,7 @@
 #include <smplpp/VPoser.h>
 #include <smplpp/definition/def.h>
 #include <smplpp/toolbox/Singleton.hpp>
+#include <smplpp/toolbox/TorchEigenUtils.h>
 #include <smplpp/toolbox/TorchEx.hpp>
 //----------
 #include <geometry_msgs/PointStamped.h>
@@ -340,7 +341,7 @@ int main(int argc, char * argv[])
           torch::Tensor posError = actualPos - ikTarget.second.targetPos;
 
           // Set task value
-          e.segment<3>(rowIdx) = Eigen::Map<Eigen::Vector3f>(posError.data_ptr<float>()).cast<double>();
+          e.segment<3>(rowIdx) = smplpp::toEigenMatrix(posError).cast<double>();
 
           // Set task Jacobian
           for(int64_t i = 0; i < 3; i++)
@@ -352,14 +353,12 @@ int main(int argc, char * argv[])
 
             if(enableVposer)
             {
-              float * gradDataPtr = g_config.grad().view({configDim}).data_ptr<float>();
-              J.row(rowIdx) = Eigen::Map<Eigen::VectorXf>(gradDataPtr, configDim).cast<double>();
+              J.row(rowIdx) = smplpp::toEigenMatrix(g_config.grad().view({configDim})).transpose().cast<double>();
               g_config.mutable_grad().zero_();
             }
             else
             {
-              float * gradDataPtr = g_theta.grad().view({configDim}).data_ptr<float>();
-              J.row(rowIdx) = Eigen::Map<Eigen::VectorXf>(gradDataPtr, configDim).cast<double>();
+              J.row(rowIdx) = smplpp::toEigenMatrix(g_theta.grad().view({configDim})).transpose().cast<double>();
               g_theta.mutable_grad().zero_();
             }
 
@@ -381,36 +380,26 @@ int main(int argc, char * argv[])
           nominalConfigRegWeightVec.head<6>().setZero();
           nominalConfigRegWeightVec.tail<6>().setConstant(1e3);
           linearEqA.diagonal() += nominalConfigRegWeightVec;
-          float * configDataPtr = g_config.data_ptr<float>();
-          linearEqB += nominalConfigRegWeightVec.cwiseProduct(
-              Eigen::Map<Eigen::VectorXf>(configDataPtr, configDim).cast<double>());
+          linearEqB +=
+              nominalConfigRegWeightVec.cwiseProduct(smplpp::toEigenMatrix(g_config.view({configDim})).cast<double>());
         }
         Eigen::LLT<Eigen::MatrixXd> linearEqLlt(linearEqA);
-        Eigen::VectorXd deltaConfig;
         if(linearEqLlt.info() == Eigen::NumericalIssue)
         {
-          deltaConfig.setZero(configDim);
-          ROS_ERROR("LLT has numerical issue!");
+          throw smplpp::smpl_error("node", "LLT has numerical issue!");
         }
-        else
-        {
-          deltaConfig = -1 * linearEqLlt.solve(linearEqB);
-        }
+        Eigen::VectorXd deltaConfig = -1 * linearEqLlt.solve(linearEqB);
 
         // Update config
         if(enableVposer)
         {
           g_config.set_requires_grad(false);
-          g_config +=
-              torch::from_blob(const_cast<float *>(deltaConfig.cast<float>().eval().data()), {deltaConfig.size()})
-                  .view_as(g_config);
+          g_config += smplpp::toTorchTensor(deltaConfig.cast<float>(), true).view_as(g_config);
         }
         else
         {
           g_theta.set_requires_grad(false);
-          g_theta +=
-              torch::from_blob(const_cast<float *>(deltaConfig.cast<float>().eval().data()), {deltaConfig.size()})
-                  .view_as(g_theta);
+          g_theta += smplpp::toTorchTensor(deltaConfig.cast<float>(), true).view_as(g_theta);
         }
       }
 
