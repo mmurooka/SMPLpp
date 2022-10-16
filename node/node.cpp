@@ -76,7 +76,6 @@ torch::Tensor g_config = torch::zeros({CONFIG_DIM});
 torch::Tensor g_theta = torch::zeros({smplpp::JOINT_NUM + 1, 3});
 torch::Tensor g_beta = torch::zeros({smplpp::SHAPE_BASIS_DIM});
 std::unordered_map<std::string, IkTarget> g_ikTargetList;
-int64_t g_torsoVertexIdx = 3500;
 
 void configParamCallback(const std_msgs::Float64MultiArray::ConstPtr & msg)
 {
@@ -145,7 +144,7 @@ void clickedPointCallback(const geometry_msgs::PointStamped::ConstPtr & msg)
   Eigen::MatrixX3d facePosMat = Eigen::MatrixX3d::Zero(faceIdxMat.rows(), 3);
   for(int64_t faceIdx = 0; faceIdx < faceIdxMat.rows(); faceIdx++)
   {
-    for(int64_t i = 0; i < 3; i++)
+    for(int32_t i = 0; i < 3; i++)
     {
       int64_t vertexIdx = faceIdxMat(faceIdx, i);
       facePosMat.row(faceIdx) += vertexMat.row(vertexIdx);
@@ -213,7 +212,7 @@ int main(int argc, char * argv[])
 
     auto makeTensor3d = [](const std::vector<double> & vec) -> torch::Tensor {
       torch::Tensor tensor = torch::empty({3});
-      for(int64_t i = 0; i < 3; i++)
+      for(int32_t i = 0; i < 3; i++)
       {
         tensor.index_put_({i}, vec[i]);
       }
@@ -370,7 +369,7 @@ int main(int argc, char * argv[])
           e.segment<3>(rowIdx) = smplpp::toEigenMatrix(posError).cast<double>();
 
           // Set task Jacobian
-          for(int64_t i = 0; i < 3; i++)
+          for(int32_t i = 0; i < 3; i++)
           {
             // Calculate backward of each element
             torch::Tensor select = torch::zeros({1, 3});
@@ -500,7 +499,7 @@ int main(int argc, char * argv[])
 
       for(int64_t i = 0; i < smplpp::FACE_INDEX_NUM; i++)
       {
-        for(int64_t j = 0; j < 3; j++)
+        for(int32_t j = 0; j < 3; j++)
         {
           int64_t idx = faceIdxMat(i, j);
           geometry_msgs::Point pointMsg;
