@@ -134,13 +134,16 @@ void ikTargetPoseCallback(const geometry_msgs::TransformStamped::ConstPtr & msg)
 
 void clickedPointCallback(const geometry_msgs::PointStamped::ConstPtr & msg)
 {
-  torch::Tensor clickedPos = torch::empty({3});
-  clickedPos.index_put_({0}, msg->point.x);
-  clickedPos.index_put_({1}, msg->point.y);
-  clickedPos.index_put_({2}, msg->point.z);
+  Eigen::Vector3d clickedPos = Eigen::Vector3d(msg->point.x, msg->point.y, msg->point.z);
 
   torch::Tensor vertexTensor = SINGLE_SMPL::get()->getVertex().index({0}).to(torch::kCPU);
-  int64_t vertexIdx = at::argmin((vertexTensor - clickedPos.expand({smplpp::VERTEX_NUM, -1})).norm(2, 1)).item<float>();
+  Eigen::MatrixX3d vertexMat = smplpp::toEigenMatrix(vertexTensor).cast<double>();
+  torch::Tensor faceIndexTensor = SINGLE_SMPL::get()->getFaceIndex().to(torch::kCPU);
+  Eigen::MatrixX3i faceIndexMat = smplpp::toEigenMatrix<int>(faceIndexTensor);
+  faceIndexMat.array() -= 1;
+
+  Eigen::Index vertexIdx;
+  (vertexMat.rowwise() - clickedPos.transpose()).rowwise().squaredNorm().minCoeff(&vertexIdx);
   ROS_INFO_STREAM("Vertex idx closest to clicked point: " << vertexIdx);
 }
 
