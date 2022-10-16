@@ -31,6 +31,11 @@ message("-- LIBTORCH_PATH: ${LIBTORCH_PATH}")
 list(APPEND CMAKE_PREFIX_PATH ${LIBTORCH_PATH})
 find_package(Torch REQUIRED)
 
+# libigl
+list(PREPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
+include(libigl)
+igl_include(core)
+
 add_message_files(
   FILES
   PoseParam.msg
