@@ -64,7 +64,10 @@
 class IkTarget
 {
 public:
-  IkTarget(int64_t faceIdx, torch::Tensor targetPos) : faceIdx_(faceIdx), targetPos_(targetPos) {}
+  IkTarget(int64_t faceIdx, torch::Tensor targetPos, torch::Tensor targetNormal)
+  : faceIdx_(faceIdx), targetPos_(targetPos), targetNormal_(targetNormal)
+  {
+  }
 
   torch::Tensor calculateActualPos() const
   {
@@ -87,15 +90,36 @@ public:
     return actualPos;
   }
 
+  torch::Tensor calculateActualNormal() const
+  {
+    torch::Tensor faceIdxTensor = SINGLE_SMPL::get()->getFaceIndexRaw(faceIdx_).to(torch::kCPU);
+    std::vector<torch::Tensor> vertexTensors;
+    for(int32_t i = 0; i < 3; i++)
+    {
+      int32_t vertexIdx = faceIdxTensor.index({i}).item<int32_t>();
+      vertexTensors.push_back(SINGLE_SMPL::get()->getVertexRaw(vertexIdx));
+    }
+    return torch::nn::functional::normalize(
+        at::cross(vertexTensors[1] - vertexTensors[0], vertexTensors[2] - vertexTensors[0]),
+        torch::nn::functional::NormalizeFuncOptions().dim(-1));
+  }
+
   torch::Tensor calculatePosError() const
   {
     return calculateActualPos() - targetPos_;
+  }
+
+  torch::Tensor calculateNormalError() const
+  {
+    return at::dot(calculateActualNormal(), targetNormal_) + 1.0;
   }
 
 public:
   int64_t faceIdx_;
 
   torch::Tensor targetPos_;
+
+  torch::Tensor targetNormal_;
 };
 
 constexpr int64_t CONFIG_DIM = smplpp::LATENT_DIM + 12;
@@ -238,18 +262,18 @@ int main(int argc, char * argv[])
       g_theta.index({1}).fill_(1.2092);
     }
 
-    auto makeTensor3d = [](const std::vector<double> & vec) -> torch::Tensor {
-      torch::Tensor tensor = torch::empty({3});
-      for(int32_t i = 0; i < 3; i++)
-      {
-        tensor.index_put_({i}, vec[i]);
-      }
-      return tensor;
-    };
-    g_ikTargetList.emplace("LeftHand", IkTarget(2581, makeTensor3d({0.5, 0.5, 1.0})));
-    g_ikTargetList.emplace("RightHand", IkTarget(9472, makeTensor3d({0.5, -0.5, 1.0})));
-    g_ikTargetList.emplace("LeftFoot", IkTarget(5925, makeTensor3d({0.0, 0.2, 0.0})));
-    g_ikTargetList.emplace("RightFoot", IkTarget(12812, makeTensor3d({0.0, -0.2, 0.0})));
+    g_ikTargetList.emplace("LeftHand",
+                           IkTarget(2581, smplpp::toTorchTensor<float>(Eigen::Vector3f(0.5, 0.5, 1.0), true),
+                                    smplpp::toTorchTensor<float>(-1 * Eigen::Vector3f::UnitZ(), true)));
+    g_ikTargetList.emplace("RightHand",
+                           IkTarget(9469, smplpp::toTorchTensor<float>(Eigen::Vector3f(0.5, -0.5, 1.0), true),
+                                    smplpp::toTorchTensor<float>(-1 * Eigen::Vector3f::UnitZ(), true)));
+    g_ikTargetList.emplace("LeftFoot",
+                           IkTarget(5925, smplpp::toTorchTensor<float>(Eigen::Vector3f(0.0, 0.2, 0.0), true),
+                                    smplpp::toTorchTensor<float>(Eigen::Vector3f::UnitZ(), true)));
+    g_ikTargetList.emplace("RightFoot",
+                           IkTarget(12812, smplpp::toTorchTensor<float>(Eigen::Vector3f(0.0, -0.2, 0.0), true),
+                                    smplpp::toTorchTensor<float>(Eigen::Vector3f::UnitZ(), true)));
   }
 
   // Set device
@@ -382,8 +406,8 @@ int main(int argc, char * argv[])
       if(g_ikTargetList.size() > 0)
       {
         int64_t configDim = (enableVposer ? CONFIG_DIM : 3 * (smplpp::JOINT_NUM + 1));
-        Eigen::VectorXd e(3 * g_ikTargetList.size());
-        Eigen::MatrixXd J(3 * g_ikTargetList.size(), configDim);
+        Eigen::VectorXd e(4 * g_ikTargetList.size());
+        Eigen::MatrixXd J(4 * g_ikTargetList.size(), configDim);
         int64_t rowIdx = 0;
 
         // Set end-effector position task
@@ -391,9 +415,11 @@ int main(int argc, char * argv[])
         for(const auto & ikTarget : g_ikTargetList)
         {
           torch::Tensor posError = ikTarget.second.calculatePosError();
+          torch::Tensor normalError = ikTarget.second.calculateNormalError();
 
           // Set task value
           e.segment<3>(rowIdx) = smplpp::toEigenMatrix(posError.to(torch::kCPU)).cast<double>();
+          e.segment<1>(rowIdx + 3) = smplpp::toEigenMatrix(normalError.view({1}).to(torch::kCPU)).cast<double>();
 
           // Set task Jacobian
           for(int32_t i = 0; i < 3; i++)
@@ -402,6 +428,22 @@ int main(int argc, char * argv[])
             torch::Tensor select = torch::zeros({1, 3});
             select.index_put_({0, i}, 1);
             posError.backward(select, true);
+
+            if(enableVposer)
+            {
+              J.row(rowIdx) = smplpp::toEigenMatrix(g_config.grad().view({configDim})).transpose().cast<double>();
+              g_config.mutable_grad().zero_();
+            }
+            else
+            {
+              J.row(rowIdx) = smplpp::toEigenMatrix(g_theta.grad().view({configDim})).transpose().cast<double>();
+              g_theta.mutable_grad().zero_();
+            }
+
+            rowIdx++;
+          }
+          {
+            normalError.backward({}, true);
 
             if(enableVposer)
             {
