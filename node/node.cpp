@@ -281,6 +281,7 @@ int main(int argc, char * argv[])
   {
     // Update SMPL model and solve IK
     {
+      std::vector<std::pair<std::string, double>> durationList;
       auto startTime = std::chrono::system_clock::now();
 
       // Setup gradient
@@ -309,6 +310,7 @@ int main(int argc, char * argv[])
       }
 
       // Forward SMPL model
+      auto startTimeForward = std::chrono::system_clock::now();
       torch::Tensor theta;
       if(enableVposer)
       {
@@ -326,6 +328,10 @@ int main(int argc, char * argv[])
         theta = g_theta;
       }
       SINGLE_SMPL::get()->launch(g_beta.view({1, -1}), theta.view({1, theta.size(0), theta.size(1)}));
+      durationList.emplace_back("forward SMPL", std::chrono::duration_cast<std::chrono::duration<double>>(
+                                                    std::chrono::system_clock::now() - startTimeForward)
+                                                        .count()
+                                                    * 1e3);
 
       // Solve IK
       if(g_ikTargetList.size() > 0)
@@ -335,7 +341,8 @@ int main(int argc, char * argv[])
         Eigen::MatrixXd J(3 * g_ikTargetList.size(), configDim);
         int64_t rowIdx = 0;
 
-        // Add end-effector position error
+        // Set end-effector position task
+        auto startTimeSetupIk = std::chrono::system_clock::now();
         for(const auto & ikTarget : g_ikTargetList)
         {
           torch::Tensor actualPos = SINGLE_SMPL::get()->getVertexRaw(ikTarget.second.vertexIdx).to(torch::kCPU);
@@ -366,8 +373,13 @@ int main(int argc, char * argv[])
             rowIdx++;
           }
         }
+        durationList.emplace_back("setup IK matrices", std::chrono::duration_cast<std::chrono::duration<double>>(
+                                                           std::chrono::system_clock::now() - startTimeSetupIk)
+                                                               .count()
+                                                           * 1e3);
 
         // Solve linear equation for IK
+        auto startTimeSolveIk = std::chrono::system_clock::now();
         Eigen::MatrixXd linearEqA = J.transpose() * J;
         Eigen::VectorXd linearEqB = J.transpose() * e;
         {
@@ -390,6 +402,10 @@ int main(int argc, char * argv[])
           throw smplpp::smpl_error("node", "LLT has numerical issue!");
         }
         Eigen::VectorXd deltaConfig = -1 * linearEqLlt.solve(linearEqB);
+        durationList.emplace_back("solve IK", std::chrono::duration_cast<std::chrono::duration<double>>(
+                                                  std::chrono::system_clock::now() - startTimeSolveIk)
+                                                      .count()
+                                                  * 1e3);
 
         // Update config
         if(enableVposer)
@@ -410,6 +426,13 @@ int main(int argc, char * argv[])
                                                                       .count()
                                                                   * 1e3
                                                            << " [ms]");
+      std::string durationListStr;
+      for(const auto & durationKV : durationList)
+      {
+        durationListStr += "  - Duration to " + durationKV.first + ": " + std::to_string(durationKV.second) + " [ms]\n";
+      }
+      durationListStr.pop_back();
+      ROS_INFO_STREAM_THROTTLE(10.0, durationListStr);
     }
 
     // Publish SMPL model
