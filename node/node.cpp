@@ -64,11 +64,11 @@
 class IkTarget
 {
 public:
-  IkTarget(int64_t _faceIdx, torch::Tensor _targetPos) : faceIdx(_faceIdx), targetPos(_targetPos) {}
+  IkTarget(int64_t faceIdx, torch::Tensor targetPos) : faceIdx_(faceIdx), targetPos_(targetPos) {}
 
-  torch::Tensor getActualPos() const
+  torch::Tensor calculateActualPos() const
   {
-    torch::Tensor faceIdxTensor = SINGLE_SMPL::get()->getFaceIndexRaw(faceIdx).to(torch::kCPU);
+    torch::Tensor faceIdxTensor = SINGLE_SMPL::get()->getFaceIndexRaw(faceIdx_).to(torch::kCPU);
     torch::Tensor actualPos;
     for(int32_t i = 0; i < 3; i++)
     {
@@ -87,10 +87,15 @@ public:
     return actualPos;
   }
 
-public:
-  int64_t faceIdx;
+  torch::Tensor calculatePosError() const
+  {
+    return calculateActualPos() - targetPos_;
+  }
 
-  torch::Tensor targetPos;
+public:
+  int64_t faceIdx_;
+
+  torch::Tensor targetPos_;
 };
 
 constexpr int64_t CONFIG_DIM = smplpp::LATENT_DIM + 12;
@@ -149,9 +154,9 @@ void shapeParamCallback(const std_msgs::Float64MultiArray::ConstPtr & msg)
 
 void ikTargetPoseCallback(const geometry_msgs::TransformStamped::ConstPtr & msg)
 {
-  g_ikTargetList.at(msg->child_frame_id).targetPos.index_put_({0}, msg->transform.translation.x);
-  g_ikTargetList.at(msg->child_frame_id).targetPos.index_put_({1}, msg->transform.translation.y);
-  g_ikTargetList.at(msg->child_frame_id).targetPos.index_put_({2}, msg->transform.translation.z);
+  g_ikTargetList.at(msg->child_frame_id).targetPos_.index_put_({0}, msg->transform.translation.x);
+  g_ikTargetList.at(msg->child_frame_id).targetPos_.index_put_({1}, msg->transform.translation.y);
+  g_ikTargetList.at(msg->child_frame_id).targetPos_.index_put_({2}, msg->transform.translation.z);
 }
 
 void clickedPointCallback(const geometry_msgs::PointStamped::ConstPtr & msg)
@@ -385,8 +390,7 @@ int main(int argc, char * argv[])
         auto startTimeSetupIk = std::chrono::system_clock::now();
         for(const auto & ikTarget : g_ikTargetList)
         {
-          torch::Tensor actualPos = ikTarget.second.getActualPos();
-          torch::Tensor posError = actualPos - ikTarget.second.targetPos;
+          torch::Tensor posError = ikTarget.second.calculatePosError();
 
           // Set task value
           e.segment<3>(rowIdx) = smplpp::toEigenMatrix(posError.to(torch::kCPU)).cast<double>();
@@ -565,13 +569,13 @@ int main(int argc, char * argv[])
         geometry_msgs::Pose targetPoseMsg;
         geometry_msgs::Pose actualPoseMsg;
 
-        targetPoseMsg.position.x = ikTarget.second.targetPos.index({0}).item<float>();
-        targetPoseMsg.position.y = ikTarget.second.targetPos.index({1}).item<float>();
-        targetPoseMsg.position.z = ikTarget.second.targetPos.index({2}).item<float>();
+        targetPoseMsg.position.x = ikTarget.second.targetPos_.index({0}).item<float>();
+        targetPoseMsg.position.y = ikTarget.second.targetPos_.index({1}).item<float>();
+        targetPoseMsg.position.z = ikTarget.second.targetPos_.index({2}).item<float>();
         targetPoseMsg.orientation.w = 1.0;
         targetPoseArrMsg.poses.push_back(targetPoseMsg);
 
-        torch::Tensor actualPos = ikTarget.second.getActualPos();
+        torch::Tensor actualPos = ikTarget.second.calculateActualPos();
         actualPoseMsg.position.x = actualPos.index({0}).item<float>();
         actualPoseMsg.position.y = actualPos.index({1}).item<float>();
         actualPoseMsg.position.z = actualPos.index({2}).item<float>();
