@@ -138,9 +138,9 @@ void clickedPointCallback(const geometry_msgs::PointStamped::ConstPtr & msg)
 
   torch::Tensor vertexTensor = SINGLE_SMPL::get()->getVertex().index({0}).to(torch::kCPU);
   Eigen::MatrixX3d vertexMat = smplpp::toEigenMatrix(vertexTensor).cast<double>();
-  torch::Tensor faceIndexTensor = SINGLE_SMPL::get()->getFaceIndex().to(torch::kCPU);
-  Eigen::MatrixX3i faceIndexMat = smplpp::toEigenMatrix<int>(faceIndexTensor);
-  faceIndexMat.array() -= 1;
+  torch::Tensor faceIdxTensor = SINGLE_SMPL::get()->getFaceIndex().to(torch::kCPU);
+  Eigen::MatrixX3i faceIdxMat = smplpp::toEigenMatrix<int>(faceIdxTensor);
+  faceIdxMat.array() -= 1;
 
   Eigen::Index vertexIdx;
   (vertexMat.rowwise() - clickedPos.transpose()).rowwise().squaredNorm().minCoeff(&vertexIdx);
@@ -461,9 +461,9 @@ int main(int argc, char * argv[])
 
       torch::Tensor vertexTensor = SINGLE_SMPL::get()->getVertex().index({0}).to(torch::kCPU);
       Eigen::MatrixX3d vertexMat = smplpp::toEigenMatrix(vertexTensor).cast<double>();
-      torch::Tensor faceIndexTensor = SINGLE_SMPL::get()->getFaceIndex().to(torch::kCPU);
-      Eigen::MatrixX3i faceIndexMat = smplpp::toEigenMatrix<int>(faceIndexTensor);
-      faceIndexMat.array() -= 1;
+      torch::Tensor faceIdxTensor = SINGLE_SMPL::get()->getFaceIndex().to(torch::kCPU);
+      Eigen::MatrixX3i faceIdxMat = smplpp::toEigenMatrix<int>(faceIdxTensor);
+      faceIdxMat.array() -= 1;
 
       double zMin = 0.0;
       double zMax = 0.0;
@@ -487,7 +487,7 @@ int main(int argc, char * argv[])
       {
         for(int64_t j = 0; j < 3; j++)
         {
-          int64_t idx = faceIndexMat(i, j);
+          int64_t idx = faceIdxMat(i, j);
           geometry_msgs::Point pointMsg;
           pointMsg.x = vertexMat(idx, 0);
           pointMsg.y = vertexMat(idx, 1);
@@ -552,15 +552,15 @@ int main(int argc, char * argv[])
 
       torch::Tensor vertexTensor = SINGLE_SMPL::get()->getVertex().index({0}).to(torch::kCPU);
       Eigen::MatrixXd vertexMat = smplpp::toEigenMatrix(vertexTensor).cast<double>();
-      torch::Tensor faceIndexTensor = SINGLE_SMPL::get()->getFaceIndex().to(torch::kCPU);
-      Eigen::MatrixXi faceIndexMat = smplpp::toEigenMatrix<int>(faceIndexTensor);
-      faceIndexMat.array() -= 1;
+      torch::Tensor faceIdxTensor = SINGLE_SMPL::get()->getFaceIndex().to(torch::kCPU);
+      Eigen::MatrixXi faceIdxMat = smplpp::toEigenMatrix<int>(faceIdxTensor);
+      faceIdxMat.array() -= 1;
 
       Eigen::MatrixXd targetPoint = Eigen::MatrixXd::Zero(1, 3);
       Eigen::VectorXd squaredDists;
       Eigen::VectorXi closestFaceIndices;
       Eigen::MatrixX3d closestPoints;
-      igl::point_mesh_squared_distance(targetPoint, vertexMat, faceIndexMat, squaredDists, closestFaceIndices,
+      igl::point_mesh_squared_distance(targetPoint, vertexMat, faceIdxMat, squaredDists, closestFaceIndices,
                                        closestPoints);
 
       ROS_INFO_STREAM_THROTTLE(10.0, "Duration to calculate closest point: "
