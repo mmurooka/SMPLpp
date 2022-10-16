@@ -506,8 +506,8 @@ int main(int argc, char * argv[])
       double zMax = 0.0;
       if(enableVertexColor)
       {
-        zMin = torch::min(vertexTensor.index({at::indexing::Slice(), 2})).item<float>();
-        zMax = torch::max(vertexTensor.index({at::indexing::Slice(), 2})).item<float>();
+        zMin = vertexMat.col(2).minCoeff();
+        zMax = vertexMat.col(2).maxCoeff();
       }
       auto makeColorMsg = [zMin, zMax](double z) -> std_msgs::ColorRGBA {
         std_msgs::ColorRGBA colorMsg;
