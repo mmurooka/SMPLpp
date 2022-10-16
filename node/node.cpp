@@ -142,9 +142,24 @@ void clickedPointCallback(const geometry_msgs::PointStamped::ConstPtr & msg)
   Eigen::MatrixX3i faceIdxMat = smplpp::toEigenMatrix<int>(faceIdxTensor);
   faceIdxMat.array() -= 1;
 
+  Eigen::MatrixX3d facePosMat = Eigen::MatrixX3d::Zero(faceIdxMat.rows(), 3);
+  for(int64_t faceIdx = 0; faceIdx < faceIdxMat.rows(); faceIdx++)
+  {
+    for(int64_t i = 0; i < 3; i++)
+    {
+      int64_t vertexIdx = faceIdxMat(faceIdx, i);
+      facePosMat.row(faceIdx) += vertexMat.row(vertexIdx);
+    }
+  }
+  facePosMat /= 3.0;
+
   Eigen::Index vertexIdx;
   (vertexMat.rowwise() - clickedPos.transpose()).rowwise().squaredNorm().minCoeff(&vertexIdx);
   ROS_INFO_STREAM("Vertex idx closest to clicked point: " << vertexIdx);
+
+  Eigen::Index faceIdx;
+  (facePosMat.rowwise() - clickedPos.transpose()).rowwise().squaredNorm().minCoeff(&faceIdx);
+  ROS_INFO_STREAM("Face idx closest to clicked point: " << faceIdx);
 }
 
 int main(int argc, char * argv[])
