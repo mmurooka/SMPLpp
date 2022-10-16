@@ -160,6 +160,9 @@ namespace smplpp
  *      - getFaceIndex: <public>
  *          Get vertex indices of each face.
  *
+ *      - getFaceIndexRaw: <public>
+ *          Get raw tensor of vertex indices of each face.
+ *
  *      - getRestJoint: <public>
  *          Get joint locations of the deformed shape in rest pose.
  *
@@ -167,7 +170,7 @@ namespace smplpp
  *          Get vertex locations of the deformed mesh.
  *
  *      - getVertexRaw: <public>
- *          Get tensor of vertex locations of the deformed mesh.
+ *          Get raw tensor of vertex locations of the deformed mesh.
  *      %%
  *
  *      %
@@ -232,6 +235,7 @@ public: // PUBLIC METHODS
 
   torch::Tensor getRestShape() noexcept(false);
   torch::Tensor getFaceIndex() noexcept(false);
+  torch::Tensor getFaceIndexRaw(int64_t idx) noexcept(false);
   torch::Tensor getRestJoint() noexcept(false);
   torch::Tensor getVertex() noexcept(false);
   torch::Tensor getVertexRaw(int64_t idx) noexcept(false);

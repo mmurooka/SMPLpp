@@ -61,13 +61,36 @@
 
 //===== MAIN FUNCTION =========================================================
 
-struct IkTarget
+class IkTarget
 {
-  int64_t vertexIdx = -1;
+public:
+  IkTarget(int64_t _faceIdx, torch::Tensor _targetPos) : faceIdx(_faceIdx), targetPos(_targetPos) {}
 
-  torch::Tensor targetPos = torch::zeros({3});
+  torch::Tensor getActualPos() const
+  {
+    torch::Tensor faceIdxTensor = SINGLE_SMPL::get()->getFaceIndexRaw(faceIdx).to(torch::kCPU);
+    torch::Tensor actualPos;
+    for(int32_t i = 0; i < 3; i++)
+    {
+      int32_t vertexIdx = faceIdxTensor.index({i}).item<int32_t>();
+      torch::Tensor vertexTensor = SINGLE_SMPL::get()->getVertexRaw(vertexIdx);
+      if(i == 0)
+      {
+        actualPos = vertexTensor;
+      }
+      else
+      {
+        actualPos += vertexTensor;
+      }
+    }
+    actualPos /= 3.0;
+    return actualPos;
+  }
 
-  IkTarget(int64_t _vertexIdx, torch::Tensor _targetPos) : vertexIdx(_vertexIdx), targetPos(_targetPos) {}
+public:
+  int64_t faceIdx;
+
+  torch::Tensor targetPos;
 };
 
 constexpr int64_t CONFIG_DIM = smplpp::LATENT_DIM + 12;
@@ -218,10 +241,10 @@ int main(int argc, char * argv[])
       }
       return tensor;
     };
-    g_ikTargetList.emplace("LeftHand", IkTarget(2006, makeTensor3d({0.5, 0.5, 1.0})));
-    g_ikTargetList.emplace("RightHand", IkTarget(5508, makeTensor3d({0.5, -0.5, 1.0})));
-    g_ikTargetList.emplace("LeftFoot", IkTarget(3438, makeTensor3d({0.0, 0.2, 0.0})));
-    g_ikTargetList.emplace("RightFoot", IkTarget(6838, makeTensor3d({0.0, -0.2, 0.0})));
+    g_ikTargetList.emplace("LeftHand", IkTarget(2581, makeTensor3d({0.5, 0.5, 1.0})));
+    g_ikTargetList.emplace("RightHand", IkTarget(9472, makeTensor3d({0.5, -0.5, 1.0})));
+    g_ikTargetList.emplace("LeftFoot", IkTarget(5925, makeTensor3d({0.0, 0.2, 0.0})));
+    g_ikTargetList.emplace("RightFoot", IkTarget(12812, makeTensor3d({0.0, -0.2, 0.0})));
   }
 
   // Set device
@@ -362,11 +385,11 @@ int main(int argc, char * argv[])
         auto startTimeSetupIk = std::chrono::system_clock::now();
         for(const auto & ikTarget : g_ikTargetList)
         {
-          torch::Tensor actualPos = SINGLE_SMPL::get()->getVertexRaw(ikTarget.second.vertexIdx).to(torch::kCPU);
+          torch::Tensor actualPos = ikTarget.second.getActualPos();
           torch::Tensor posError = actualPos - ikTarget.second.targetPos;
 
           // Set task value
-          e.segment<3>(rowIdx) = smplpp::toEigenMatrix(posError).cast<double>();
+          e.segment<3>(rowIdx) = smplpp::toEigenMatrix(posError.to(torch::kCPU)).cast<double>();
 
           // Set task Jacobian
           for(int32_t i = 0; i < 3; i++)
@@ -374,7 +397,7 @@ int main(int argc, char * argv[])
             // Calculate backward of each element
             torch::Tensor select = torch::zeros({1, 3});
             select.index_put_({0, i}, 1);
-            actualPos.backward(select, true);
+            posError.backward(select, true);
 
             if(enableVposer)
             {
@@ -548,7 +571,7 @@ int main(int argc, char * argv[])
         targetPoseMsg.orientation.w = 1.0;
         targetPoseArrMsg.poses.push_back(targetPoseMsg);
 
-        torch::Tensor actualPos = SINGLE_SMPL::get()->getVertexRaw(ikTarget.second.vertexIdx).to(torch::kCPU);
+        torch::Tensor actualPos = ikTarget.second.getActualPos();
         actualPoseMsg.position.x = actualPos.index({0}).item<float>();
         actualPoseMsg.position.y = actualPos.index({1}).item<float>();
         actualPoseMsg.position.z = actualPos.index({2}).item<float>();

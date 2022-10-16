@@ -427,6 +427,11 @@ torch::Tensor SMPL::getFaceIndex() noexcept(false)
   return faceIndices;
 }
 
+torch::Tensor SMPL::getFaceIndexRaw(int64_t idx) noexcept(false)
+{
+  return m__faceIndices.index({idx});
+}
+
 /**getRestJoint
  *
  * Brief
