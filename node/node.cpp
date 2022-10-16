@@ -61,6 +61,23 @@
 
 //===== MAIN FUNCTION =========================================================
 
+Eigen::Matrix3d calcRotMatFromNormal(const Eigen::Vector3d & normal)
+{
+  Eigen::Vector3d tangentAxis1;
+  if(std::abs(normal.dot(Eigen::Vector3d::UnitX())) < 1.0 - 1e-3)
+  {
+    tangentAxis1 = Eigen::Vector3d::UnitX().cross(normal).normalized();
+  }
+  else
+  {
+    tangentAxis1 = Eigen::Vector3d::UnitY().cross(normal).normalized();
+  }
+  Eigen::Vector3d tangentAxis2 = normal.cross(tangentAxis1).normalized();
+  Eigen::Matrix3d rotMat;
+  rotMat << tangentAxis1, tangentAxis2, normal;
+  return rotMat;
+}
+
 class IkTarget
 {
 public:
@@ -69,7 +86,7 @@ public:
   {
   }
 
-  torch::Tensor calculateActualPos() const
+  torch::Tensor calcActualPos() const
   {
     torch::Tensor faceIdxTensor = SINGLE_SMPL::get()->getFaceIndexRaw(faceIdx_).to(torch::kCPU);
     torch::Tensor actualPos;
@@ -90,7 +107,7 @@ public:
     return actualPos;
   }
 
-  torch::Tensor calculateActualNormal() const
+  torch::Tensor calcActualNormal() const
   {
     torch::Tensor faceIdxTensor = SINGLE_SMPL::get()->getFaceIndexRaw(faceIdx_).to(torch::kCPU);
     std::vector<torch::Tensor> vertexTensors;
@@ -104,14 +121,14 @@ public:
         torch::nn::functional::NormalizeFuncOptions().dim(-1));
   }
 
-  torch::Tensor calculatePosError() const
+  torch::Tensor calcPosError() const
   {
-    return calculateActualPos() - targetPos_;
+    return calcActualPos() - targetPos_;
   }
 
-  torch::Tensor calculateNormalError() const
+  torch::Tensor calcNormalError() const
   {
-    return at::dot(calculateActualNormal(), targetNormal_) + 1.0;
+    return at::dot(calcActualNormal(), targetNormal_) + 1.0;
   }
 
 public:
@@ -402,8 +419,8 @@ int main(int argc, char * argv[])
         auto startTimeSetupIk = std::chrono::system_clock::now();
         for(const auto & ikTarget : g_ikTargetList)
         {
-          torch::Tensor posError = ikTarget.second.calculatePosError();
-          torch::Tensor normalError = ikTarget.second.calculateNormalError();
+          torch::Tensor posError = ikTarget.second.calcPosError();
+          torch::Tensor normalError = ikTarget.second.calcNormalError();
 
           // Set task value
           e.segment<3>(rowIdx) = smplpp::toEigenMatrix(posError.to(torch::kCPU)).cast<double>();
@@ -575,17 +592,27 @@ int main(int argc, char * argv[])
         geometry_msgs::Pose targetPoseMsg;
         geometry_msgs::Pose actualPoseMsg;
 
+        Eigen::Quaterniond targetQuat(
+            calcRotMatFromNormal(smplpp::toEigenMatrix(ikTarget.second.targetNormal_).cast<double>()));
         targetPoseMsg.position.x = ikTarget.second.targetPos_.index({0}).item<float>();
         targetPoseMsg.position.y = ikTarget.second.targetPos_.index({1}).item<float>();
         targetPoseMsg.position.z = ikTarget.second.targetPos_.index({2}).item<float>();
-        targetPoseMsg.orientation.w = 1.0;
+        targetPoseMsg.orientation.w = targetQuat.w();
+        targetPoseMsg.orientation.x = targetQuat.x();
+        targetPoseMsg.orientation.y = targetQuat.y();
+        targetPoseMsg.orientation.z = targetQuat.z();
         targetPoseArrMsg.poses.push_back(targetPoseMsg);
 
-        torch::Tensor actualPos = ikTarget.second.calculateActualPos();
+        torch::Tensor actualPos = ikTarget.second.calcActualPos().to(torch::kCPU);
+        torch::Tensor actualNormal = ikTarget.second.calcActualNormal().to(torch::kCPU);
+        Eigen::Quaterniond actualQuat(calcRotMatFromNormal(smplpp::toEigenMatrix(actualNormal).cast<double>()));
         actualPoseMsg.position.x = actualPos.index({0}).item<float>();
         actualPoseMsg.position.y = actualPos.index({1}).item<float>();
         actualPoseMsg.position.z = actualPos.index({2}).item<float>();
-        actualPoseMsg.orientation.w = 1.0;
+        actualPoseMsg.orientation.w = actualQuat.w();
+        actualPoseMsg.orientation.x = actualQuat.x();
+        actualPoseMsg.orientation.y = actualQuat.y();
+        actualPoseMsg.orientation.z = actualQuat.z();
         actualPoseArrMsg.poses.push_back(actualPoseMsg);
       }
 
