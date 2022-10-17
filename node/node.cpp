@@ -54,6 +54,8 @@
 //----------
 #include <igl/point_mesh_squared_distance.h>
 //----------
+#include <qp_solver_collection/QpSolverCollection.h>
+//----------
 
 //===== FORWARD DECLARATIONS ==================================================
 
@@ -273,6 +275,8 @@ int main(int argc, char * argv[])
   pnh.getParam("enable_vposer", enableVposer);
   bool enableIk = false;
   pnh.getParam("enable_ik", enableIk);
+  bool enableQp = false;
+  pnh.getParam("enable_qp", enableQp);
   bool enableVertexColor = false;
   pnh.getParam("enable_vertex_color", enableVertexColor);
 
@@ -502,8 +506,14 @@ int main(int argc, char * argv[])
                                                                .count()
                                                            * 1e3);
 
-        // Solve linear equation for IK
-        auto startTimeSolveIk = std::chrono::system_clock::now();
+        // \todo Temporarily disable normal task
+        for(int64_t i = 0; i < g_ikTargetList.size(); i++)
+        {
+          e(4 * i + 3) = 0.0;
+          J.row(4 * i + 3).setZero();
+        }
+
+        // Add regularization term
         Eigen::MatrixXd linearEqA = J.transpose() * J;
         Eigen::VectorXd linearEqB = J.transpose() * e;
         {
@@ -523,12 +533,30 @@ int main(int argc, char * argv[])
           linearEqB.head(thetaDim) +=
               nominalPoseRegWeightVec.cwiseProduct(smplpp::toEigenMatrix(g_theta.view({thetaDim})).cast<double>());
         }
-        Eigen::LLT<Eigen::MatrixXd> linearEqLlt(linearEqA);
-        if(linearEqLlt.info() == Eigen::NumericalIssue)
+
+        // Solve linear equation for IK
+        auto startTimeSolveIk = std::chrono::system_clock::now();
+        Eigen::VectorXd deltaConfig;
+        if(enableQp)
         {
-          throw smplpp::smpl_error("node", "LLT has numerical issue!");
+          auto qpSolver = QpSolverCollection::allocateQpSolver(QpSolverCollection::QpSolverType::QLD);
+          QpSolverCollection::QpCoeff qpCoeff;
+          qpCoeff.setup(thetaDim + phiDim, 0, 0);
+          qpCoeff.obj_mat_ = linearEqA;
+          qpCoeff.obj_vec_ = linearEqB;
+          qpCoeff.x_min_.tail(phiDim).setConstant(-0.05);
+          qpCoeff.x_max_.tail(phiDim).setConstant(0.05);
+          deltaConfig = qpSolver->solve(qpCoeff);
         }
-        Eigen::VectorXd deltaConfig = -1 * linearEqLlt.solve(linearEqB);
+        else
+        {
+          Eigen::LLT<Eigen::MatrixXd> linearEqLlt(linearEqA);
+          if(linearEqLlt.info() == Eigen::NumericalIssue)
+          {
+            throw smplpp::smpl_error("node", "LLT has numerical issue!");
+          }
+          deltaConfig = -1 * linearEqLlt.solve(linearEqB);
+        }
         durationList.emplace_back("solve IK", std::chrono::duration_cast<std::chrono::duration<double>>(
                                                   std::chrono::system_clock::now() - startTimeSolveIk)
                                                       .count()
@@ -544,9 +572,8 @@ int main(int argc, char * argv[])
         {
           auto & ikTarget = ikTargetKV.second;
 
-          ikTarget.phi_ +=
+          ikTarget.phi_ =
               smplpp::toTorchTensor<float>(deltaConfig.segment<2>(thetaDim + 2 * ikTargetIdx).cast<float>(), true);
-          ikTarget.phi_ = at::clamp(ikTarget.phi_, -0.05, 0.05); // \todo Impose limits with QP
 
           actualPosList.row(ikTargetIdx) =
               smplpp::toEigenMatrix(ikTarget.calcActualPos().to(torch::kCPU)).cast<double>().transpose();

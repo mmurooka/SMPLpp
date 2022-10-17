@@ -15,6 +15,7 @@ find_package(catkin REQUIRED COMPONENTS
   std_msgs
   geometry_msgs
   visualization_msgs
+  qp_solver_collection
 )
 
 # Eigen
@@ -53,6 +54,7 @@ catkin_package(
   std_msgs
   geometry_msgs
   visualization_msgs
+  qp_solver_collection
 )
 
 add_subdirectory(src)
