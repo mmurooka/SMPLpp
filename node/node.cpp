@@ -537,6 +537,8 @@ int main(int argc, char * argv[])
         // Update config
         g_theta.set_requires_grad(false);
         g_theta += smplpp::toTorchTensor<float>(deltaConfig.head(thetaDim).cast<float>(), true).view_as(g_theta);
+
+        Eigen::MatrixXd actualPosList(g_ikTargetList.size(), 3);
         ikTargetIdx = 0;
         for(auto & ikTargetKV : g_ikTargetList)
         {
@@ -544,11 +546,37 @@ int main(int argc, char * argv[])
 
           ikTarget.phi_ +=
               smplpp::toTorchTensor<float>(deltaConfig.segment<2>(thetaDim + 2 * ikTargetIdx).cast<float>(), true);
-          ikTarget.phi_ = at::clamp(ikTarget.phi_, -0.1, 0.1); // \todo Impose limits with QP
+          ikTarget.phi_ = at::clamp(ikTarget.phi_, -0.05, 0.05); // \todo Impose limits with QP
 
-          torch::Tensor actualPos = ikTarget.calcActualPos().to(torch::kCPU);
+          actualPosList.row(ikTargetIdx) =
+              smplpp::toEigenMatrix(ikTarget.calcActualPos().to(torch::kCPU)).cast<double>().transpose();
 
-          // ikTarget.phi_.zero_();
+          ikTargetIdx++;
+        }
+
+        // Project point onto mesh
+        Eigen::VectorXi closestFaceIndices;
+        {
+          torch::Tensor vertexTensor = SINGLE_SMPL::get()->getVertex().index({0}).to(torch::kCPU);
+          Eigen::MatrixXd vertexMat = smplpp::toEigenMatrix(vertexTensor).cast<double>();
+          torch::Tensor faceIdxTensor = SINGLE_SMPL::get()->getFaceIndex().to(torch::kCPU);
+          Eigen::MatrixXi faceIdxMat = smplpp::toEigenMatrix<int>(faceIdxTensor);
+          faceIdxMat.array() -= 1;
+
+          Eigen::VectorXd squaredDists;
+          Eigen::MatrixX3d closestPoints;
+          igl::point_mesh_squared_distance(actualPosList, vertexMat, faceIdxMat, squaredDists, closestFaceIndices,
+                                           closestPoints);
+        }
+
+        // Update IK target
+        ikTargetIdx = 0;
+        for(auto & ikTargetKV : g_ikTargetList)
+        {
+          auto & ikTarget = ikTargetKV.second;
+
+          ikTarget.faceIdx_ = closestFaceIndices(ikTargetIdx);
+          ikTarget.phi_.zero_();
 
           ikTargetIdx++;
         }
