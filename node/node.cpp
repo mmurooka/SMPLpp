@@ -289,10 +289,10 @@ int main(int argc, char * argv[])
 
     g_ikTargetList.emplace("LeftHand",
                            IkTarget(2581, smplpp::toTorchTensor<float>(Eigen::Vector3f(0.5, 0.5, 1.0), true),
-                                    smplpp::toTorchTensor<float>(-1 * Eigen::Vector3f::UnitZ(), true)));
+                                    smplpp::toTorchTensor<float>(Eigen::Vector3f::UnitZ(), true)));
     g_ikTargetList.emplace("RightHand",
                            IkTarget(9469, smplpp::toTorchTensor<float>(Eigen::Vector3f(0.5, -0.5, 1.0), true),
-                                    smplpp::toTorchTensor<float>(-1 * Eigen::Vector3f::UnitZ(), true)));
+                                    smplpp::toTorchTensor<float>(Eigen::Vector3f::UnitZ(), true)));
     g_ikTargetList.emplace("LeftFoot",
                            IkTarget(5925, smplpp::toTorchTensor<float>(Eigen::Vector3f(0.0, 0.2, 0.0), true),
                                     smplpp::toTorchTensor<float>(Eigen::Vector3f::UnitZ(), true)));

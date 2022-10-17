@@ -88,6 +88,33 @@ class IkTargetManager(object):
         ori.x, ori.y, ori.z, ori.w = transformations.quaternion_from_euler(0, -np.pi/2, 0)
         int_marker.controls.append(control)
 
+        # rotate_x control
+        control = InteractiveMarkerControl()
+        control.name = "rotate_x"
+        control.interaction_mode = InteractiveMarkerControl.ROTATE_AXIS
+        control.orientation_mode = InteractiveMarkerControl.FIXED
+        ori = control.orientation
+        ori.x, ori.y, ori.z, ori.w = transformations.quaternion_from_euler(0, 0, 0)
+        int_marker.controls.append(control)
+
+        # rotate_y control
+        control = InteractiveMarkerControl()
+        control.name = "rotate_y"
+        control.interaction_mode = InteractiveMarkerControl.ROTATE_AXIS
+        control.orientation_mode = InteractiveMarkerControl.FIXED
+        ori = control.orientation
+        ori.x, ori.y, ori.z, ori.w = transformations.quaternion_from_euler(0, 0, np.pi/2)
+        int_marker.controls.append(control)
+
+        # rotate_z control
+        control = InteractiveMarkerControl()
+        control.name = "rotate_z"
+        control.interaction_mode = InteractiveMarkerControl.ROTATE_AXIS
+        control.orientation_mode = InteractiveMarkerControl.FIXED
+        ori = control.orientation
+        ori.x, ori.y, ori.z, ori.w = transformations.quaternion_from_euler(0, -np.pi/2, 0)
+        int_marker.controls.append(control)
+
         return int_marker
 
     def interactivemarkerFeedback(self, feedback):
