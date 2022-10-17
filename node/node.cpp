@@ -689,83 +689,83 @@ int main(int argc, char * argv[])
       actualPoseArrPub.publish(actualPoseArrMsg);
     }
 
-    // Calculate closest point
-    {
-      auto startTime = std::chrono::system_clock::now();
+    // // Calculate closest point
+    // {
+    //   auto startTime = std::chrono::system_clock::now();
 
-      torch::Tensor vertexTensor = SINGLE_SMPL::get()->getVertex().index({0}).to(torch::kCPU);
-      Eigen::MatrixXd vertexMat = smplpp::toEigenMatrix(vertexTensor).cast<double>();
-      torch::Tensor faceIdxTensor = SINGLE_SMPL::get()->getFaceIndex().to(torch::kCPU);
-      Eigen::MatrixXi faceIdxMat = smplpp::toEigenMatrix<int>(faceIdxTensor);
-      faceIdxMat.array() -= 1;
+    //   torch::Tensor vertexTensor = SINGLE_SMPL::get()->getVertex().index({0}).to(torch::kCPU);
+    //   Eigen::MatrixXd vertexMat = smplpp::toEigenMatrix(vertexTensor).cast<double>();
+    //   torch::Tensor faceIdxTensor = SINGLE_SMPL::get()->getFaceIndex().to(torch::kCPU);
+    //   Eigen::MatrixXi faceIdxMat = smplpp::toEigenMatrix<int>(faceIdxTensor);
+    //   faceIdxMat.array() -= 1;
 
-      Eigen::MatrixXd targetPoint = Eigen::MatrixXd::Zero(1, 3);
-      Eigen::VectorXd squaredDists;
-      Eigen::VectorXi closestFaceIndices;
-      Eigen::MatrixX3d closestPoints;
-      igl::point_mesh_squared_distance(targetPoint, vertexMat, faceIdxMat, squaredDists, closestFaceIndices,
-                                       closestPoints);
+    //   Eigen::MatrixXd targetPoint = Eigen::MatrixXd::Zero(1, 3);
+    //   Eigen::VectorXd squaredDists;
+    //   Eigen::VectorXi closestFaceIndices;
+    //   Eigen::MatrixX3d closestPoints;
+    //   igl::point_mesh_squared_distance(targetPoint, vertexMat, faceIdxMat, squaredDists, closestFaceIndices,
+    //                                    closestPoints);
 
-      ROS_INFO_STREAM_THROTTLE(10.0, "Duration to calculate closest point: "
-                                         << std::chrono::duration_cast<std::chrono::duration<double>>(
-                                                std::chrono::system_clock::now() - startTime)
-                                                    .count()
-                                                * 1e3
-                                         << " [ms]");
+    //   ROS_INFO_STREAM_THROTTLE(10.0, "Duration to calculate closest point: "
+    //                                      << std::chrono::duration_cast<std::chrono::duration<double>>(
+    //                                             std::chrono::system_clock::now() - startTime)
+    //                                                 .count()
+    //                                             * 1e3
+    //                                      << " [ms]");
 
-      visualization_msgs::MarkerArray markerArrMsg;
-      auto timeNow = ros::Time::now();
+    //   visualization_msgs::MarkerArray markerArrMsg;
+    //   auto timeNow = ros::Time::now();
 
-      visualization_msgs::Marker sphereMarkerMsg;
-      sphereMarkerMsg.header.stamp = timeNow;
-      sphereMarkerMsg.header.frame_id = "world";
-      sphereMarkerMsg.ns = "Closest point";
-      sphereMarkerMsg.id = 0;
-      sphereMarkerMsg.type = visualization_msgs::Marker::SPHERE_LIST;
-      sphereMarkerMsg.action = visualization_msgs::Marker::ADD;
-      sphereMarkerMsg.pose.orientation.w = 1.0;
-      sphereMarkerMsg.scale.x = 0.05;
-      sphereMarkerMsg.scale.y = 0.05;
-      sphereMarkerMsg.scale.z = 0.05;
-      sphereMarkerMsg.color.r = 0.8;
-      sphereMarkerMsg.color.g = 0.1;
-      sphereMarkerMsg.color.b = 0.1;
-      sphereMarkerMsg.color.a = 1.0;
-      sphereMarkerMsg.points.resize(2);
-      sphereMarkerMsg.points[0].x = 0.0;
-      sphereMarkerMsg.points[0].y = 0.0;
-      sphereMarkerMsg.points[0].z = 0.0;
-      sphereMarkerMsg.points[1].x = closestPoints(0, 0);
-      sphereMarkerMsg.points[1].y = closestPoints(0, 1);
-      sphereMarkerMsg.points[1].z = closestPoints(0, 2);
+    //   visualization_msgs::Marker sphereMarkerMsg;
+    //   sphereMarkerMsg.header.stamp = timeNow;
+    //   sphereMarkerMsg.header.frame_id = "world";
+    //   sphereMarkerMsg.ns = "Closest point";
+    //   sphereMarkerMsg.id = 0;
+    //   sphereMarkerMsg.type = visualization_msgs::Marker::SPHERE_LIST;
+    //   sphereMarkerMsg.action = visualization_msgs::Marker::ADD;
+    //   sphereMarkerMsg.pose.orientation.w = 1.0;
+    //   sphereMarkerMsg.scale.x = 0.05;
+    //   sphereMarkerMsg.scale.y = 0.05;
+    //   sphereMarkerMsg.scale.z = 0.05;
+    //   sphereMarkerMsg.color.r = 0.8;
+    //   sphereMarkerMsg.color.g = 0.1;
+    //   sphereMarkerMsg.color.b = 0.1;
+    //   sphereMarkerMsg.color.a = 1.0;
+    //   sphereMarkerMsg.points.resize(2);
+    //   sphereMarkerMsg.points[0].x = 0.0;
+    //   sphereMarkerMsg.points[0].y = 0.0;
+    //   sphereMarkerMsg.points[0].z = 0.0;
+    //   sphereMarkerMsg.points[1].x = closestPoints(0, 0);
+    //   sphereMarkerMsg.points[1].y = closestPoints(0, 1);
+    //   sphereMarkerMsg.points[1].z = closestPoints(0, 2);
 
-      visualization_msgs::Marker lineMarkerMsg;
-      lineMarkerMsg.header.stamp = timeNow;
-      lineMarkerMsg.header.frame_id = "world";
-      lineMarkerMsg.ns = "Closest point";
-      lineMarkerMsg.id = 1;
-      lineMarkerMsg.type = visualization_msgs::Marker::LINE_LIST;
-      lineMarkerMsg.action = visualization_msgs::Marker::ADD;
-      lineMarkerMsg.pose.orientation.w = 1.0;
-      lineMarkerMsg.scale.x = 0.01;
-      lineMarkerMsg.scale.y = 0.01;
-      lineMarkerMsg.scale.z = 0.01;
-      lineMarkerMsg.color.r = 1.0;
-      lineMarkerMsg.color.g = 0.1;
-      lineMarkerMsg.color.b = 0.1;
-      lineMarkerMsg.color.a = 1.0;
-      lineMarkerMsg.points.resize(2);
-      lineMarkerMsg.points[0].x = 0.0;
-      lineMarkerMsg.points[0].y = 0.0;
-      lineMarkerMsg.points[0].z = 0.0;
-      lineMarkerMsg.points[1].x = closestPoints(0, 0);
-      lineMarkerMsg.points[1].y = closestPoints(0, 1);
-      lineMarkerMsg.points[1].z = closestPoints(0, 2);
+    //   visualization_msgs::Marker lineMarkerMsg;
+    //   lineMarkerMsg.header.stamp = timeNow;
+    //   lineMarkerMsg.header.frame_id = "world";
+    //   lineMarkerMsg.ns = "Closest point";
+    //   lineMarkerMsg.id = 1;
+    //   lineMarkerMsg.type = visualization_msgs::Marker::LINE_LIST;
+    //   lineMarkerMsg.action = visualization_msgs::Marker::ADD;
+    //   lineMarkerMsg.pose.orientation.w = 1.0;
+    //   lineMarkerMsg.scale.x = 0.01;
+    //   lineMarkerMsg.scale.y = 0.01;
+    //   lineMarkerMsg.scale.z = 0.01;
+    //   lineMarkerMsg.color.r = 1.0;
+    //   lineMarkerMsg.color.g = 0.1;
+    //   lineMarkerMsg.color.b = 0.1;
+    //   lineMarkerMsg.color.a = 1.0;
+    //   lineMarkerMsg.points.resize(2);
+    //   lineMarkerMsg.points[0].x = 0.0;
+    //   lineMarkerMsg.points[0].y = 0.0;
+    //   lineMarkerMsg.points[0].z = 0.0;
+    //   lineMarkerMsg.points[1].x = closestPoints(0, 0);
+    //   lineMarkerMsg.points[1].y = closestPoints(0, 1);
+    //   lineMarkerMsg.points[1].z = closestPoints(0, 2);
 
-      markerArrMsg.markers.push_back(sphereMarkerMsg);
-      markerArrMsg.markers.push_back(lineMarkerMsg);
-      closestPointMarkerArrPub.publish(markerArrMsg);
-    }
+    //   markerArrMsg.markers.push_back(sphereMarkerMsg);
+    //   markerArrMsg.markers.push_back(lineMarkerMsg);
+    //   closestPointMarkerArrPub.publish(markerArrMsg);
+    // }
 
     ros::spinOnce();
     rate.sleep();
