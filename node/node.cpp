@@ -88,7 +88,7 @@ public:
 
   torch::Tensor calcActualPos() const
   {
-    torch::Tensor faceIdxTensor = SINGLE_SMPL::get()->getFaceIndexRaw(faceIdx_).clone().to(torch::kCPU);
+    torch::Tensor faceIdxTensor = SINGLE_SMPL::get()->getFaceIndexRaw(faceIdx_).to(torch::kCPU);
     torch::Tensor actualPos;
     for(int32_t i = 0; i < 3; i++)
     {
@@ -109,7 +109,7 @@ public:
 
   torch::Tensor calcActualNormal() const
   {
-    torch::Tensor faceIdxTensor = SINGLE_SMPL::get()->getFaceIndexRaw(faceIdx_).clone().to(torch::kCPU);
+    torch::Tensor faceIdxTensor = SINGLE_SMPL::get()->getFaceIndexRaw(faceIdx_).to(torch::kCPU);
     std::vector<torch::Tensor> vertexTensors;
     for(int32_t i = 0; i < 3; i++)
     {
@@ -408,7 +408,7 @@ int main(int argc, char * argv[])
         theta = torch::empty({smplpp::JOINT_NUM + 1, 3});
         theta.index_put_({0}, g_theta.index({at::indexing::Slice(0, 3)}));
         theta.index_put_({1}, g_theta.index({at::indexing::Slice(3, 6)}));
-        torch::Tensor vposerIn = g_theta.index({at::indexing::Slice(6, smplpp::LATENT_DIM + 6)}).clone().to(*device);
+        torch::Tensor vposerIn = g_theta.index({at::indexing::Slice(6, smplpp::LATENT_DIM + 6)}).to(*device);
         torch::Tensor vposerOut = vposer->forward(vposerIn.view({1, -1})).index({0});
         theta.index_put_({at::indexing::Slice(2, 2 + 21)}, vposerOut);
         theta.index_put_({23}, g_theta.index({at::indexing::Slice(smplpp::LATENT_DIM + 6, smplpp::LATENT_DIM + 9)}));
@@ -438,8 +438,8 @@ int main(int argc, char * argv[])
         {
           const auto & ikTarget = ikTargetKV.second;
 
-          torch::Tensor posError = ikTarget.calcPosError().clone().to(torch::kCPU);
-          torch::Tensor normalError = ikTarget.calcNormalError().clone().to(torch::kCPU);
+          torch::Tensor posError = ikTarget.calcPosError().to(torch::kCPU);
+          torch::Tensor normalError = ikTarget.calcNormalError().to(torch::kCPU);
 
           // Set task value
           e.segment<3>(rowIdx) = smplpp::toEigenMatrix(posError).cast<double>();
@@ -453,9 +453,8 @@ int main(int argc, char * argv[])
             select.index_put_({0, i}, 1);
             posError.backward(select, true);
 
-            J.row(rowIdx) = smplpp::toEigenMatrix(g_theta.grad().view({configDim}).clone().to(torch::kCPU))
-                                .transpose()
-                                .cast<double>();
+            J.row(rowIdx) =
+                smplpp::toEigenMatrix(g_theta.grad().view({configDim}).to(torch::kCPU)).transpose().cast<double>();
             g_theta.mutable_grad().zero_();
 
             rowIdx++;
@@ -463,9 +462,8 @@ int main(int argc, char * argv[])
           {
             normalError.backward({}, true);
 
-            J.row(rowIdx) = smplpp::toEigenMatrix(g_theta.grad().view({configDim}).clone().to(torch::kCPU))
-                                .transpose()
-                                .cast<double>();
+            J.row(rowIdx) =
+                smplpp::toEigenMatrix(g_theta.grad().view({configDim}).to(torch::kCPU)).transpose().cast<double>();
             g_theta.mutable_grad().zero_();
 
             rowIdx++;
@@ -618,7 +616,7 @@ int main(int argc, char * argv[])
         geometry_msgs::Pose actualPoseMsg;
 
         Eigen::Quaterniond targetQuat(
-            calcRotMatFromNormal(smplpp::toEigenMatrix(ikTarget.targetNormal_.clone().to(torch::kCPU)).cast<double>()));
+            calcRotMatFromNormal(smplpp::toEigenMatrix(ikTarget.targetNormal_.to(torch::kCPU)).cast<double>()));
         targetPoseMsg.position.x = ikTarget.targetPos_.index({0}).item<float>();
         targetPoseMsg.position.y = ikTarget.targetPos_.index({1}).item<float>();
         targetPoseMsg.position.z = ikTarget.targetPos_.index({2}).item<float>();
@@ -628,8 +626,8 @@ int main(int argc, char * argv[])
         targetPoseMsg.orientation.z = targetQuat.z();
         targetPoseArrMsg.poses.push_back(targetPoseMsg);
 
-        torch::Tensor actualPos = ikTarget.calcActualPos().clone().to(torch::kCPU);
-        torch::Tensor actualNormal = ikTarget.calcActualNormal().clone().to(torch::kCPU);
+        torch::Tensor actualPos = ikTarget.calcActualPos().to(torch::kCPU);
+        torch::Tensor actualNormal = ikTarget.calcActualNormal().to(torch::kCPU);
         Eigen::Quaterniond actualQuat(calcRotMatFromNormal(smplpp::toEigenMatrix(actualNormal).cast<double>()));
         actualPoseMsg.position.x = actualPos.index({0}).item<float>();
         actualPoseMsg.position.y = actualPos.index({1}).item<float>();
