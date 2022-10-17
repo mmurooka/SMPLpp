@@ -434,10 +434,12 @@ int main(int argc, char * argv[])
 
         // Set end-effector position task
         auto startTimeSetupIk = std::chrono::system_clock::now();
-        for(const auto & ikTarget : g_ikTargetList)
+        for(const auto & ikTargetKV : g_ikTargetList)
         {
-          torch::Tensor posError = ikTarget.second.calcPosError().clone().to(torch::kCPU);
-          torch::Tensor normalError = ikTarget.second.calcNormalError().clone().to(torch::kCPU);
+          const auto & ikTarget = ikTargetKV.second;
+
+          torch::Tensor posError = ikTarget.calcPosError().clone().to(torch::kCPU);
+          torch::Tensor normalError = ikTarget.calcNormalError().clone().to(torch::kCPU);
 
           // Set task value
           e.segment<3>(rowIdx) = smplpp::toEigenMatrix(posError).cast<double>();
@@ -608,24 +610,26 @@ int main(int argc, char * argv[])
       actualPoseArrMsg.header.stamp = timeNow;
       actualPoseArrMsg.header.frame_id = "world";
 
-      for(const auto & ikTarget : g_ikTargetList)
+      for(const auto & ikTargetKV : g_ikTargetList)
       {
+        const auto & ikTarget = ikTargetKV.second;
+
         geometry_msgs::Pose targetPoseMsg;
         geometry_msgs::Pose actualPoseMsg;
 
-        Eigen::Quaterniond targetQuat(calcRotMatFromNormal(
-            smplpp::toEigenMatrix(ikTarget.second.targetNormal_.clone().to(torch::kCPU)).cast<double>()));
-        targetPoseMsg.position.x = ikTarget.second.targetPos_.index({0}).item<float>();
-        targetPoseMsg.position.y = ikTarget.second.targetPos_.index({1}).item<float>();
-        targetPoseMsg.position.z = ikTarget.second.targetPos_.index({2}).item<float>();
+        Eigen::Quaterniond targetQuat(
+            calcRotMatFromNormal(smplpp::toEigenMatrix(ikTarget.targetNormal_.clone().to(torch::kCPU)).cast<double>()));
+        targetPoseMsg.position.x = ikTarget.targetPos_.index({0}).item<float>();
+        targetPoseMsg.position.y = ikTarget.targetPos_.index({1}).item<float>();
+        targetPoseMsg.position.z = ikTarget.targetPos_.index({2}).item<float>();
         targetPoseMsg.orientation.w = targetQuat.w();
         targetPoseMsg.orientation.x = targetQuat.x();
         targetPoseMsg.orientation.y = targetQuat.y();
         targetPoseMsg.orientation.z = targetQuat.z();
         targetPoseArrMsg.poses.push_back(targetPoseMsg);
 
-        torch::Tensor actualPos = ikTarget.second.calcActualPos().clone().to(torch::kCPU);
-        torch::Tensor actualNormal = ikTarget.second.calcActualNormal().clone().to(torch::kCPU);
+        torch::Tensor actualPos = ikTarget.calcActualPos().clone().to(torch::kCPU);
+        torch::Tensor actualNormal = ikTarget.calcActualNormal().clone().to(torch::kCPU);
         Eigen::Quaterniond actualQuat(calcRotMatFromNormal(smplpp::toEigenMatrix(actualNormal).cast<double>()));
         actualPoseMsg.position.x = actualPos.index({0}).item<float>();
         actualPoseMsg.position.y = actualPos.index({1}).item<float>();
