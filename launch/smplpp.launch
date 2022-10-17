@@ -26,8 +26,8 @@
 
   <group unless="$(arg enable_ik)" >
     <node if="$(arg enable_vposer)"
-          pkg="rqt_ez_publisher" type="rqt_ez_publisher" name="rqt_ez_publisher_config"
-          args="--slider-file $(find smplpp)/rqt/smplpp_config.yaml"
+          pkg="rqt_ez_publisher" type="rqt_ez_publisher" name="rqt_ez_publisher_latent_pose"
+          args="--slider-file $(find smplpp)/rqt/smplpp_latent_pose.yaml"
           output="log" clear_params="true" />
     <node unless="$(arg enable_vposer)"
           pkg="rqt_ez_publisher" type="rqt_ez_publisher" name="rqt_ez_publisher_pose"

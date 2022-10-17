@@ -1,0 +1,223 @@
+publish_interval: 10
+settings:
+  /smplpp/latent_pose_param/data[0]:
+    is_repeat: false
+    max: 20.0
+    min: -20.0
+  /smplpp/latent_pose_param/data[1]:
+    is_repeat: false
+    max: 20.0
+    min: -20.0
+  /smplpp/latent_pose_param/data[2]:
+    is_repeat: false
+    max: 20.0
+    min: -20.0
+  /smplpp/latent_pose_param/data[3]:
+    is_repeat: false
+    max: 20.0
+    min: -20.0
+  /smplpp/latent_pose_param/data[4]:
+    is_repeat: false
+    max: 20.0
+    min: -20.0
+  /smplpp/latent_pose_param/data[5]:
+    is_repeat: false
+    max: 20.0
+    min: -20.0
+  /smplpp/latent_pose_param/data[6]:
+    is_repeat: false
+    max: 20.0
+    min: -20.0
+  /smplpp/latent_pose_param/data[7]:
+    is_repeat: false
+    max: 20.0
+    min: -20.0
+  /smplpp/latent_pose_param/data[8]:
+    is_repeat: false
+    max: 20.0
+    min: -20.0
+  /smplpp/latent_pose_param/data[9]:
+    is_repeat: false
+    max: 20.0
+    min: -20.0
+  /smplpp/latent_pose_param/data[10]:
+    is_repeat: false
+    max: 20.0
+    min: -20.0
+  /smplpp/latent_pose_param/data[11]:
+    is_repeat: false
+    max: 20.0
+    min: -20.0
+  /smplpp/latent_pose_param/data[12]:
+    is_repeat: false
+    max: 20.0
+    min: -20.0
+  /smplpp/latent_pose_param/data[13]:
+    is_repeat: false
+    max: 20.0
+    min: -20.0
+  /smplpp/latent_pose_param/data[14]:
+    is_repeat: false
+    max: 20.0
+    min: -20.0
+  /smplpp/latent_pose_param/data[15]:
+    is_repeat: false
+    max: 20.0
+    min: -20.0
+  /smplpp/latent_pose_param/data[16]:
+    is_repeat: false
+    max: 20.0
+    min: -20.0
+  /smplpp/latent_pose_param/data[17]:
+    is_repeat: false
+    max: 20.0
+    min: -20.0
+  /smplpp/latent_pose_param/data[18]:
+    is_repeat: false
+    max: 20.0
+    min: -20.0
+  /smplpp/latent_pose_param/data[19]:
+    is_repeat: false
+    max: 20.0
+    min: -20.0
+  /smplpp/latent_pose_param/data[20]:
+    is_repeat: false
+    max: 20.0
+    min: -20.0
+  /smplpp/latent_pose_param/data[21]:
+    is_repeat: false
+    max: 20.0
+    min: -20.0
+  /smplpp/latent_pose_param/data[22]:
+    is_repeat: false
+    max: 20.0
+    min: -20.0
+  /smplpp/latent_pose_param/data[23]:
+    is_repeat: false
+    max: 20.0
+    min: -20.0
+  /smplpp/latent_pose_param/data[24]:
+    is_repeat: false
+    max: 20.0
+    min: -20.0
+  /smplpp/latent_pose_param/data[25]:
+    is_repeat: false
+    max: 20.0
+    min: -20.0
+  /smplpp/latent_pose_param/data[26]:
+    is_repeat: false
+    max: 20.0
+    min: -20.0
+  /smplpp/latent_pose_param/data[27]:
+    is_repeat: false
+    max: 20.0
+    min: -20.0
+  /smplpp/latent_pose_param/data[28]:
+    is_repeat: false
+    max: 20.0
+    min: -20.0
+  /smplpp/latent_pose_param/data[29]:
+    is_repeat: false
+    max: 20.0
+    min: -20.0
+  /smplpp/latent_pose_param/data[30]:
+    is_repeat: false
+    max: 20.0
+    min: -20.0
+  /smplpp/latent_pose_param/data[31]:
+    is_repeat: false
+    max: 20.0
+    min: -20.0
+  /smplpp/latent_pose_param/data[32]:
+    is_repeat: false
+    max: 20.0
+    min: -20.0
+  /smplpp/latent_pose_param/data[33]:
+    is_repeat: false
+    max: 20.0
+    min: -20.0
+  /smplpp/latent_pose_param/data[34]:
+    is_repeat: false
+    max: 20.0
+    min: -20.0
+  /smplpp/latent_pose_param/data[35]:
+    is_repeat: false
+    max: 20.0
+    min: -20.0
+  /smplpp/latent_pose_param/data[36]:
+    is_repeat: false
+    max: 20.0
+    min: -20.0
+  /smplpp/latent_pose_param/data[37]:
+    is_repeat: false
+    max: 20.0
+    min: -20.0
+  /smplpp/latent_pose_param/data[38]:
+    is_repeat: false
+    max: 20.0
+    min: -20.0
+  /smplpp/latent_pose_param/data[39]:
+    is_repeat: false
+    max: 20.0
+    min: -20.0
+  /smplpp/latent_pose_param/data[40]:
+    is_repeat: false
+    max: 20.0
+    min: -20.0
+  /smplpp/latent_pose_param/data[41]:
+    is_repeat: false
+    max: 20.0
+    min: -20.0
+  /smplpp/latent_pose_param/data[42]:
+    is_repeat: false
+    max: 20.0
+    min: -20.0
+  /smplpp/latent_pose_param/data[43]:
+    is_repeat: false
+    max: 20.0
+    min: -20.0
+texts:
+- /smplpp/latent_pose_param/data[0]
+- /smplpp/latent_pose_param/data[1]
+- /smplpp/latent_pose_param/data[2]
+- /smplpp/latent_pose_param/data[3]
+- /smplpp/latent_pose_param/data[4]
+- /smplpp/latent_pose_param/data[5]
+- /smplpp/latent_pose_param/data[6]
+- /smplpp/latent_pose_param/data[7]
+- /smplpp/latent_pose_param/data[8]
+- /smplpp/latent_pose_param/data[9]
+- /smplpp/latent_pose_param/data[10]
+- /smplpp/latent_pose_param/data[11]
+- /smplpp/latent_pose_param/data[12]
+- /smplpp/latent_pose_param/data[13]
+- /smplpp/latent_pose_param/data[14]
+- /smplpp/latent_pose_param/data[15]
+- /smplpp/latent_pose_param/data[16]
+- /smplpp/latent_pose_param/data[17]
+- /smplpp/latent_pose_param/data[18]
+- /smplpp/latent_pose_param/data[19]
+- /smplpp/latent_pose_param/data[20]
+- /smplpp/latent_pose_param/data[21]
+- /smplpp/latent_pose_param/data[22]
+- /smplpp/latent_pose_param/data[23]
+- /smplpp/latent_pose_param/data[24]
+- /smplpp/latent_pose_param/data[25]
+- /smplpp/latent_pose_param/data[26]
+- /smplpp/latent_pose_param/data[27]
+- /smplpp/latent_pose_param/data[28]
+- /smplpp/latent_pose_param/data[29]
+- /smplpp/latent_pose_param/data[30]
+- /smplpp/latent_pose_param/data[31]
+- /smplpp/latent_pose_param/data[32]
+- /smplpp/latent_pose_param/data[33]
+- /smplpp/latent_pose_param/data[34]
+- /smplpp/latent_pose_param/data[35]
+- /smplpp/latent_pose_param/data[36]
+- /smplpp/latent_pose_param/data[37]
+- /smplpp/latent_pose_param/data[38]
+- /smplpp/latent_pose_param/data[39]
+- /smplpp/latent_pose_param/data[40]
+- /smplpp/latent_pose_param/data[41]
+- /smplpp/latent_pose_param/data[42]
+- /smplpp/latent_pose_param/data[43]

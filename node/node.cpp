@@ -145,24 +145,24 @@ public:
   torch::Tensor targetNormal_;
 };
 
-constexpr int64_t CONFIG_DIM = smplpp::LATENT_DIM + 12;
+constexpr int64_t LATENT_POSE_DIM = smplpp::LATENT_DIM + 12;
 
-torch::Tensor g_config;
+torch::Tensor g_theta;
 torch::Tensor g_beta;
 std::unordered_map<std::string, IkTarget> g_ikTargetList;
 
-void configParamCallback(const std_msgs::Float64MultiArray::ConstPtr & msg)
+void latentPoseParamCallback(const std_msgs::Float64MultiArray::ConstPtr & msg)
 {
-  if(msg->data.size() != CONFIG_DIM)
+  if(msg->data.size() != LATENT_POSE_DIM)
   {
-    ROS_WARN_STREAM("Invalid config param size: " << std::to_string(msg->data.size())
-                                                  << " != " << std::to_string(CONFIG_DIM));
+    ROS_WARN_STREAM("Invalid latent pose param size: " << std::to_string(msg->data.size())
+                                                       << " != " << std::to_string(LATENT_POSE_DIM));
     return;
   }
 
-  for(int64_t i = 0; i < CONFIG_DIM; i++)
+  for(int64_t i = 0; i < LATENT_POSE_DIM; i++)
   {
-    g_config.index_put_({i}, msg->data[i]);
+    g_theta.index_put_({i}, msg->data[i]);
   }
 }
 
@@ -177,9 +177,9 @@ void poseParamCallback(const smplpp::PoseParam::ConstPtr & msg)
 
   for(int64_t i = 0; i < smplpp::JOINT_NUM + 1; i++)
   {
-    g_config.index_put_({i, 0}, msg->angles[i].x);
-    g_config.index_put_({i, 1}, msg->angles[i].y);
-    g_config.index_put_({i, 2}, msg->angles[i].z);
+    g_theta.index_put_({i, 0}, msg->angles[i].x);
+    g_theta.index_put_({i, 1}, msg->angles[i].y);
+    g_theta.index_put_({i, 2}, msg->angles[i].z);
   }
 }
 
@@ -261,13 +261,13 @@ int main(int argc, char * argv[])
   ros::Publisher actualPoseArrPub = nh.advertise<geometry_msgs::PoseArray>("smplpp/actual_pose_arr", 1);
   ros::Publisher closestPointMarkerArrPub =
       nh.advertise<visualization_msgs::MarkerArray>("smplpp/closest_point_marker_arr", 1);
-  ros::Subscriber configParamSub;
+  ros::Subscriber latentPoseParamSub;
   ros::Subscriber poseParamSub;
   if(!enableIk)
   {
     if(enableVposer)
     {
-      configParamSub = nh.subscribe("smplpp/config_param", 1, configParamCallback);
+      latentPoseParamSub = nh.subscribe("smplpp/latent_pose_param", 1, latentPoseParamCallback);
     }
     else
     {
@@ -300,18 +300,18 @@ int main(int argc, char * argv[])
   }
 
   // Setup variables
-  g_config = enableVposer ? torch::zeros({CONFIG_DIM}) : torch::zeros({smplpp::JOINT_NUM + 1, 3});
+  g_theta = enableVposer ? torch::zeros({LATENT_POSE_DIM}) : torch::zeros({smplpp::JOINT_NUM + 1, 3});
   g_beta = torch::zeros({smplpp::SHAPE_BASIS_DIM});
   if(enableIk)
   {
     // Set initial root orientation
     if(enableVposer)
     {
-      g_config.index({at::indexing::Slice(3, 6)}).fill_(1.2092);
+      g_theta.index({at::indexing::Slice(3, 6)}).fill_(1.2092);
     }
     else
     {
-      g_config.index({1}).fill_(1.2092);
+      g_theta.index({1}).fill_(1.2092);
     }
 
     g_ikTargetList.emplace("LeftHand",
@@ -391,12 +391,12 @@ int main(int argc, char * argv[])
       // Setup gradient
       if(g_ikTargetList.size() > 0)
       {
-        g_config.set_requires_grad(true);
-        auto & g_config_grad = g_config.mutable_grad();
-        if(g_config_grad.defined())
+        g_theta.set_requires_grad(true);
+        auto & g_theta_grad = g_theta.mutable_grad();
+        if(g_theta_grad.defined())
         {
-          g_config_grad = g_config_grad.detach();
-          g_config_grad.zero_();
+          g_theta_grad = g_theta_grad.detach();
+          g_theta_grad.zero_();
         }
       }
 
@@ -406,17 +406,17 @@ int main(int argc, char * argv[])
       if(enableVposer)
       {
         theta = torch::empty({smplpp::JOINT_NUM + 1, 3});
-        theta.index_put_({0}, g_config.index({at::indexing::Slice(0, 3)}));
-        theta.index_put_({1}, g_config.index({at::indexing::Slice(3, 6)}));
-        torch::Tensor vposerIn = g_config.index({at::indexing::Slice(6, smplpp::LATENT_DIM + 6)}).clone().to(*device);
+        theta.index_put_({0}, g_theta.index({at::indexing::Slice(0, 3)}));
+        theta.index_put_({1}, g_theta.index({at::indexing::Slice(3, 6)}));
+        torch::Tensor vposerIn = g_theta.index({at::indexing::Slice(6, smplpp::LATENT_DIM + 6)}).clone().to(*device);
         torch::Tensor vposerOut = vposer->forward(vposerIn.view({1, -1})).index({0});
         theta.index_put_({at::indexing::Slice(2, 2 + 21)}, vposerOut);
-        theta.index_put_({23}, g_config.index({at::indexing::Slice(smplpp::LATENT_DIM + 6, smplpp::LATENT_DIM + 9)}));
-        theta.index_put_({24}, g_config.index({at::indexing::Slice(smplpp::LATENT_DIM + 9, smplpp::LATENT_DIM + 12)}));
+        theta.index_put_({23}, g_theta.index({at::indexing::Slice(smplpp::LATENT_DIM + 6, smplpp::LATENT_DIM + 9)}));
+        theta.index_put_({24}, g_theta.index({at::indexing::Slice(smplpp::LATENT_DIM + 9, smplpp::LATENT_DIM + 12)}));
       }
       else
       {
-        theta = g_config;
+        theta = g_theta;
       }
       SINGLE_SMPL::get()->launch(g_beta.view({1, -1}), theta.view({1, theta.size(0), theta.size(1)}));
       durationList.emplace_back("forward SMPL", std::chrono::duration_cast<std::chrono::duration<double>>(
@@ -427,7 +427,7 @@ int main(int argc, char * argv[])
       // Solve IK
       if(g_ikTargetList.size() > 0)
       {
-        int64_t configDim = (enableVposer ? CONFIG_DIM : 3 * (smplpp::JOINT_NUM + 1));
+        int64_t configDim = (enableVposer ? LATENT_POSE_DIM : 3 * (smplpp::JOINT_NUM + 1));
         Eigen::VectorXd e(4 * g_ikTargetList.size());
         Eigen::MatrixXd J(4 * g_ikTargetList.size(), configDim);
         int64_t rowIdx = 0;
@@ -453,20 +453,20 @@ int main(int argc, char * argv[])
             select.index_put_({0, i}, 1);
             posError.backward(select, true);
 
-            J.row(rowIdx) = smplpp::toEigenMatrix(g_config.grad().view({configDim}).clone().to(torch::kCPU))
+            J.row(rowIdx) = smplpp::toEigenMatrix(g_theta.grad().view({configDim}).clone().to(torch::kCPU))
                                 .transpose()
                                 .cast<double>();
-            g_config.mutable_grad().zero_();
+            g_theta.mutable_grad().zero_();
 
             rowIdx++;
           }
           {
             normalError.backward({}, true);
 
-            J.row(rowIdx) = smplpp::toEigenMatrix(g_config.grad().view({configDim}).clone().to(torch::kCPU))
+            J.row(rowIdx) = smplpp::toEigenMatrix(g_theta.grad().view({configDim}).clone().to(torch::kCPU))
                                 .transpose()
                                 .cast<double>();
-            g_config.mutable_grad().zero_();
+            g_theta.mutable_grad().zero_();
 
             rowIdx++;
           }
@@ -492,7 +492,7 @@ int main(int argc, char * argv[])
           nominalConfigRegWeightVec.tail<6>().setConstant(1e3);
           linearEqA.diagonal() += nominalConfigRegWeightVec;
           linearEqB +=
-              nominalConfigRegWeightVec.cwiseProduct(smplpp::toEigenMatrix(g_config.view({configDim})).cast<double>());
+              nominalConfigRegWeightVec.cwiseProduct(smplpp::toEigenMatrix(g_theta.view({configDim})).cast<double>());
         }
         Eigen::LLT<Eigen::MatrixXd> linearEqLlt(linearEqA);
         if(linearEqLlt.info() == Eigen::NumericalIssue)
@@ -506,8 +506,8 @@ int main(int argc, char * argv[])
                                                   * 1e3);
 
         // Update config
-        g_config.set_requires_grad(false);
-        g_config += smplpp::toTorchTensor<float>(deltaConfig.cast<float>(), true).view_as(g_config);
+        g_theta.set_requires_grad(false);
+        g_theta += smplpp::toTorchTensor<float>(deltaConfig.cast<float>(), true).view_as(g_theta);
       }
 
       ROS_INFO_STREAM_THROTTLE(10.0,
