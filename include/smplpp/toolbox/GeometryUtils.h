@@ -1,0 +1,59 @@
+/* Author: Masaki Murooka */
+
+#ifndef GEOMETRY_UTILS_H
+#define GEOMETRY_UTILS_H
+
+#include <Eigen/Dense>
+
+#include <torch/torch.h>
+
+#include <smplpp/toolbox/Exception.h>
+
+namespace smplpp
+{
+/** \brief Calculate rotation matrix from unit normal vector (Z-axis).
+    \param normal unit normal vector (Z-axis)
+*/
+Eigen::Matrix3d calcRotMatFromNormal(const Eigen::Vector3d & normal)
+{
+  Eigen::Vector3d tangent1;
+  if(std::abs(normal.dot(Eigen::Vector3d::UnitX())) < 1.0 - 1e-3)
+  {
+    tangent1 = Eigen::Vector3d::UnitX().cross(normal).normalized();
+  }
+  else
+  {
+    tangent1 = Eigen::Vector3d::UnitY().cross(normal).normalized();
+  }
+  Eigen::Vector3d tangent2 = normal.cross(tangent1).normalized();
+  Eigen::Matrix3d rotMat;
+  rotMat << tangent1, tangent2, normal;
+  return rotMat;
+}
+
+/** \brief Calculate weights of triangle vertices
+    \param pos position of focused point, which should be inside or on the boundary of the triangle
+    \param vertices triangle vertices
+
+    Ref.
+      - https://www.geisya.or.jp/~mwm48961/koukou/complex_line2.htm
+      - https://homeskill.hatenadiary.org/entry/20110112/1294831298
+*/
+torch::Tensor calcTriangleVertexWeights(const torch::Tensor & pos, const std::vector<torch::Tensor> & vertices)
+{
+  torch::Tensor cross1 = at::cross(vertices[0] - vertices[2], pos - vertices[2]).norm();
+  torch::Tensor cross2 = at::cross(vertices[1] - vertices[2], pos - vertices[2]).norm();
+  torch::Tensor cross3 = at::cross(vertices[0] - vertices[1], pos - vertices[1]).norm();
+  torch::Tensor cross4 = at::cross(vertices[2] - vertices[1], pos - vertices[1]).norm();
+
+  torch::Tensor weights = torch::empty({3});
+  weights.index_put_({0}, cross2 * cross4);
+  weights.index_put_({1}, cross1 * cross4);
+  weights.index_put_({2}, cross2 * cross3);
+  weights /= weights.sum();
+
+  return weights;
+}
+} // namespace smplpp
+
+#endif // GEOMETRY_UTILS_H

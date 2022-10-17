@@ -39,6 +39,7 @@
 #include <smplpp/SMPL.h>
 #include <smplpp/VPoser.h>
 #include <smplpp/definition/def.h>
+#include <smplpp/toolbox/GeometryUtils.h>
 #include <smplpp/toolbox/Singleton.hpp>
 #include <smplpp/toolbox/TorchEigenUtils.hpp>
 #include <smplpp/toolbox/TorchEx.hpp>
@@ -63,23 +64,6 @@
 
 //===== MAIN FUNCTION =========================================================
 
-Eigen::Matrix3d calcRotMatFromNormal(const Eigen::Vector3d & normal)
-{
-  Eigen::Vector3d tangent1;
-  if(std::abs(normal.dot(Eigen::Vector3d::UnitX())) < 1.0 - 1e-3)
-  {
-    tangent1 = Eigen::Vector3d::UnitX().cross(normal).normalized();
-  }
-  else
-  {
-    tangent1 = Eigen::Vector3d::UnitY().cross(normal).normalized();
-  }
-  Eigen::Vector3d tangent2 = normal.cross(tangent1).normalized();
-  Eigen::Matrix3d rotMat;
-  rotMat << tangent1, tangent2, normal;
-  return rotMat;
-}
-
 class IkTarget
 {
 public:
@@ -88,18 +72,38 @@ public:
   {
   }
 
-  void setupTangents()
+  void updateFaceIdx(int64_t faceIdx, const torch::Tensor & actualPos)
   {
-    torch::Tensor faceIdxTensor = SINGLE_SMPL::get()->getFaceIndexRaw(faceIdx_).to(torch::kCPU);
-    std::vector<torch::Tensor> vertexTensors;
+    faceIdx_ = faceIdx;
+
+    torch::Tensor faceVertexIdxs = SINGLE_SMPL::get()->getFaceIndexRaw(faceIdx_).to(torch::kCPU);
+    std::vector<torch::Tensor> faceVertices;
     for(int32_t i = 0; i < 3; i++)
     {
-      int32_t vertexIdx = faceIdxTensor.index({i}).item<int32_t>();
+      int32_t faceVertexIdx = faceVertexIdxs.index({i}).item<int32_t>();
       // Clone and detach vertex tensors to separate tangents from the computation graph
-      vertexTensors.push_back(SINGLE_SMPL::get()->getVertexRaw(vertexIdx).clone().detach());
+      faceVertices.push_back(SINGLE_SMPL::get()->getVertexRaw(faceVertexIdx).clone().detach());
     }
-    torch::Tensor tangent1 = vertexTensors[1] - vertexTensors[0];
-    torch::Tensor normal = at::cross(tangent1, vertexTensors[2] - vertexTensors[0]);
+
+    phi_.zero_();
+    setupTangents();
+    torch::Tensor pos = actualPos + torch::matmul(tangents_, phi_);
+
+    vertexWeights_ = smplpp::calcTriangleVertexWeights(pos, faceVertices);
+  }
+
+  void setupTangents()
+  {
+    torch::Tensor faceVertexIdxs = SINGLE_SMPL::get()->getFaceIndexRaw(faceIdx_).to(torch::kCPU);
+    std::vector<torch::Tensor> faceVertices;
+    for(int32_t i = 0; i < 3; i++)
+    {
+      int32_t faceVertexIdx = faceVertexIdxs.index({i}).item<int32_t>();
+      // Clone and detach vertex tensors to separate tangents from the computation graph
+      faceVertices.push_back(SINGLE_SMPL::get()->getVertexRaw(faceVertexIdx).clone().detach());
+    }
+    torch::Tensor tangent1 = faceVertices[1] - faceVertices[0];
+    torch::Tensor normal = at::cross(tangent1, faceVertices[2] - faceVertices[0]);
     torch::Tensor tangent2 = at::cross(normal, tangent1);
     tangent1 = torch::nn::functional::normalize(tangent1, torch::nn::functional::NormalizeFuncOptions().dim(-1));
     tangent2 = torch::nn::functional::normalize(tangent2, torch::nn::functional::NormalizeFuncOptions().dim(-1));
@@ -109,12 +113,12 @@ public:
 
   torch::Tensor calcActualPos() const
   {
-    torch::Tensor faceIdxTensor = SINGLE_SMPL::get()->getFaceIndexRaw(faceIdx_).to(torch::kCPU);
+    torch::Tensor faceVertexIdxs = SINGLE_SMPL::get()->getFaceIndexRaw(faceIdx_).to(torch::kCPU);
     torch::Tensor actualPos = torch::zeros({3}, SINGLE_SMPL::get()->getDevice());
     for(int32_t i = 0; i < 3; i++)
     {
-      int32_t vertexIdx = faceIdxTensor.index({i}).item<int32_t>();
-      actualPos += vertexWeights_.index({i}) * SINGLE_SMPL::get()->getVertexRaw(vertexIdx);
+      int32_t faceVertexIdx = faceVertexIdxs.index({i}).item<int32_t>();
+      actualPos += vertexWeights_.index({i}) * SINGLE_SMPL::get()->getVertexRaw(faceVertexIdx);
     }
 
     actualPos += torch::matmul(tangents_, phi_).to(SINGLE_SMPL::get()->getDevice());
@@ -124,15 +128,15 @@ public:
 
   torch::Tensor calcActualNormal() const
   {
-    torch::Tensor faceIdxTensor = SINGLE_SMPL::get()->getFaceIndexRaw(faceIdx_).to(torch::kCPU);
-    std::vector<torch::Tensor> vertexTensors;
+    torch::Tensor faceVertexIdxs = SINGLE_SMPL::get()->getFaceIndexRaw(faceIdx_).to(torch::kCPU);
+    std::vector<torch::Tensor> faceVertices;
     for(int32_t i = 0; i < 3; i++)
     {
-      int32_t vertexIdx = faceIdxTensor.index({i}).item<int32_t>();
-      vertexTensors.push_back(SINGLE_SMPL::get()->getVertexRaw(vertexIdx));
+      int32_t faceVertexIdx = faceVertexIdxs.index({i}).item<int32_t>();
+      faceVertices.push_back(SINGLE_SMPL::get()->getVertexRaw(faceVertexIdx));
     }
     return torch::nn::functional::normalize(
-        at::cross(vertexTensors[1] - vertexTensors[0], vertexTensors[2] - vertexTensors[0]),
+        at::cross(faceVertices[1] - faceVertices[0], faceVertices[2] - faceVertices[0]),
         torch::nn::functional::NormalizeFuncOptions().dim(-1));
   }
 
@@ -583,6 +587,7 @@ int main(int argc, char * argv[])
 
         // Project point onto mesh
         Eigen::VectorXi closestFaceIndices;
+        Eigen::MatrixX3d closestPoints;
         {
           torch::Tensor vertexTensor = SINGLE_SMPL::get()->getVertex().index({0}).to(torch::kCPU);
           Eigen::MatrixXd vertexMat = smplpp::toEigenMatrix(vertexTensor).cast<double>();
@@ -591,7 +596,6 @@ int main(int argc, char * argv[])
           faceIdxMat.array() -= 1;
 
           Eigen::VectorXd squaredDists;
-          Eigen::MatrixX3d closestPoints;
           igl::point_mesh_squared_distance(actualPosList, vertexMat, faceIdxMat, squaredDists, closestFaceIndices,
                                            closestPoints);
         }
@@ -602,8 +606,8 @@ int main(int argc, char * argv[])
         {
           auto & ikTarget = ikTargetKV.second;
 
-          ikTarget.faceIdx_ = closestFaceIndices(ikTargetIdx);
-          ikTarget.phi_.zero_();
+          ikTarget.updateFaceIdx(closestFaceIndices(ikTargetIdx),
+                                 smplpp::toTorchTensor<float>(closestPoints.row(ikTargetIdx).cast<float>(), true));
 
           ikTargetIdx++;
         }
@@ -717,7 +721,7 @@ int main(int argc, char * argv[])
         geometry_msgs::Pose actualPoseMsg;
 
         Eigen::Quaterniond targetQuat(
-            calcRotMatFromNormal(smplpp::toEigenMatrix(ikTarget.targetNormal_.to(torch::kCPU)).cast<double>()));
+            smplpp::calcRotMatFromNormal(smplpp::toEigenMatrix(ikTarget.targetNormal_.to(torch::kCPU)).cast<double>()));
         targetPoseMsg.position.x = ikTarget.targetPos_.index({0}).item<float>();
         targetPoseMsg.position.y = ikTarget.targetPos_.index({1}).item<float>();
         targetPoseMsg.position.z = ikTarget.targetPos_.index({2}).item<float>();
@@ -729,7 +733,7 @@ int main(int argc, char * argv[])
 
         torch::Tensor actualPos = ikTarget.calcActualPos().to(torch::kCPU);
         torch::Tensor actualNormal = ikTarget.calcActualNormal().to(torch::kCPU);
-        Eigen::Quaterniond actualQuat(calcRotMatFromNormal(smplpp::toEigenMatrix(actualNormal).cast<double>()));
+        Eigen::Quaterniond actualQuat(smplpp::calcRotMatFromNormal(smplpp::toEigenMatrix(actualNormal).cast<double>()));
         actualPoseMsg.position.x = actualPos.index({0}).item<float>();
         actualPoseMsg.position.y = actualPos.index({1}).item<float>();
         actualPoseMsg.position.z = actualPos.index({2}).item<float>();
