@@ -82,14 +82,14 @@ public:
     {
       int32_t faceVertexIdx = faceVertexIdxs.index({i}).item<int32_t>();
       // Clone and detach vertex tensors to separate tangents from the computation graph
-      faceVertices.push_back(SINGLE_SMPL::get()->getVertexRaw(faceVertexIdx).clone().detach());
+      faceVertices.push_back(SINGLE_SMPL::get()->getVertexRaw(faceVertexIdx).to(torch::kCPU).clone().detach());
     }
 
     phi_.zero_();
     setupTangents();
     torch::Tensor pos = actualPos + torch::matmul(tangents_, phi_);
 
-    vertexWeights_ = smplpp::calcTriangleVertexWeights(pos, faceVertices);
+    vertexWeights_ = smplpp::calcTriangleVertexWeights(pos, faceVertices).to(SINGLE_SMPL::get()->getDevice());
   }
 
   void setupTangents()
@@ -100,7 +100,7 @@ public:
     {
       int32_t faceVertexIdx = faceVertexIdxs.index({i}).item<int32_t>();
       // Clone and detach vertex tensors to separate tangents from the computation graph
-      faceVertices.push_back(SINGLE_SMPL::get()->getVertexRaw(faceVertexIdx).clone().detach());
+      faceVertices.push_back(SINGLE_SMPL::get()->getVertexRaw(faceVertexIdx).to(torch::kCPU).clone().detach());
     }
     torch::Tensor tangent1 = faceVertices[1] - faceVertices[0];
     torch::Tensor normal = at::cross(tangent1, faceVertices[2] - faceVertices[0]);
