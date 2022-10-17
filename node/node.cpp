@@ -112,9 +112,8 @@ public:
     for(int32_t i = 0; i < 3; i++)
     {
       int32_t vertexIdx = faceIdxTensor.index({i}).item<int32_t>();
-      actualPos += SINGLE_SMPL::get()->getVertexRaw(vertexIdx);
+      actualPos += vertexWeights_.index({i}) * SINGLE_SMPL::get()->getVertexRaw(vertexIdx);
     }
-    actualPos /= 3.0;
 
     actualPos += torch::matmul(tangents_, phi_).to(SINGLE_SMPL::get()->getDevice());
 
@@ -145,19 +144,17 @@ public:
     return at::dot(calcActualNormal(), targetNormal_) + 1.0;
   }
 
-  torch::Tensor resetPhi()
-  {
-    phi_.zero_();
-  }
-
   void to(const torch::Device & device)
   {
+    vertexWeights_ = vertexWeights_.to(device);
     targetPos_ = targetPos_.to(device);
     targetNormal_ = targetNormal_.to(device);
   }
 
 public:
   int64_t faceIdx_;
+
+  torch::Tensor vertexWeights_ = torch::empty({3}).fill_(1.0 / 3.0);
 
   torch::Tensor targetPos_;
 
@@ -544,9 +541,15 @@ int main(int argc, char * argv[])
         for(auto & ikTargetKV : g_ikTargetList)
         {
           auto & ikTarget = ikTargetKV.second;
+
           ikTarget.phi_ +=
               smplpp::toTorchTensor<float>(deltaConfig.segment<2>(thetaDim + 2 * ikTargetIdx).cast<float>(), true);
           ikTarget.phi_ = at::clamp(ikTarget.phi_, -0.1, 0.1); // \todo Impose limits with QP
+
+          torch::Tensor actualPos = ikTarget.calcActualPos().to(torch::kCPU);
+
+          // ikTarget.phi_.zero_();
+
           ikTargetIdx++;
         }
       }
