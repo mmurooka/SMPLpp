@@ -5,7 +5,7 @@ import numpy as np
 import rospy
 from tf import transformations
 from geometry_msgs.msg import TransformStamped, Pose
-from visualization_msgs.msg import InteractiveMarker, InteractiveMarkerControl, InteractiveMarkerFeedback
+from visualization_msgs.msg import InteractiveMarker, InteractiveMarkerControl, InteractiveMarkerFeedback, Marker
 from interactive_markers.interactive_marker_server import InteractiveMarkerServer
 
 def toPoseMsg(pos):
@@ -31,22 +31,22 @@ class IkTargetManager(object):
 
         # add marker
         self.im_server.insert(
-            self._makeInteractiveMarker(
+            self.makeInteractiveMarker(
                 name="LeftHand",
                 pos=[0.5, 0.5, 1.0]),
             self.interactivemarkerFeedback)
         self.im_server.insert(
-            self._makeInteractiveMarker(
+            self.makeInteractiveMarker(
                 name="RightHand",
                 pos=[0.5, -0.5, 1.0]),
             self.interactivemarkerFeedback)
         self.im_server.insert(
-            self._makeInteractiveMarker(
+            self.makeInteractiveMarker(
                 name="LeftFoot",
                 pos=[0.0, 0.2, 0.0]),
             self.interactivemarkerFeedback)
         self.im_server.insert(
-            self._makeInteractiveMarker(
+            self.makeInteractiveMarker(
                 name="RightFoot",
                 pos=[0.0, -0.2, 0.0]),
             self.interactivemarkerFeedback)
@@ -54,12 +54,36 @@ class IkTargetManager(object):
         # apply to server
         self.im_server.applyChanges()
 
-    def _makeInteractiveMarker(self, name, pos):
+    def makeInteractiveMarker(self, name, pos):
         int_marker = InteractiveMarker()
         int_marker.header.frame_id = "world"
         int_marker.name = name
         int_marker.pose = toPoseMsg(pos)
         int_marker.scale = 0.3
+
+        def makeAxisMarker(quat, color):
+            marker_msg = Marker()
+            marker_msg.type = Marker.CYLINDER
+            pos_msg = marker_msg.pose.position
+            pos_msg.x, pos_msg.y, pos_msg.z = \
+                np.matmul(transformations.quaternion_matrix(quat)[0:3, 0:3], np.array([0.0, 0.0, 0.05]))
+            ori_msg = marker_msg.pose.orientation
+            ori_msg.x, ori_msg.y, ori_msg.z, ori_msg.w = quat
+            marker_msg.scale.x = 0.02;
+            marker_msg.scale.y = 0.02;
+            marker_msg.scale.z = 0.1;
+            color_msg = marker_msg.color
+            color_msg.r, color_msg.g, color_msg.b, color_msg.a = color
+            return marker_msg
+
+        control = InteractiveMarkerControl()
+        control.name = "axis"
+        control.always_visible = True
+        control.markers = [
+            makeAxisMarker(transformations.quaternion_from_euler(0, np.pi/2, 0), [0.9, 0.1, 0.1, 1.0]),
+            makeAxisMarker(transformations.quaternion_from_euler(-np.pi/2, 0, 0), [0.1, 0.9, 0.1, 1.0]),
+            makeAxisMarker(transformations.quaternion_from_euler(0, 0, 0), [0.1, 0.1, 0.9, 1.0])]
+        int_marker.controls.append(control)
 
         # move_x control
         control = InteractiveMarkerControl()
