@@ -63,18 +63,18 @@
 
 Eigen::Matrix3d calcRotMatFromNormal(const Eigen::Vector3d & normal)
 {
-  Eigen::Vector3d tangentAxis1;
+  Eigen::Vector3d tangent1;
   if(std::abs(normal.dot(Eigen::Vector3d::UnitX())) < 1.0 - 1e-3)
   {
-    tangentAxis1 = Eigen::Vector3d::UnitX().cross(normal).normalized();
+    tangent1 = Eigen::Vector3d::UnitX().cross(normal).normalized();
   }
   else
   {
-    tangentAxis1 = Eigen::Vector3d::UnitY().cross(normal).normalized();
+    tangent1 = Eigen::Vector3d::UnitY().cross(normal).normalized();
   }
-  Eigen::Vector3d tangentAxis2 = normal.cross(tangentAxis1).normalized();
+  Eigen::Vector3d tangent2 = normal.cross(tangent1).normalized();
   Eigen::Matrix3d rotMat;
-  rotMat << tangentAxis1, tangentAxis2, normal;
+  rotMat << tangent1, tangent2, normal;
   return rotMat;
 }
 
@@ -86,24 +86,38 @@ public:
   {
   }
 
-  torch::Tensor calcActualPos() const
+  void setupTangents()
   {
     torch::Tensor faceIdxTensor = SINGLE_SMPL::get()->getFaceIndexRaw(faceIdx_).to(torch::kCPU);
-    torch::Tensor actualPos;
+    std::vector<torch::Tensor> vertexTensors;
     for(int32_t i = 0; i < 3; i++)
     {
       int32_t vertexIdx = faceIdxTensor.index({i}).item<int32_t>();
-      torch::Tensor vertexTensor = SINGLE_SMPL::get()->getVertexRaw(vertexIdx);
-      if(i == 0)
-      {
-        actualPos = vertexTensor;
-      }
-      else
-      {
-        actualPos += vertexTensor;
-      }
+      // Clone and detach vertex tensors to separate tangents from the computation graph
+      vertexTensors.push_back(SINGLE_SMPL::get()->getVertexRaw(vertexIdx).clone().detach());
+    }
+    torch::Tensor tangent1 = vertexTensors[1] - vertexTensors[0];
+    torch::Tensor normal = at::cross(tangent1, vertexTensors[2] - vertexTensors[0]);
+    torch::Tensor tangent2 = at::cross(normal, tangent1);
+    tangent1 = torch::nn::functional::normalize(tangent1, torch::nn::functional::NormalizeFuncOptions().dim(-1));
+    tangent2 = torch::nn::functional::normalize(tangent2, torch::nn::functional::NormalizeFuncOptions().dim(-1));
+    tangents_.index_put_({at::indexing::Slice(), 0}, tangent1);
+    tangents_.index_put_({at::indexing::Slice(), 1}, tangent2);
+  }
+
+  torch::Tensor calcActualPos() const
+  {
+    torch::Tensor faceIdxTensor = SINGLE_SMPL::get()->getFaceIndexRaw(faceIdx_).to(torch::kCPU);
+    torch::Tensor actualPos = torch::zeros({3}, SINGLE_SMPL::get()->getDevice());
+    for(int32_t i = 0; i < 3; i++)
+    {
+      int32_t vertexIdx = faceIdxTensor.index({i}).item<int32_t>();
+      actualPos += SINGLE_SMPL::get()->getVertexRaw(vertexIdx);
     }
     actualPos /= 3.0;
+
+    actualPos += torch::matmul(tangents_, phi_).to(SINGLE_SMPL::get()->getDevice());
+
     return actualPos;
   }
 
@@ -131,6 +145,11 @@ public:
     return at::dot(calcActualNormal(), targetNormal_) + 1.0;
   }
 
+  torch::Tensor resetPhi()
+  {
+    phi_.zero_();
+  }
+
   void to(const torch::Device & device)
   {
     targetPos_ = targetPos_.to(device);
@@ -143,6 +162,10 @@ public:
   torch::Tensor targetPos_;
 
   torch::Tensor targetNormal_;
+
+  torch::Tensor tangents_ = torch::zeros({3, 2});
+
+  torch::Tensor phi_ = torch::zeros({2});
 };
 
 constexpr int64_t LATENT_POSE_DIM = smplpp::LATENT_DIM + 12;
@@ -427,16 +450,21 @@ int main(int argc, char * argv[])
       // Solve IK
       if(g_ikTargetList.size() > 0)
       {
-        int64_t configDim = (enableVposer ? LATENT_POSE_DIM : 3 * (smplpp::JOINT_NUM + 1));
+        int32_t thetaDim = enableVposer ? LATENT_POSE_DIM : 3 * (smplpp::JOINT_NUM + 1);
+        int32_t phiDim = 2 * g_ikTargetList.size();
         Eigen::VectorXd e(4 * g_ikTargetList.size());
-        Eigen::MatrixXd J(4 * g_ikTargetList.size(), configDim);
+        Eigen::MatrixXd J(4 * g_ikTargetList.size(), thetaDim + phiDim);
+        J.rightCols(phiDim).setZero();
         int64_t rowIdx = 0;
 
         // Set end-effector position task
         auto startTimeSetupIk = std::chrono::system_clock::now();
-        for(const auto & ikTargetKV : g_ikTargetList)
+        int32_t ikTargetIdx = 0;
+        for(auto & ikTargetKV : g_ikTargetList)
         {
-          const auto & ikTarget = ikTargetKV.second;
+          auto & ikTarget = ikTargetKV.second;
+
+          ikTarget.setupTangents();
 
           torch::Tensor posError = ikTarget.calcPosError().to(torch::kCPU);
           torch::Tensor normalError = ikTarget.calcNormalError().to(torch::kCPU);
@@ -446,6 +474,7 @@ int main(int argc, char * argv[])
           e.segment<1>(rowIdx + 3) = smplpp::toEigenMatrix(normalError.view({1})).cast<double>();
 
           // Set task Jacobian
+          J.block<3, 2>(rowIdx, thetaDim + 2 * ikTargetIdx) = smplpp::toEigenMatrix(ikTarget.tangents_).cast<double>();
           for(int32_t i = 0; i < 3; i++)
           {
             // Calculate backward of each element
@@ -453,8 +482,8 @@ int main(int argc, char * argv[])
             select.index_put_({0, i}, 1);
             posError.backward(select, true);
 
-            J.row(rowIdx) =
-                smplpp::toEigenMatrix(g_theta.grad().view({configDim}).to(torch::kCPU)).transpose().cast<double>();
+            J.row(rowIdx).head(thetaDim) =
+                smplpp::toEigenMatrix(g_theta.grad().view({thetaDim}).to(torch::kCPU)).transpose().cast<double>();
             g_theta.mutable_grad().zero_();
 
             rowIdx++;
@@ -462,12 +491,14 @@ int main(int argc, char * argv[])
           {
             normalError.backward({}, true);
 
-            J.row(rowIdx) =
-                smplpp::toEigenMatrix(g_theta.grad().view({configDim}).to(torch::kCPU)).transpose().cast<double>();
+            J.row(rowIdx).head(thetaDim) =
+                smplpp::toEigenMatrix(g_theta.grad().view({thetaDim}).to(torch::kCPU)).transpose().cast<double>();
             g_theta.mutable_grad().zero_();
 
             rowIdx++;
           }
+
+          ikTargetIdx++;
         }
         durationList.emplace_back("setup IK matrices", std::chrono::duration_cast<std::chrono::duration<double>>(
                                                            std::chrono::system_clock::now() - startTimeSetupIk)
@@ -479,18 +510,21 @@ int main(int argc, char * argv[])
         Eigen::MatrixXd linearEqA = J.transpose() * J;
         Eigen::VectorXd linearEqB = J.transpose() * e;
         {
-          double deltaConfigRegWeight = 1e-3 + e.squaredNorm();
-          linearEqA.diagonal().array() += deltaConfigRegWeight;
+          constexpr double deltaThetaRegWeight = 1e-3;
+          constexpr double deltaPhiRegWeight = 1e-1;
+          linearEqA.diagonal().head(thetaDim).array() += deltaThetaRegWeight;
+          linearEqA.diagonal().tail(phiDim).array() += deltaPhiRegWeight;
+          linearEqA.diagonal().array() += e.squaredNorm();
         }
         if(enableVposer)
         {
-          double nominalConfigRegWeight = 1e-5;
-          Eigen::VectorXd nominalConfigRegWeightVec = Eigen::VectorXd::Constant(configDim, nominalConfigRegWeight);
-          nominalConfigRegWeightVec.head<6>().setZero();
-          nominalConfigRegWeightVec.tail<6>().setConstant(1e3);
-          linearEqA.diagonal() += nominalConfigRegWeightVec;
-          linearEqB +=
-              nominalConfigRegWeightVec.cwiseProduct(smplpp::toEigenMatrix(g_theta.view({configDim})).cast<double>());
+          constexpr double nominalPoseRegWeight = 1e-5;
+          Eigen::VectorXd nominalPoseRegWeightVec = Eigen::VectorXd::Constant(thetaDim, nominalPoseRegWeight);
+          nominalPoseRegWeightVec.head<6>().setZero();
+          nominalPoseRegWeightVec.tail<6>().setConstant(1e3);
+          linearEqA.diagonal().head(thetaDim) += nominalPoseRegWeightVec;
+          linearEqB.head(thetaDim) +=
+              nominalPoseRegWeightVec.cwiseProduct(smplpp::toEigenMatrix(g_theta.view({thetaDim})).cast<double>());
         }
         Eigen::LLT<Eigen::MatrixXd> linearEqLlt(linearEqA);
         if(linearEqLlt.info() == Eigen::NumericalIssue)
@@ -505,7 +539,16 @@ int main(int argc, char * argv[])
 
         // Update config
         g_theta.set_requires_grad(false);
-        g_theta += smplpp::toTorchTensor<float>(deltaConfig.cast<float>(), true).view_as(g_theta);
+        g_theta += smplpp::toTorchTensor<float>(deltaConfig.head(thetaDim).cast<float>(), true).view_as(g_theta);
+        ikTargetIdx = 0;
+        for(auto & ikTargetKV : g_ikTargetList)
+        {
+          auto & ikTarget = ikTargetKV.second;
+          ikTarget.phi_ +=
+              smplpp::toTorchTensor<float>(deltaConfig.segment<2>(thetaDim + 2 * ikTargetIdx).cast<float>(), true);
+          ikTarget.phi_ = at::clamp(ikTarget.phi_, -0.1, 0.1); // \todo Impose limits with QP
+          ikTargetIdx++;
+        }
       }
 
       ROS_INFO_STREAM_THROTTLE(10.0,

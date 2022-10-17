@@ -302,6 +302,11 @@ void SMPL::setDevice(const torch::Device & device) noexcept(false)
   return;
 }
 
+torch::Device SMPL::getDevice() noexcept(false)
+{
+  return m__device;
+}
+
 /**setModelPath
  *
  * Brief

@@ -151,6 +151,9 @@ namespace smplpp
  *      - setDevice: <public>
  *          Set the torch device.
  *
+ *      - getDevice: <public>
+ *          Get the torch device.
+ *
  *      - setPath: <public>
  *          Set model path to the JSON model file.
  *
@@ -230,6 +233,7 @@ public: // PUBLIC METHODS
 
   // %% Setter and Getter %%
   void setDevice(const torch::Device & device) noexcept(false);
+  torch::Device getDevice() noexcept(false);
   void setModelPath(const std::string & modelPath) noexcept(false);
   void setVertPath(const std::string & vertexPath) noexcept(false);
 
