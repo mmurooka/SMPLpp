@@ -40,7 +40,7 @@
 #include <smplpp/VPoser.h>
 #include <smplpp/definition/def.h>
 #include <smplpp/toolbox/Singleton.hpp>
-#include <smplpp/toolbox/TorchEigenUtils.h>
+#include <smplpp/toolbox/TorchEigenUtils.hpp>
 #include <smplpp/toolbox/TorchEx.hpp>
 //----------
 #include <geometry_msgs/PointStamped.h>
