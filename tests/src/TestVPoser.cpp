@@ -11,7 +11,6 @@
 
 #include <smplpp/VPoser.h>
 
-#include <ros/console.h>
 #include <ros/package.h>
 
 void testConvertRotMatToAxisAngleOnce(const Eigen::Matrix3d & rotMat)
@@ -73,7 +72,7 @@ TEST(TestVPoser, convertRotMatToAxisAngle)
 TEST(TestVPoser, VPoserDecoder)
 {
   std::string vposerDataPath = ros::package::getPath("smplpp") + "/tests/data/TestVPoser.json";
-  ROS_INFO_STREAM("Load VPoser data from " << vposerDataPath);
+  std::cout << "Load VPoser data from " << vposerDataPath << std::endl;
   std::ifstream vposerDataFile(vposerDataPath);
   nlohmann::json vposerDataJsonObj = nlohmann::json::parse(vposerDataFile);
   xt::xarray<float> arrIn;
@@ -92,7 +91,7 @@ TEST(TestVPoser, VPoserDecoder)
 
   smplpp::VPoserDecoder vposer;
   std::string vposerParamsPath = ros::package::getPath("smplpp") + "/data/vposer_parameters.json";
-  ROS_INFO_STREAM("Load VPoser parameters from " << vposerParamsPath);
+  std::cout << "Load VPoser parameters from " << vposerParamsPath << std::endl;
   vposer->loadParamsFromJson(vposerParamsPath);
   vposer->eval();
 
@@ -102,7 +101,7 @@ TEST(TestVPoser, VPoserDecoder)
   tensorOutPredNorm.backward();
   torch::Tensor tensorGradPred = tensorIn.grad();
 
-  ROS_INFO_STREAM("Parameters in VPoserDecoder:");
+  std::cout << "Parameters in VPoserDecoder:" << std::endl;
   for(const auto & paramKV : vposer->named_parameters())
   {
     std::string key = paramKV.key();

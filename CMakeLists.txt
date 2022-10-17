@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.5)
 project(smplpp)
 
 # Need g++-8 to use C++17
-# Ref: https://github.com/xtensor-stack/xtensor/issues/2289#issuecomment-766655824
+# Ref. https://github.com/xtensor-stack/xtensor/issues/2289#issuecomment-766655824
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)

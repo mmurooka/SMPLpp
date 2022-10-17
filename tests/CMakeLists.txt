@@ -1,5 +1,6 @@
 set(smplpp_gtest_list
   TestVPoser
+  TestGeometryUtils
   )
 
 foreach(NAME IN LISTS smplpp_gtest_list)
