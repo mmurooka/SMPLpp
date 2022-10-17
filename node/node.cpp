@@ -194,9 +194,16 @@ void shapeParamCallback(const std_msgs::Float64MultiArray::ConstPtr & msg)
 
 void ikTargetPoseCallback(const geometry_msgs::TransformStamped::ConstPtr & msg)
 {
-  g_ikTargetList.at(msg->child_frame_id).targetPos_.index_put_({0}, msg->transform.translation.x);
-  g_ikTargetList.at(msg->child_frame_id).targetPos_.index_put_({1}, msg->transform.translation.y);
-  g_ikTargetList.at(msg->child_frame_id).targetPos_.index_put_({2}, msg->transform.translation.z);
+  auto & ikTarget = g_ikTargetList.at(msg->child_frame_id);
+  ikTarget.targetPos_.index_put_({0}, msg->transform.translation.x);
+  ikTarget.targetPos_.index_put_({1}, msg->transform.translation.y);
+  ikTarget.targetPos_.index_put_({2}, msg->transform.translation.z);
+  Eigen::Quaterniond quat(msg->transform.rotation.w, msg->transform.rotation.x, msg->transform.rotation.y,
+                          msg->transform.rotation.z);
+  Eigen::Vector3d normal = quat.toRotationMatrix().col(2);
+  ikTarget.targetNormal_.index_put_({0}, normal.x());
+  ikTarget.targetNormal_.index_put_({1}, normal.y());
+  ikTarget.targetNormal_.index_put_({2}, normal.z());
 }
 
 void clickedPointCallback(const geometry_msgs::PointStamped::ConstPtr & msg)
