@@ -88,7 +88,7 @@ public:
 
   torch::Tensor calcActualPos() const
   {
-    torch::Tensor faceIdxTensor = SINGLE_SMPL::get()->getFaceIndexRaw(faceIdx_).to(torch::kCPU);
+    torch::Tensor faceIdxTensor = SINGLE_SMPL::get()->getFaceIndexRaw(faceIdx_).clone().to(torch::kCPU);
     torch::Tensor actualPos;
     for(int32_t i = 0; i < 3; i++)
     {
@@ -109,7 +109,7 @@ public:
 
   torch::Tensor calcActualNormal() const
   {
-    torch::Tensor faceIdxTensor = SINGLE_SMPL::get()->getFaceIndexRaw(faceIdx_).to(torch::kCPU);
+    torch::Tensor faceIdxTensor = SINGLE_SMPL::get()->getFaceIndexRaw(faceIdx_).clone().to(torch::kCPU);
     std::vector<torch::Tensor> vertexTensors;
     for(int32_t i = 0; i < 3; i++)
     {
@@ -129,6 +129,12 @@ public:
   torch::Tensor calcNormalError() const
   {
     return at::dot(calcActualNormal(), targetNormal_) + 1.0;
+  }
+
+  void to(const torch::Device & device)
+  {
+    targetPos_ = targetPos_.to(device);
+    targetNormal_ = targetNormal_.to(device);
   }
 
 public:
@@ -272,6 +278,27 @@ int main(int argc, char * argv[])
   ros::Subscriber ikTargetPoseSub = nh.subscribe("smplpp/ik_target_pose", 1, ikTargetPoseCallback);
   ros::Subscriber clickedPointSub = nh.subscribe("/clicked_point", 1, clickedPointCallback);
 
+  // Set device
+  std::unique_ptr<torch::Device> device;
+  {
+    std::string deviceType = "CPU";
+    pnh.getParam("device", deviceType);
+    if(deviceType == "CPU")
+    {
+      device = std::make_unique<torch::Device>(torch::kCPU);
+    }
+    else if(deviceType == "CUDA")
+    {
+      device = std::make_unique<torch::Device>(torch::kCUDA);
+    }
+    else
+    {
+      throw smplpp::smpl_error("node", "Invalid device type: " + deviceType);
+    }
+    device->set_index(0);
+    ROS_INFO_STREAM("Device type: " << deviceType);
+  }
+
   // Setup variables
   g_config = enableVposer ? torch::zeros({CONFIG_DIM}) : torch::zeros({smplpp::JOINT_NUM + 1, 3});
   g_beta = torch::zeros({smplpp::SHAPE_BASIS_DIM});
@@ -299,27 +326,10 @@ int main(int argc, char * argv[])
     g_ikTargetList.emplace("RightFoot",
                            IkTarget(12812, smplpp::toTorchTensor<float>(Eigen::Vector3f(0.0, -0.2, 0.0), true),
                                     smplpp::toTorchTensor<float>(Eigen::Vector3f::UnitZ(), true)));
-  }
-
-  // Set device
-  std::unique_ptr<torch::Device> device;
-  {
-    std::string deviceType = "CPU";
-    pnh.getParam("device", deviceType);
-    if(deviceType == "CPU")
+    for(auto & ikTargetKV : g_ikTargetList)
     {
-      device = std::make_unique<torch::Device>(torch::kCPU);
+      ikTargetKV.second.to(*device);
     }
-    else if(deviceType == "CUDA")
-    {
-      device = std::make_unique<torch::Device>(torch::kCUDA);
-    }
-    else
-    {
-      throw smplpp::smpl_error("node", "Invalid device type: " + deviceType);
-    }
-    device->set_index(0);
-    ROS_INFO_STREAM("Device type: " << deviceType);
   }
 
   // Load SMPL model
@@ -426,12 +436,12 @@ int main(int argc, char * argv[])
         auto startTimeSetupIk = std::chrono::system_clock::now();
         for(const auto & ikTarget : g_ikTargetList)
         {
-          torch::Tensor posError = ikTarget.second.calcPosError();
-          torch::Tensor normalError = ikTarget.second.calcNormalError();
+          torch::Tensor posError = ikTarget.second.calcPosError().clone().to(torch::kCPU);
+          torch::Tensor normalError = ikTarget.second.calcNormalError().clone().to(torch::kCPU);
 
           // Set task value
-          e.segment<3>(rowIdx) = smplpp::toEigenMatrix(posError.to(torch::kCPU)).cast<double>();
-          e.segment<1>(rowIdx + 3) = smplpp::toEigenMatrix(normalError.view({1}).to(torch::kCPU)).cast<double>();
+          e.segment<3>(rowIdx) = smplpp::toEigenMatrix(posError).cast<double>();
+          e.segment<1>(rowIdx + 3) = smplpp::toEigenMatrix(normalError.view({1})).cast<double>();
 
           // Set task Jacobian
           for(int32_t i = 0; i < 3; i++)
@@ -441,7 +451,9 @@ int main(int argc, char * argv[])
             select.index_put_({0, i}, 1);
             posError.backward(select, true);
 
-            J.row(rowIdx) = smplpp::toEigenMatrix(g_config.grad().view({configDim})).transpose().cast<double>();
+            J.row(rowIdx) = smplpp::toEigenMatrix(g_config.grad().view({configDim}).clone().to(torch::kCPU))
+                                .transpose()
+                                .cast<double>();
             g_config.mutable_grad().zero_();
 
             rowIdx++;
@@ -449,7 +461,9 @@ int main(int argc, char * argv[])
           {
             normalError.backward({}, true);
 
-            J.row(rowIdx) = smplpp::toEigenMatrix(g_config.grad().view({configDim})).transpose().cast<double>();
+            J.row(rowIdx) = smplpp::toEigenMatrix(g_config.grad().view({configDim}).clone().to(torch::kCPU))
+                                .transpose()
+                                .cast<double>();
             g_config.mutable_grad().zero_();
 
             rowIdx++;
@@ -599,8 +613,8 @@ int main(int argc, char * argv[])
         geometry_msgs::Pose targetPoseMsg;
         geometry_msgs::Pose actualPoseMsg;
 
-        Eigen::Quaterniond targetQuat(
-            calcRotMatFromNormal(smplpp::toEigenMatrix(ikTarget.second.targetNormal_).cast<double>()));
+        Eigen::Quaterniond targetQuat(calcRotMatFromNormal(
+            smplpp::toEigenMatrix(ikTarget.second.targetNormal_.clone().to(torch::kCPU)).cast<double>()));
         targetPoseMsg.position.x = ikTarget.second.targetPos_.index({0}).item<float>();
         targetPoseMsg.position.y = ikTarget.second.targetPos_.index({1}).item<float>();
         targetPoseMsg.position.z = ikTarget.second.targetPos_.index({2}).item<float>();
@@ -610,8 +624,8 @@ int main(int argc, char * argv[])
         targetPoseMsg.orientation.z = targetQuat.z();
         targetPoseArrMsg.poses.push_back(targetPoseMsg);
 
-        torch::Tensor actualPos = ikTarget.second.calcActualPos().to(torch::kCPU);
-        torch::Tensor actualNormal = ikTarget.second.calcActualNormal().to(torch::kCPU);
+        torch::Tensor actualPos = ikTarget.second.calcActualPos().clone().to(torch::kCPU);
+        torch::Tensor actualNormal = ikTarget.second.calcActualNormal().clone().to(torch::kCPU);
         Eigen::Quaterniond actualQuat(calcRotMatFromNormal(smplpp::toEigenMatrix(actualNormal).cast<double>()));
         actualPoseMsg.position.x = actualPos.index({0}).item<float>();
         actualPoseMsg.position.y = actualPos.index({1}).item<float>();
