@@ -72,6 +72,15 @@
 class IkTask
 {
 public:
+  IkTask(int64_t faceIdx) : faceIdx_(faceIdx)
+  {
+    targetPos_ = torch::zeros({3});
+    targetNormal_ = torch::empty({3});
+    targetNormal_.index_put_({0}, 0.0);
+    targetNormal_.index_put_({1}, 0.0);
+    targetNormal_.index_put_({2}, 1.0);
+  }
+
   IkTask(int64_t faceIdx, torch::Tensor targetPos, torch::Tensor targetNormal)
   : faceIdx_(faceIdx), targetPos_(targetPos), targetNormal_(targetNormal)
   {
@@ -151,7 +160,7 @@ public:
 
   double normalTaskWeight_ = 1.0;
 
-  double phiLimit_ = 0.05;
+  double phiLimit_ = 0.04;
 
   torch::Tensor vertexWeights_ = torch::empty({3}).fill_(1.0 / 3.0);
 
@@ -219,6 +228,11 @@ void shapeParamCallback(const std_msgs::Float64MultiArray::ConstPtr & msg)
 
 void ikTargetPoseCallback(const geometry_msgs::TransformStamped::ConstPtr & msg)
 {
+  if(g_ikTaskList.count(msg->child_frame_id) == 0)
+  {
+    return;
+  }
+
   auto & ikTask = g_ikTaskList.at(msg->child_frame_id);
   ikTask.targetPos_.index_put_({0}, msg->transform.translation.x);
   ikTask.targetPos_.index_put_({1}, msg->transform.translation.y);
