@@ -514,7 +514,7 @@ int main(int argc, char * argv[])
   ros::Rate rate(rateFreq);
   int32_t mocapFrameIdx = 0;
   pnh.getParam("mocap_frame_idx", mocapFrameIdx);
-  while(ros::ok())
+  for(int64_t ikIter = 0;; ikIter++)
   {
     // Update SMPL model and solve IK
     {
@@ -585,6 +585,15 @@ int main(int argc, char * argv[])
             ikTask.targetPos_.index_put_({2}, point.z());
           }
           ikTask.normalTaskWeight_ = 0.0; // Disable normal task for mocap
+
+          if(solveMocapBody)
+          {
+            ikTask.phiLimit_ = ikIter < 50 ? 0.0 : 0.04;
+          }
+          else if(solveMocapMotion)
+          {
+            ikTask.phiLimit_ = 0.0;
+          }
         }
       }
 
@@ -1080,8 +1089,23 @@ int main(int argc, char * argv[])
     //   closestPointMarkerArrPub.publish(markerArrMsg);
     // }
 
-    if(solveMocapMotion)
+    if(solveMocapBody)
     {
+      if(ikIter % 10 == 0)
+      {
+        ROS_INFO_STREAM("[Iter: " << ikIter << "] Solving mocap body.");
+      }
+      if(ikIter == 100)
+      {
+        break;
+      }
+    }
+    else if(solveMocapMotion)
+    {
+      if(mocapFrameIdx % 10 == 0)
+      {
+        ROS_INFO_STREAM("[Frame: " << mocapFrameIdx << " / " << c3d->header().nbFrames() << "] Solving mocap motion.");
+      }
       mocapFrameIdx++;
       if(c3d->header().nbFrames() == mocapFrameIdx)
       {
