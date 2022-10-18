@@ -2,6 +2,7 @@
   <arg name="enable_vposer" default="true" />
   <arg name="enable_ik" default="true" />
   <arg name="enable_qp" default="true" />
+  <arg name="solve_mocap" default="false" />
   <arg name="enable_vertex_color" default="true" />
   <arg name="visualize_normal" default="false" />
   <arg name="device" default="CPU" />
@@ -11,10 +12,12 @@
       enable_vposer: $(arg enable_vposer)
       enable_ik: $(arg enable_ik)
       enable_qp: $(arg enable_qp)
+      solve_mocap: $(arg solve_mocap)
       enable_vertex_color: $(arg enable_vertex_color)
       visualize_normal: $(arg visualize_normal)
       smpl_path: $(find smplpp)/data/smpl_male.json
       vposer_path: $(find smplpp)/data/vposer_parameters.json
+      mocap_path: $(find smplpp)/data/sample_walk.c3d
       device: $(arg device)
       rate: 30.0
     </rosparam>

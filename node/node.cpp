@@ -140,7 +140,7 @@ public:
 
   torch::Tensor calcPosError() const
   {
-    return calcActualPos() - targetPos_;
+    return posTaskWeight_ * (calcActualPos() - targetPos_);
   }
 
   torch::Tensor calcNormalError() const
@@ -157,6 +157,8 @@ public:
 
 public:
   int64_t faceIdx_;
+
+  double posTaskWeight_ = 1.0;
 
   double normalTaskWeight_ = 1.0;
 
@@ -287,6 +289,8 @@ int main(int argc, char * argv[])
   pnh.getParam("enable_ik", enableIk);
   bool enableQp = false;
   pnh.getParam("enable_qp", enableQp);
+  bool solveMocap = false;
+  pnh.getParam("solve_mocap", solveMocap);
   bool enableVertexColor = false;
   pnh.getParam("enable_vertex_color", enableVertexColor);
   bool visualizeNormal = false;
@@ -297,7 +301,11 @@ int main(int argc, char * argv[])
   ros::Publisher actualPoseArrPub = nh.advertise<geometry_msgs::PoseArray>("smplpp/actual_pose_arr", 1);
   // ros::Publisher closestPointMarkerArrPub =
   //     nh.advertise<visualization_msgs::MarkerArray>("smplpp/closest_point_marker_arr", 1);
-  ros::Publisher mocapMarkerArrPub = nh.advertise<visualization_msgs::MarkerArray>("mocap/marker_arr", 1);
+  ros::Publisher mocapMarkerArrPub;
+  if(solveMocap)
+  {
+    mocapMarkerArrPub = nh.advertise<visualization_msgs::MarkerArray>("mocap/marker_arr", 1);
+  }
   ros::Subscriber latentPoseParamSub;
   ros::Subscriber poseParamSub;
   if(!enableIk)
@@ -351,14 +359,69 @@ int main(int argc, char * argv[])
       g_theta.index({1}).fill_(1.2092);
     }
 
-    g_ikTaskList.emplace("LeftHand", IkTask(2581, smplpp::toTorchTensor<float>(Eigen::Vector3f(0.5, 0.5, 1.0), true),
-                                            smplpp::toTorchTensor<float>(Eigen::Vector3f::UnitZ(), true)));
-    g_ikTaskList.emplace("RightHand", IkTask(9469, smplpp::toTorchTensor<float>(Eigen::Vector3f(0.5, -0.5, 1.0), true),
-                                             smplpp::toTorchTensor<float>(Eigen::Vector3f::UnitZ(), true)));
-    g_ikTaskList.emplace("LeftFoot", IkTask(5925, smplpp::toTorchTensor<float>(Eigen::Vector3f(0.0, 0.2, 0.0), true),
-                                            smplpp::toTorchTensor<float>(Eigen::Vector3f::UnitZ(), true)));
-    g_ikTaskList.emplace("RightFoot", IkTask(12812, smplpp::toTorchTensor<float>(Eigen::Vector3f(0.0, -0.2, 0.0), true),
-                                             smplpp::toTorchTensor<float>(Eigen::Vector3f::UnitZ(), true)));
+    if(solveMocap)
+    {
+      g_ikTaskList.emplace("HeadTop", IkTask(7324));
+      g_ikTaskList.emplace("HeadFront", IkTask(7194));
+      g_ikTaskList.emplace("HeadSide", IkTask(13450));
+
+      g_ikTaskList.emplace("Chest", IkTask(6842));
+      g_ikTaskList.emplace("WaistLFront", IkTask(2162));
+      g_ikTaskList.emplace("WaistRFront", IkTask(13026));
+      g_ikTaskList.emplace("WaistLBack", IkTask(5117));
+      g_ikTaskList.emplace("WaistRBack", IkTask(12007));
+      g_ikTaskList.emplace("BackTop", IkTask(8914));
+      g_ikTaskList.emplace("BackRight", IkTask(11433));
+      g_ikTaskList.emplace("BackLeft", IkTask(4309));
+
+      g_ikTaskList.emplace("LShoulderTop", IkTask(2261));
+      g_ikTaskList.emplace("LShoulderBack", IkTask(4599));
+      g_ikTaskList.emplace("LUArmHigh", IkTask(4249));
+      g_ikTaskList.emplace("LElbowOut", IkTask(4913));
+      g_ikTaskList.emplace("LWristIn", IkTask(4091));
+      g_ikTaskList.emplace("LWristOut", IkTask(2567));
+      g_ikTaskList.emplace("LHandOut", IkTask(2636));
+
+      g_ikTaskList.emplace("RShoulderTop", IkTask(13583));
+      g_ikTaskList.emplace("RShoulderBack", IkTask(11491));
+      g_ikTaskList.emplace("RUArmHigh", IkTask(11137));
+      g_ikTaskList.emplace("RElbowOut", IkTask(11802));
+      g_ikTaskList.emplace("RWristIn", IkTask(9712));
+      g_ikTaskList.emplace("RWristOut", IkTask(9590));
+      g_ikTaskList.emplace("RHandOut", IkTask(9733));
+
+      g_ikTaskList.emplace("LThigh", IkTask(1122));
+      g_ikTaskList.emplace("LKneeOut", IkTask(1165));
+      g_ikTaskList.emplace("LShin", IkTask(1247));
+      g_ikTaskList.emplace("LAnkleOut", IkTask(5742));
+      g_ikTaskList.emplace("LToeIn", IkTask(5758));
+      g_ikTaskList.emplace("LToeOut", IkTask(6000));
+      g_ikTaskList.emplace("LToeTip", IkTask(5591));
+      g_ikTaskList.emplace("LHeel", IkTask(5815));
+
+      g_ikTaskList.emplace("RThigh", IkTask(8523));
+      g_ikTaskList.emplace("RKneeOut", IkTask(8053));
+      g_ikTaskList.emplace("RShin", IkTask(12108));
+      g_ikTaskList.emplace("RAnkleOut", IkTask(12630));
+      g_ikTaskList.emplace("RToeIn", IkTask(12896));
+      g_ikTaskList.emplace("RToeOut", IkTask(12889));
+      g_ikTaskList.emplace("RToeTip", IkTask(12478));
+      g_ikTaskList.emplace("RHeel", IkTask(12705));
+    }
+    else
+    {
+      g_ikTaskList.emplace("LeftHand", IkTask(2581, smplpp::toTorchTensor<float>(Eigen::Vector3f(0.5, 0.5, 1.0), true),
+                                              smplpp::toTorchTensor<float>(Eigen::Vector3f::UnitZ(), true)));
+      g_ikTaskList.emplace("RightHand",
+                           IkTask(9469, smplpp::toTorchTensor<float>(Eigen::Vector3f(0.5, -0.5, 1.0), true),
+                                  smplpp::toTorchTensor<float>(Eigen::Vector3f::UnitZ(), true)));
+      g_ikTaskList.emplace("LeftFoot", IkTask(5925, smplpp::toTorchTensor<float>(Eigen::Vector3f(0.0, 0.2, 0.0), true),
+                                              smplpp::toTorchTensor<float>(Eigen::Vector3f::UnitZ(), true)));
+      g_ikTaskList.emplace("RightFoot",
+                           IkTask(12812, smplpp::toTorchTensor<float>(Eigen::Vector3f(0.0, -0.2, 0.0), true),
+                                  smplpp::toTorchTensor<float>(Eigen::Vector3f::UnitZ(), true)));
+    }
+
     for(auto & ikTaskKV : g_ikTaskList)
     {
       ikTaskKV.second.normalTaskWeight_ = 0.0; // \todo Temporary
@@ -413,67 +476,43 @@ int main(int argc, char * argv[])
   }
 
   // Load C3D file
-  if(false)
+  std::shared_ptr<ezc3d::c3d> c3d;
+  std::unordered_map<std::string, int32_t> ikMocapIdxMap;
+  if(solveMocap)
   {
-    ezc3d::c3d c3d(ros::package::getPath("smplpp") + "/data/sample_walk.c3d");
-    // c3d.header().print();
-    // c3d.parameters().print();
-
-    ROS_INFO_STREAM("C3D frame rate: " << c3d.header().frameRate());
-    std::vector<std::string> pointLabelList = c3d.parameters().group("POINT").parameter("LABELS").valuesAsString();
-    ROS_INFO_STREAM("C3D point labels:");
-    for(const auto & pointLabel : pointLabelList)
+    std::string mocapPath;
+    pnh.getParam("mocap_path", mocapPath);
+    if(mocapPath.empty())
     {
-      ROS_INFO_STREAM("  - " << pointLabel);
+      mocapPath = ros::package::getPath("smplpp") + "/data/sample_walk.c3d";
     }
+    ROS_INFO_STREAM("Load mocap from " << mocapPath);
 
-    ros::Rate rate(c3d.header().frameRate());
-    for(size_t frameIdx = 0; frameIdx < c3d.data().nbFrames(); frameIdx++)
+    c3d = std::make_shared<ezc3d::c3d>(mocapPath);
+
+    const std::vector<std::string> & pointLabels =
+        c3d->parameters().group("POINT").parameter("LABELS").valuesAsString();
+    for(const auto & ikTaskKV : g_ikTaskList)
     {
-      visualization_msgs::MarkerArray markerArrMsg;
-      visualization_msgs::Marker markerMsg;
-      markerMsg.header.stamp = ros::Time::now();
-      markerMsg.header.frame_id = "world";
-      markerMsg.ns = "Mocap points";
-      markerMsg.id = 0;
-      markerMsg.type = visualization_msgs::Marker::SPHERE_LIST;
-      markerMsg.action = visualization_msgs::Marker::ADD;
-      markerMsg.pose.orientation.w = 1.0;
-      markerMsg.scale.x = 0.05;
-      markerMsg.scale.y = 0.05;
-      markerMsg.scale.z = 0.05;
-      markerMsg.color.r = 0.8;
-      markerMsg.color.g = 0.1;
-      markerMsg.color.b = 0.8;
-      markerMsg.color.a = 1.0;
-
-      const auto & points = c3d.data().frame(frameIdx).points();
-      constexpr size_t mocapMarkerNum = 42;
-      for(size_t markerIdx = 0; markerIdx < mocapMarkerNum; markerIdx++)
-      {
-        const auto & point = points.point(markerIdx);
-        if(point.isEmpty())
-        {
-          continue;
-        }
-
-        geometry_msgs::Point pointMsg;
-        pointMsg.x = point.x();
-        pointMsg.y = point.y();
-        pointMsg.z = point.z();
-        markerMsg.points.push_back(pointMsg);
-      }
-
-      markerArrMsg.markers.push_back(markerMsg);
-      mocapMarkerArrPub.publish(markerArrMsg);
-
-      rate.sleep();
+      const auto & ikTaskName = ikTaskKV.first;
+      auto checkEndSubstr = [&ikTaskName](const std::string & str) -> bool {
+        return str.length() >= ikTaskName.length()
+               && (str.compare(str.length() - ikTaskName.length(), ikTaskName.length(), ikTaskName) == 0);
+      };
+      auto findIter = std::find_if(pointLabels.cbegin(), pointLabels.cend(), checkEndSubstr);
+      int32_t mocapIdx = std::distance(pointLabels.cbegin(), findIter);
+      ikMocapIdxMap.emplace(ikTaskName, mocapIdx);
     }
   }
 
   double rateFreq = 30.0;
+  if(solveMocap)
+  {
+    rateFreq = c3d->header().frameRate();
+  }
   pnh.getParam("rate", rateFreq);
   ros::Rate rate(rateFreq);
+  int32_t mocapFrameIdx = 0;
   while(ros::ok())
   {
     // Update SMPL model and solve IK
@@ -516,6 +555,73 @@ int main(int argc, char * argv[])
                                                     std::chrono::system_clock::now() - startTimeForward)
                                                         .count()
                                                     * 1e3);
+
+      // Update IK target from mocap
+      if(solveMocap)
+      {
+        const auto & points = c3d->data().frame(mocapFrameIdx).points();
+        for(auto & ikTaskKV : g_ikTaskList)
+        {
+          auto & ikTask = ikTaskKV.second;
+          int32_t mocapIdx = ikMocapIdxMap.at(ikTaskKV.first);
+
+          const auto & point = points.point(mocapIdx);
+          if(point.isEmpty())
+          {
+            ikTask.posTaskWeight_ = 0.0;
+            ikTask.targetPos_.zero_();
+          }
+          else
+          {
+            ikTask.posTaskWeight_ = 1.0;
+            ikTask.targetPos_.index_put_({0}, point.x());
+            ikTask.targetPos_.index_put_({1}, point.y());
+            ikTask.targetPos_.index_put_({2}, point.z());
+          }
+        }
+
+        // for(size_t frameIdx = 0; frameIdx < c3d->data().nbFrames(); frameIdx++)
+        // {
+        //   visualization_msgs::MarkerArray markerArrMsg;
+        //   visualization_msgs::Marker markerMsg;
+        //   markerMsg.header.stamp = ros::Time::now();
+        //   markerMsg.header.frame_id = "world";
+        //   markerMsg.ns = "Mocap points";
+        //   markerMsg.id = 0;
+        //   markerMsg.type = visualization_msgs::Marker::SPHERE_LIST;
+        //   markerMsg.action = visualization_msgs::Marker::ADD;
+        //   markerMsg.pose.orientation.w = 1.0;
+        //   markerMsg.scale.x = 0.05;
+        //   markerMsg.scale.y = 0.05;
+        //   markerMsg.scale.z = 0.05;
+        //   markerMsg.color.r = 0.8;
+        //   markerMsg.color.g = 0.1;
+        //   markerMsg.color.b = 0.8;
+        //   markerMsg.color.a = 1.0;
+
+        //   const auto & points = c3d->data().frame(frameIdx).points();
+        //   constexpr size_t mocapMarkerNum = 42;
+        //   for(size_t mocapIdx = 0; mocapIdx < mocapMarkerNum; mocapIdx++)
+        //   {
+        //     const auto & point = points.point(mocapIdx);
+        //     if(point.isEmpty())
+        //     {
+        //       continue;
+        //     }
+
+        //     geometry_msgs::Point pointMsg;
+        //     pointMsg.x = point.x();
+        //     pointMsg.y = point.y();
+        //     pointMsg.z = point.z();
+        //     markerMsg.points.push_back(pointMsg);
+        //   }
+
+        //   markerArrMsg.markers.push_back(markerMsg);
+        //   mocapMarkerArrPub.publish(markerArrMsg);
+
+        //   rate.sleep();
+        // }
+      }
 
       // Solve IK
       if(g_ikTaskList.size() > 0)
@@ -563,7 +669,8 @@ int main(int argc, char * argv[])
             g_theta.mutable_grad().zero_();
           }
           {
-            J.block<3, 2>(rowIdx, thetaDim + 2 * ikTaskIdx) = smplpp::toEigenMatrix(ikTask.tangents_).cast<double>();
+            J.block<3, 2>(rowIdx, thetaDim + 2 * ikTaskIdx) =
+                ikTask.posTaskWeight_ * smplpp::toEigenMatrix(ikTask.tangents_).cast<double>();
           }
 
           rowIdx += 4;
@@ -940,6 +1047,8 @@ int main(int argc, char * argv[])
     //   markerArrMsg.markers.push_back(lineMarkerMsg);
     //   closestPointMarkerArrPub.publish(markerArrMsg);
     // }
+
+    mocapFrameIdx++;
 
     ros::spinOnce();
     rate.sleep();
