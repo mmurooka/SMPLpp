@@ -289,8 +289,11 @@ int main(int argc, char * argv[])
   pnh.getParam("enable_ik", enableIk);
   bool enableQp = false;
   pnh.getParam("enable_qp", enableQp);
-  bool solveMocap = false;
-  pnh.getParam("solve_mocap", solveMocap);
+  bool solveMocapBody = false;
+  pnh.getParam("solve_mocap_body", solveMocapBody);
+  bool solveMocapMotion = false;
+  pnh.getParam("solve_mocap_motion", solveMocapMotion);
+  bool solveMocap = solveMocapBody || solveMocapMotion;
   bool enableVertexColor = false;
   pnh.getParam("enable_vertex_color", enableVertexColor);
   bool visualizeNormal = false;
@@ -478,7 +481,7 @@ int main(int argc, char * argv[])
 
   // Load C3D file
   std::shared_ptr<ezc3d::c3d> c3d;
-  std::unordered_map<std::string, int32_t> ikMocapIdxMap;
+  std::unordered_map<std::string, int32_t> ikMocapMarkerIdxMap;
   if(solveMocap)
   {
     std::string mocapPath;
@@ -501,19 +504,16 @@ int main(int argc, char * argv[])
                && (str.compare(str.length() - ikTaskName.length(), ikTaskName.length(), ikTaskName) == 0);
       };
       auto findIter = std::find_if(pointLabels.cbegin(), pointLabels.cend(), checkEndSubstr);
-      int32_t mocapIdx = std::distance(pointLabels.cbegin(), findIter);
-      ikMocapIdxMap.emplace(ikTaskName, mocapIdx);
+      int32_t mocapMarkerIdx = std::distance(pointLabels.cbegin(), findIter);
+      ikMocapMarkerIdxMap.emplace(ikTaskName, mocapMarkerIdx);
     }
   }
 
-  double rateFreq = 30.0;
-  if(solveMocap)
-  {
-    rateFreq = c3d->header().frameRate();
-  }
+  double rateFreq = solveMocap ? c3d->header().frameRate() : 30.0;
   pnh.getParam("rate", rateFreq);
   ros::Rate rate(rateFreq);
   int32_t mocapFrameIdx = 0;
+  pnh.getParam("mocap_frame_idx", mocapFrameIdx);
   while(ros::ok())
   {
     // Update SMPL model and solve IK
@@ -564,11 +564,16 @@ int main(int argc, char * argv[])
         for(auto & ikTaskKV : g_ikTaskList)
         {
           auto & ikTask = ikTaskKV.second;
-          int32_t mocapIdx = ikMocapIdxMap.at(ikTaskKV.first);
+          int32_t mocapMarkerIdx = ikMocapMarkerIdxMap.at(ikTaskKV.first);
 
-          const auto & point = points.point(mocapIdx);
+          const auto & point = points.point(mocapMarkerIdx);
           if(point.isEmpty())
           {
+            if(solveMocapBody)
+            {
+              throw smplpp::smpl_error("node", "All mocap markers must be found to solve mocap body: " + ikTaskKV.first
+                                                   + " not found.");
+            }
             ikTask.posTaskWeight_ = 0.0;
             ikTask.targetPos_.zero_();
           }
@@ -602,9 +607,9 @@ int main(int argc, char * argv[])
 
         //   const auto & points = c3d->data().frame(frameIdx).points();
         //   constexpr size_t mocapMarkerNum = 42;
-        //   for(size_t mocapIdx = 0; mocapIdx < mocapMarkerNum; mocapIdx++)
+        //   for(size_t mocapMarkerIdx = 0; mocapMarkerIdx < mocapMarkerNum; mocapMarkerIdx++)
         //   {
-        //     const auto & point = points.point(mocapIdx);
+        //     const auto & point = points.point(mocapMarkerIdx);
         //     if(point.isEmpty())
         //     {
         //       continue;
@@ -1049,7 +1054,14 @@ int main(int argc, char * argv[])
     //   closestPointMarkerArrPub.publish(markerArrMsg);
     // }
 
-    mocapFrameIdx++;
+    if(solveMocapMotion)
+    {
+      mocapFrameIdx++;
+      if(c3d->header().nbFrames() == mocapFrameIdx)
+      {
+        break;
+      }
+    }
 
     ros::spinOnce();
     rate.sleep();

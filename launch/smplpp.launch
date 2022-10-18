@@ -2,7 +2,8 @@
   <arg name="enable_vposer" default="true" />
   <arg name="enable_ik" default="true" />
   <arg name="enable_qp" default="true" />
-  <arg name="solve_mocap" default="false" />
+  <arg name="solve_mocap_body" default="false" />
+  <arg name="solve_mocap_motion" default="false" />
   <arg name="enable_vertex_color" default="true" />
   <arg name="visualize_normal" default="false" />
   <arg name="device" default="CPU" />
@@ -12,7 +13,9 @@
       enable_vposer: $(arg enable_vposer)
       enable_ik: $(arg enable_ik)
       enable_qp: $(arg enable_qp)
-      solve_mocap: $(arg solve_mocap)
+      solve_mocap_body: $(arg solve_mocap_body)
+      solve_mocap_motion: $(arg solve_mocap_motion)
+      mocap_frame_idx: 10
       enable_vertex_color: $(arg enable_vertex_color)
       visualize_normal: $(arg visualize_normal)
       smpl_path: $(find smplpp)/data/smpl_male.json
