@@ -947,9 +947,9 @@ int main(int argc, char * argv[])
       markerMsg.type = visualization_msgs::Marker::SPHERE_LIST;
       markerMsg.action = visualization_msgs::Marker::ADD;
       markerMsg.pose.orientation.w = 1.0;
-      markerMsg.scale.x = 0.05;
-      markerMsg.scale.y = 0.05;
-      markerMsg.scale.z = 0.05;
+      markerMsg.scale.x = 0.04;
+      markerMsg.scale.y = 0.04;
+      markerMsg.scale.z = 0.04;
       markerMsg.color.r = 0.8;
       markerMsg.color.g = 0.1;
       markerMsg.color.b = 0.8;
@@ -979,9 +979,9 @@ int main(int argc, char * argv[])
       ikMarkerMsg.type = visualization_msgs::Marker::SPHERE_LIST;
       ikMarkerMsg.action = visualization_msgs::Marker::ADD;
       ikMarkerMsg.pose.orientation.w = 1.0;
-      ikMarkerMsg.scale.x = 0.05;
-      ikMarkerMsg.scale.y = 0.05;
-      ikMarkerMsg.scale.z = 0.05;
+      ikMarkerMsg.scale.x = 0.04;
+      ikMarkerMsg.scale.y = 0.04;
+      ikMarkerMsg.scale.z = 0.04;
       ikMarkerMsg.color.r = 0.0;
       ikMarkerMsg.color.g = 0.8;
       ikMarkerMsg.color.b = 0.8;
