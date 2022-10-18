@@ -283,6 +283,8 @@ int main(int argc, char * argv[])
   pnh.getParam("enable_qp", enableQp);
   bool enableVertexColor = false;
   pnh.getParam("enable_vertex_color", enableVertexColor);
+  bool visualizeNormal = false;
+  pnh.getParam("visualize_normal", visualizeNormal);
 
   ros::Publisher markerArrPub = nh.advertise<visualization_msgs::MarkerArray>("smplpp/marker_arr", 1);
   ros::Publisher targetPoseArrPub = nh.advertise<geometry_msgs::PoseArray>("smplpp/target_pose_arr", 1);
@@ -645,6 +647,24 @@ int main(int argc, char * argv[])
       markerMsg.color.b = 0.1;
       markerMsg.color.a = 1.0;
 
+      visualization_msgs::Marker normalMarkerMsg;
+      if(visualizeNormal)
+      {
+        normalMarkerMsg.header = markerMsg.header;
+        normalMarkerMsg.ns = "SMPL model normals";
+        normalMarkerMsg.id = 1;
+        normalMarkerMsg.type = visualization_msgs::Marker::LINE_LIST;
+        normalMarkerMsg.action = visualization_msgs::Marker::ADD;
+        normalMarkerMsg.pose.orientation.w = 1.0;
+        normalMarkerMsg.scale.x = 0.002;
+        normalMarkerMsg.scale.y = 0.002;
+        normalMarkerMsg.scale.z = 0.002;
+        normalMarkerMsg.color.r = 0.1;
+        normalMarkerMsg.color.g = 0.1;
+        normalMarkerMsg.color.b = 0.8;
+        normalMarkerMsg.color.a = 1.0;
+      }
+
       torch::Tensor vertexTensor = SINGLE_SMPL::get()->getVertex().index({0}).to(torch::kCPU);
       Eigen::MatrixX3d vertexMat = smplpp::toEigenMatrix(vertexTensor).cast<double>();
       torch::Tensor faceIdxTensor = SINGLE_SMPL::get()->getFaceIndex().to(torch::kCPU);
@@ -669,24 +689,54 @@ int main(int argc, char * argv[])
         return colorMsg;
       };
 
-      for(int64_t i = 0; i < smplpp::FACE_INDEX_NUM; i++)
+      for(int64_t faceIdx = 0; faceIdx < smplpp::FACE_INDEX_NUM; faceIdx++)
       {
-        for(int32_t j = 0; j < 3; j++)
+        for(int32_t i = 0; i < 3; i++)
         {
-          int64_t idx = faceIdxMat(i, j);
+          int64_t vertexIdx = faceIdxMat(faceIdx, i);
           geometry_msgs::Point pointMsg;
-          pointMsg.x = vertexMat(idx, 0);
-          pointMsg.y = vertexMat(idx, 1);
-          pointMsg.z = vertexMat(idx, 2);
+          pointMsg.x = vertexMat(vertexIdx, 0);
+          pointMsg.y = vertexMat(vertexIdx, 1);
+          pointMsg.z = vertexMat(vertexIdx, 2);
           markerMsg.points.push_back(pointMsg);
           if(enableVertexColor)
           {
             markerMsg.colors.push_back(makeColorMsg(pointMsg.z));
           }
         }
+
+        if(visualizeNormal && faceIdx % 2 == 0)
+        {
+          Eigen::Vector3d centroid = (vertexMat.row(faceIdxMat(faceIdx, 0)) + vertexMat.row(faceIdxMat(faceIdx, 1))
+                                      + vertexMat.row(faceIdxMat(faceIdx, 2)))
+                                         .transpose()
+                                     / 3.0;
+          Eigen::Vector3d normal =
+              centroid
+              + 0.05
+                    * (vertexMat.row(faceIdxMat(faceIdx, 1)) - vertexMat.row(faceIdxMat(faceIdx, 0)))
+                          .transpose()
+                          .cross((vertexMat.row(faceIdxMat(faceIdx, 2)) - vertexMat.row(faceIdxMat(faceIdx, 0)))
+                                     .transpose())
+                          .normalized();
+          geometry_msgs::Point centroidPointMsg;
+          centroidPointMsg.x = centroid.x();
+          centroidPointMsg.y = centroid.y();
+          centroidPointMsg.z = centroid.z();
+          geometry_msgs::Point normalPointMsg;
+          normalPointMsg.x = normal.x();
+          normalPointMsg.y = normal.y();
+          normalPointMsg.z = normal.z();
+          normalMarkerMsg.points.push_back(centroidPointMsg);
+          normalMarkerMsg.points.push_back(normalPointMsg);
+        }
       }
 
       markerArrMsg.markers.push_back(markerMsg);
+      if(visualizeNormal)
+      {
+        markerArrMsg.markers.push_back(normalMarkerMsg);
+      }
       markerArrPub.publish(markerArrMsg);
 
       ROS_INFO_STREAM_THROTTLE(10.0, "Duration to publish SMPL model: "
@@ -716,8 +766,8 @@ int main(int argc, char * argv[])
         geometry_msgs::Pose targetPoseMsg;
         geometry_msgs::Pose actualPoseMsg;
 
-        Eigen::Quaterniond targetQuat(
-            smplpp::calcRotMatFromNormal(smplpp::toEigenMatrix(ikTask.targetNormal_.to(torch::kCPU)).cast<double>()));
+        Eigen::Quaterniond targetQuat(smplpp::calcRotMatFromNormal(
+            smplpp::toEigenMatrix(ikTask.targetNormal_.to(torch::kCPU)).cast<double>().normalized()));
         targetPoseMsg.position.x = ikTask.targetPos_.index({0}).item<float>();
         targetPoseMsg.position.y = ikTask.targetPos_.index({1}).item<float>();
         targetPoseMsg.position.z = ikTask.targetPos_.index({2}).item<float>();
@@ -729,7 +779,8 @@ int main(int argc, char * argv[])
 
         torch::Tensor actualPos = ikTask.calcActualPos().to(torch::kCPU);
         torch::Tensor actualNormal = ikTask.calcActualNormal().to(torch::kCPU);
-        Eigen::Quaterniond actualQuat(smplpp::calcRotMatFromNormal(smplpp::toEigenMatrix(actualNormal).cast<double>()));
+        Eigen::Quaterniond actualQuat(
+            smplpp::calcRotMatFromNormal(smplpp::toEigenMatrix(actualNormal).cast<double>().normalized()));
         actualPoseMsg.position.x = actualPos.index({0}).item<float>();
         actualPoseMsg.position.y = actualPos.index({1}).item<float>();
         actualPoseMsg.position.z = actualPos.index({2}).item<float>();

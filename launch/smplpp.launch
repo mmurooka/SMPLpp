@@ -3,6 +3,7 @@
   <arg name="enable_ik" default="true" />
   <arg name="enable_qp" default="true" />
   <arg name="enable_vertex_color" default="true" />
+  <arg name="visualize_normal" default="false" />
   <arg name="device" default="CPU" />
 
   <node pkg="smplpp" type="node" name="smplpp" output="screen">
@@ -11,6 +12,7 @@
       enable_ik: $(arg enable_ik)
       enable_qp: $(arg enable_qp)
       enable_vertex_color: $(arg enable_vertex_color)
+      visualize_normal: $(arg visualize_normal)
       smpl_path: $(find smplpp)/data/smpl_male.json
       vposer_path: $(find smplpp)/data/vposer_parameters.json
       device: $(arg device)
