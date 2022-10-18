@@ -972,7 +972,34 @@ int main(int argc, char * argv[])
         markerMsg.points.push_back(pointMsg);
       }
 
+      visualization_msgs::Marker ikMarkerMsg;
+      ikMarkerMsg.header = markerMsg.header;
+      ikMarkerMsg.ns = "IK points";
+      ikMarkerMsg.id = 1;
+      ikMarkerMsg.type = visualization_msgs::Marker::SPHERE_LIST;
+      ikMarkerMsg.action = visualization_msgs::Marker::ADD;
+      ikMarkerMsg.pose.orientation.w = 1.0;
+      ikMarkerMsg.scale.x = 0.05;
+      ikMarkerMsg.scale.y = 0.05;
+      ikMarkerMsg.scale.z = 0.05;
+      ikMarkerMsg.color.r = 0.0;
+      ikMarkerMsg.color.g = 0.8;
+      ikMarkerMsg.color.b = 0.8;
+      ikMarkerMsg.color.a = 1.0;
+
+      for(const auto & ikTaskKV : g_ikTaskList)
+      {
+        torch::Tensor actualPos = ikTaskKV.second.calcActualPos().to(torch::kCPU);
+
+        geometry_msgs::Point pointMsg;
+        pointMsg.x = actualPos.index({0}).item<float>();
+        pointMsg.y = actualPos.index({1}).item<float>();
+        pointMsg.z = actualPos.index({2}).item<float>();
+        ikMarkerMsg.points.push_back(pointMsg);
+      }
+
       markerArrMsg.markers.push_back(markerMsg);
+      markerArrMsg.markers.push_back(ikMarkerMsg);
       mocapMarkerArrPub.publish(markerArrMsg);
     }
 
