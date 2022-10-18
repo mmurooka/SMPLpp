@@ -174,6 +174,9 @@ namespace smplpp
  *
  *      - getVertexRaw: <public>
  *          Get raw tensor of vertex locations of the deformed mesh.
+ *
+ *      - calcNormal: <public>
+ *          Calculate unit normal vector of face.
  *      %%
  *
  *      %
@@ -243,6 +246,7 @@ public: // PUBLIC METHODS
   torch::Tensor getRestJoint() noexcept(false);
   torch::Tensor getVertex() noexcept(false);
   torch::Tensor getVertexRaw(int64_t idx) noexcept(false);
+  torch::Tensor calcNormal(int64_t faceIdx) noexcept(false);
 
   // %% Modeling %%
   void init() noexcept(false);

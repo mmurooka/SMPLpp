@@ -510,6 +510,20 @@ torch::Tensor SMPL::getVertexRaw(int64_t idx) noexcept(false)
   return m__skinner.getVertexRaw(idx);
 }
 
+torch::Tensor SMPL::calcNormal(int64_t faceIdx) noexcept(false)
+{
+  torch::Tensor faceVertexIdxs = getFaceIndexRaw(faceIdx).to(torch::kCPU) - 1;
+  std::vector<torch::Tensor> faceVertices;
+  for(int32_t i = 0; i < 3; i++)
+  {
+    int32_t faceVertexIdx = faceVertexIdxs.index({i}).item<int32_t>();
+    faceVertices.push_back(getVertexRaw(faceVertexIdx));
+  }
+  return torch::nn::functional::normalize(
+      at::cross(faceVertices[1] - faceVertices[0], faceVertices[2] - faceVertices[0]),
+      torch::nn::functional::NormalizeFuncOptions().dim(-1));
+}
+
 /**init
  *
  * Brief
