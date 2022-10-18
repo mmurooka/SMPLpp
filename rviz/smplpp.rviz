@@ -81,7 +81,7 @@ Visualization Manager:
       Axes Radius: 0.019999999552965164
       Class: rviz/PoseArray
       Color: 255; 25; 0
-      Enabled: true
+      Enabled: false
       Head Length: 0.07000000029802322
       Head Radius: 0.029999999329447746
       Name: TargetPoseArray
@@ -90,14 +90,14 @@ Visualization Manager:
       Shape: Axes
       Topic: /smplpp/target_pose_arr
       Unreliable: false
-      Value: true
+      Value: false
     - Alpha: 1
       Arrow Length: 0.30000001192092896
       Axes Length: 0.05999999865889549
       Axes Radius: 0.03999999910593033
       Class: rviz/PoseArray
       Color: 255; 25; 0
-      Enabled: true
+      Enabled: false
       Head Length: 0.07000000029802322
       Head Radius: 0.029999999329447746
       Name: ActualPoseArray
@@ -106,7 +106,7 @@ Visualization Manager:
       Shape: Axes
       Topic: /smplpp/actual_pose_arr
       Unreliable: false
-      Value: true
+      Value: false
     - Class: rviz/MarkerArray
       Enabled: true
       Marker Topic: /smplpp/closest_point_marker_arr
@@ -120,7 +120,8 @@ Visualization Manager:
       Marker Topic: /mocap/marker_arr
       Name: MocapMarkerArray
       Namespaces:
-        {}
+        IK points: true
+        Mocap points: true
       Queue Size: 100
       Value: true
   Enabled: true
@@ -151,7 +152,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 2.5528829097747803
+      Distance: 7.079345703125
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -166,10 +167,10 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.005398654378950596
+      Pitch: 0.24039863049983978
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 5.213582515716553
+      Yaw: 5.4735846519470215
     Saved: ~
 Window Geometry:
   Displays:
