@@ -64,6 +64,20 @@
 
 //===== MAIN FUNCTION =========================================================
 
+torch::Tensor calcSmplNormal(int64_t faceIdx)
+{
+  torch::Tensor faceVertexIdxs = SINGLE_SMPL::get()->getFaceIndexRaw(faceIdx).to(torch::kCPU);
+  std::vector<torch::Tensor> faceVertices;
+  for(int32_t i = 0; i < 3; i++)
+  {
+    int32_t faceVertexIdx = faceVertexIdxs.index({i}).item<int32_t>() - 1;
+    faceVertices.push_back(SINGLE_SMPL::get()->getVertexRaw(faceVertexIdx));
+  }
+  return torch::nn::functional::normalize(
+      at::cross(faceVertices[1] - faceVertices[0], faceVertices[2] - faceVertices[0]),
+      torch::nn::functional::NormalizeFuncOptions().dim(-1));
+}
+
 class IkTask
 {
 public:
@@ -128,16 +142,7 @@ public:
 
   torch::Tensor calcActualNormal() const
   {
-    torch::Tensor faceVertexIdxs = SINGLE_SMPL::get()->getFaceIndexRaw(faceIdx_).to(torch::kCPU);
-    std::vector<torch::Tensor> faceVertices;
-    for(int32_t i = 0; i < 3; i++)
-    {
-      int32_t faceVertexIdx = faceVertexIdxs.index({i}).item<int32_t>();
-      faceVertices.push_back(SINGLE_SMPL::get()->getVertexRaw(faceVertexIdx));
-    }
-    return torch::nn::functional::normalize(
-        at::cross(faceVertices[1] - faceVertices[0], faceVertices[2] - faceVertices[0]),
-        torch::nn::functional::NormalizeFuncOptions().dim(-1));
+    return calcSmplNormal(faceIdx_);
   }
 
   torch::Tensor calcPosError() const
