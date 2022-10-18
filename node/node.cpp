@@ -584,49 +584,8 @@ int main(int argc, char * argv[])
             ikTask.targetPos_.index_put_({1}, point.y());
             ikTask.targetPos_.index_put_({2}, point.z());
           }
+          ikTask.normalTaskWeight_ = 0.0; // Disable normal task for mocap
         }
-
-        // for(size_t frameIdx = 0; frameIdx < c3d->data().nbFrames(); frameIdx++)
-        // {
-        //   visualization_msgs::MarkerArray markerArrMsg;
-        //   visualization_msgs::Marker markerMsg;
-        //   markerMsg.header.stamp = ros::Time::now();
-        //   markerMsg.header.frame_id = "world";
-        //   markerMsg.ns = "Mocap points";
-        //   markerMsg.id = 0;
-        //   markerMsg.type = visualization_msgs::Marker::SPHERE_LIST;
-        //   markerMsg.action = visualization_msgs::Marker::ADD;
-        //   markerMsg.pose.orientation.w = 1.0;
-        //   markerMsg.scale.x = 0.05;
-        //   markerMsg.scale.y = 0.05;
-        //   markerMsg.scale.z = 0.05;
-        //   markerMsg.color.r = 0.8;
-        //   markerMsg.color.g = 0.1;
-        //   markerMsg.color.b = 0.8;
-        //   markerMsg.color.a = 1.0;
-
-        //   const auto & points = c3d->data().frame(frameIdx).points();
-        //   constexpr size_t mocapMarkerNum = 42;
-        //   for(size_t mocapMarkerIdx = 0; mocapMarkerIdx < mocapMarkerNum; mocapMarkerIdx++)
-        //   {
-        //     const auto & point = points.point(mocapMarkerIdx);
-        //     if(point.isEmpty())
-        //     {
-        //       continue;
-        //     }
-
-        //     geometry_msgs::Point pointMsg;
-        //     pointMsg.x = point.x();
-        //     pointMsg.y = point.y();
-        //     pointMsg.z = point.z();
-        //     markerMsg.points.push_back(pointMsg);
-        //   }
-
-        //   markerArrMsg.markers.push_back(markerMsg);
-        //   mocapMarkerArrPub.publish(markerArrMsg);
-
-        //   rate.sleep();
-        // }
       }
 
       // Solve IK
@@ -975,6 +934,46 @@ int main(int argc, char * argv[])
 
       targetPoseArrPub.publish(targetPoseArrMsg);
       actualPoseArrPub.publish(actualPoseArrMsg);
+    }
+
+    if(solveMocap)
+    {
+      visualization_msgs::MarkerArray markerArrMsg;
+      visualization_msgs::Marker markerMsg;
+      markerMsg.header.stamp = ros::Time::now();
+      markerMsg.header.frame_id = "world";
+      markerMsg.ns = "Mocap points";
+      markerMsg.id = 0;
+      markerMsg.type = visualization_msgs::Marker::SPHERE_LIST;
+      markerMsg.action = visualization_msgs::Marker::ADD;
+      markerMsg.pose.orientation.w = 1.0;
+      markerMsg.scale.x = 0.05;
+      markerMsg.scale.y = 0.05;
+      markerMsg.scale.z = 0.05;
+      markerMsg.color.r = 0.8;
+      markerMsg.color.g = 0.1;
+      markerMsg.color.b = 0.8;
+      markerMsg.color.a = 1.0;
+
+      const auto & points = c3d->data().frame(mocapFrameIdx).points();
+      constexpr size_t mocapMarkerNum = 42;
+      for(size_t mocapMarkerIdx = 0; mocapMarkerIdx < mocapMarkerNum; mocapMarkerIdx++)
+      {
+        const auto & point = points.point(mocapMarkerIdx);
+        if(point.isEmpty())
+        {
+          continue;
+        }
+
+        geometry_msgs::Point pointMsg;
+        pointMsg.x = point.x();
+        pointMsg.y = point.y();
+        pointMsg.z = point.z();
+        markerMsg.points.push_back(pointMsg);
+      }
+
+      markerArrMsg.markers.push_back(markerMsg);
+      mocapMarkerArrPub.publish(markerArrMsg);
     }
 
     // // Calculate closest point
