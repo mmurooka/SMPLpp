@@ -521,7 +521,7 @@ int main(int argc, char * argv[])
   ros::Rate rate(rateFreq);
   int32_t mocapFrameIdx = 0;
   pnh.getParam("mocap_frame_idx", mocapFrameIdx);
-  for(int64_t ikIter = 0;; ikIter++)
+  for(int64_t ikIter = 0; ros::ok(); ikIter++)
   {
     // Update SMPL model and solve IK
     {
