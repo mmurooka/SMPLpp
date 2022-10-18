@@ -152,7 +152,7 @@ public:
 
   torch::Tensor calcNormalError() const
   {
-    return at::dot(calcActualNormal(), targetNormal_) + 1.0;
+    return normalTaskWeight_ * (at::dot(calcActualNormal(), targetNormal_) + 1.0);
   }
 
   void to(const torch::Device & device)
@@ -164,6 +164,10 @@ public:
 
 public:
   int64_t faceIdx_;
+
+  double normalTaskWeight_ = 1.0;
+
+  double phiLimit_ = 0.05;
 
   torch::Tensor vertexWeights_ = torch::empty({3}).fill_(1.0 / 3.0);
 
@@ -180,7 +184,7 @@ constexpr int64_t LATENT_POSE_DIM = smplpp::LATENT_DIM + 12;
 
 torch::Tensor g_theta;
 torch::Tensor g_beta;
-std::unordered_map<std::string, IkTask> g_ikTaskList;
+std::map<std::string, IkTask> g_ikTaskList;
 
 void latentPoseParamCallback(const std_msgs::Float64MultiArray::ConstPtr & msg)
 {
@@ -358,6 +362,7 @@ int main(int argc, char * argv[])
                                              smplpp::toTorchTensor<float>(Eigen::Vector3f::UnitZ(), true)));
     for(auto & ikTaskKV : g_ikTaskList)
     {
+      ikTaskKV.second.normalTaskWeight_ = 0.0; // \todo Temporary
       ikTaskKV.second.to(*device);
     }
   }
@@ -481,7 +486,6 @@ int main(int argc, char * argv[])
           e.segment<1>(rowIdx + 3) = smplpp::toEigenMatrix(normalError.view({1})).cast<double>();
 
           // Set task Jacobian
-          J.block<3, 2>(rowIdx, thetaDim + 2 * ikTaskIdx) = smplpp::toEigenMatrix(ikTask.tangents_).cast<double>();
           for(int32_t i = 0; i < 3; i++)
           {
             // Calculate backward of each element
@@ -489,35 +493,28 @@ int main(int argc, char * argv[])
             select.index_put_({0, i}, 1);
             posError.backward(select, true);
 
-            J.row(rowIdx).head(thetaDim) =
+            J.row(rowIdx + i).head(thetaDim) =
                 smplpp::toEigenMatrix(g_theta.grad().view({thetaDim}).to(torch::kCPU)).transpose().cast<double>();
             g_theta.mutable_grad().zero_();
-
-            rowIdx++;
           }
           {
             normalError.backward({}, true);
 
-            J.row(rowIdx).head(thetaDim) =
+            J.row(rowIdx + 3).head(thetaDim) =
                 smplpp::toEigenMatrix(g_theta.grad().view({thetaDim}).to(torch::kCPU)).transpose().cast<double>();
             g_theta.mutable_grad().zero_();
-
-            rowIdx++;
+          }
+          {
+            J.block<3, 2>(rowIdx, thetaDim + 2 * ikTaskIdx) = smplpp::toEigenMatrix(ikTask.tangents_).cast<double>();
           }
 
+          rowIdx += 4;
           ikTaskIdx++;
         }
         durationList.emplace_back("setup IK matrices", std::chrono::duration_cast<std::chrono::duration<double>>(
                                                            std::chrono::system_clock::now() - startTimeSetupIk)
                                                                .count()
                                                            * 1e3);
-
-        // \todo Temporarily disable normal task
-        for(int64_t i = 0; i < g_ikTaskList.size(); i++)
-        {
-          e(4 * i + 3) = 0.0;
-          J.row(4 * i + 3).setZero();
-        }
 
         // Add regularization term
         Eigen::MatrixXd linearEqA = J.transpose() * J;
@@ -550,8 +547,13 @@ int main(int argc, char * argv[])
           qpCoeff.setup(thetaDim + phiDim, 0, 0);
           qpCoeff.obj_mat_ = linearEqA;
           qpCoeff.obj_vec_ = linearEqB;
-          qpCoeff.x_min_.tail(phiDim).setConstant(-0.05);
-          qpCoeff.x_max_.tail(phiDim).setConstant(0.05);
+          ikTaskIdx = 0;
+          for(auto & ikTaskKV : g_ikTaskList)
+          {
+            qpCoeff.x_min_.segment<2>(thetaDim + 2 * ikTaskIdx).setConstant(-1 * ikTaskKV.second.phiLimit_);
+            qpCoeff.x_max_.segment<2>(thetaDim + 2 * ikTaskIdx).setConstant(ikTaskKV.second.phiLimit_);
+            ikTaskIdx++;
+          }
           deltaConfig = qpSolver->solve(qpCoeff);
         }
         else
