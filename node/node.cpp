@@ -361,6 +361,7 @@ int main(int argc, char * argv[])
 
     if(solveMocap)
     {
+      // Ref. https://docs.optitrack.com/markersets/full-body/baseline-41
       g_ikTaskList.emplace("HeadTop", IkTask(7324));
       g_ikTaskList.emplace("HeadFront", IkTask(7194));
       g_ikTaskList.emplace("HeadSide", IkTask(13450));
