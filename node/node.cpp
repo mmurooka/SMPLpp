@@ -593,6 +593,8 @@ int main(int argc, char * argv[])
         Eigen::VectorXi closestFaceIndices;
         Eigen::MatrixX3d closestPoints;
         {
+          auto startTimeProjectPoint = std::chrono::system_clock::now();
+
           torch::Tensor vertexTensor = SINGLE_SMPL::get()->getVertex().index({0}).to(torch::kCPU);
           Eigen::MatrixXd vertexMat = smplpp::toEigenMatrix(vertexTensor).cast<double>();
           torch::Tensor faceIdxTensor = SINGLE_SMPL::get()->getFaceIndex().to(torch::kCPU) - 1;
@@ -601,6 +603,11 @@ int main(int argc, char * argv[])
           Eigen::VectorXd squaredDists;
           igl::point_mesh_squared_distance(actualPosList, vertexMat, faceIdxMat, squaredDists, closestFaceIndices,
                                            closestPoints);
+
+          durationList.emplace_back("project point", std::chrono::duration_cast<std::chrono::duration<double>>(
+                                                         std::chrono::system_clock::now() - startTimeProjectPoint)
+                                                             .count()
+                                                         * 1e3);
         }
 
         // Update IK target
