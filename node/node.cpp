@@ -528,6 +528,12 @@ int main(int argc, char * argv[])
       std::vector<std::pair<std::string, double>> durationList;
       auto startTime = std::chrono::system_clock::now();
 
+      bool optimizeBeta = false;
+      if(solveMocapBody)
+      {
+        optimizeBeta = (ikIter >= 30);
+      }
+
       // Setup gradient
       if(g_ikTaskList.size() > 0)
       {
@@ -537,6 +543,17 @@ int main(int argc, char * argv[])
         {
           g_theta_grad = g_theta_grad.detach();
           g_theta_grad.zero_();
+        }
+
+        if(optimizeBeta)
+        {
+          g_beta.set_requires_grad(true);
+          auto & g_beta_grad = g_beta.mutable_grad();
+          if(g_beta_grad.defined())
+          {
+            g_beta_grad = g_beta_grad.detach();
+            g_beta_grad.zero_();
+          }
         }
       }
 
@@ -595,7 +612,7 @@ int main(int argc, char * argv[])
 
           if(solveMocapBody)
           {
-            ikTask.phiLimit_ = ikIter < 50 ? 0.0 : 0.04;
+            ikTask.phiLimit_ = ikIter < 30 ? 0.0 : 0.04;
           }
           else if(solveMocapMotion)
           {
@@ -609,9 +626,10 @@ int main(int argc, char * argv[])
       {
         int32_t thetaDim = enableVposer ? LATENT_POSE_DIM : 3 * (smplpp::JOINT_NUM + 1);
         int32_t phiDim = 2 * g_ikTaskList.size();
+        int32_t betaDim = optimizeBeta ? smplpp::SHAPE_BASIS_DIM : 0;
         Eigen::VectorXd e(4 * g_ikTaskList.size());
-        Eigen::MatrixXd J(4 * g_ikTaskList.size(), thetaDim + phiDim);
-        J.rightCols(phiDim).setZero();
+        Eigen::MatrixXd J(4 * g_ikTaskList.size(), thetaDim + phiDim + betaDim);
+        J.middleCols(thetaDim, phiDim).setZero();
         int64_t rowIdx = 0;
 
         // Set end-effector position task
@@ -641,6 +659,13 @@ int main(int argc, char * argv[])
             J.row(rowIdx + i).head(thetaDim) =
                 smplpp::toEigenMatrix(g_theta.grad().view({thetaDim}).to(torch::kCPU)).transpose().cast<double>();
             g_theta.mutable_grad().zero_();
+
+            if(optimizeBeta)
+            {
+              J.row(rowIdx + i).tail(betaDim) =
+                  smplpp::toEigenMatrix(g_beta.grad().view({betaDim}).to(torch::kCPU)).transpose().cast<double>();
+              g_beta.mutable_grad().zero_();
+            }
           }
           {
             normalError.backward({}, true);
@@ -648,6 +673,13 @@ int main(int argc, char * argv[])
             J.row(rowIdx + 3).head(thetaDim) =
                 smplpp::toEigenMatrix(g_theta.grad().view({thetaDim}).to(torch::kCPU)).transpose().cast<double>();
             g_theta.mutable_grad().zero_();
+
+            if(optimizeBeta)
+            {
+              J.row(rowIdx + 3).tail(betaDim) =
+                  smplpp::toEigenMatrix(g_beta.grad().view({betaDim}).to(torch::kCPU)).transpose().cast<double>();
+              g_beta.mutable_grad().zero_();
+            }
           }
           {
             J.block<3, 2>(rowIdx, thetaDim + 2 * ikTaskIdx) =
@@ -668,8 +700,10 @@ int main(int argc, char * argv[])
         {
           constexpr double deltaThetaRegWeight = 1e-3;
           constexpr double deltaPhiRegWeight = 1e-1;
+          constexpr double deltaBetaRegWeight = 1e-3;
           linearEqA.diagonal().head(thetaDim).array() += deltaThetaRegWeight;
-          linearEqA.diagonal().tail(phiDim).array() += deltaPhiRegWeight;
+          linearEqA.diagonal().segment(thetaDim, phiDim).array() += deltaPhiRegWeight;
+          linearEqA.diagonal().tail(betaDim).array() += deltaBetaRegWeight;
           linearEqA.diagonal().array() += e.squaredNorm();
         }
         if(enableVposer)
@@ -690,7 +724,7 @@ int main(int argc, char * argv[])
         {
           auto qpSolver = QpSolverCollection::allocateQpSolver(QpSolverCollection::QpSolverType::QLD);
           QpSolverCollection::QpCoeff qpCoeff;
-          qpCoeff.setup(thetaDim + phiDim, 0, 0);
+          qpCoeff.setup(thetaDim + phiDim + betaDim, 0, 0);
           qpCoeff.obj_mat_ = linearEqA;
           qpCoeff.obj_vec_ = linearEqB;
           ikTaskIdx = 0;
@@ -699,6 +733,12 @@ int main(int argc, char * argv[])
             qpCoeff.x_min_.segment<2>(thetaDim + 2 * ikTaskIdx).setConstant(-1 * ikTaskKV.second.phiLimit_);
             qpCoeff.x_max_.segment<2>(thetaDim + 2 * ikTaskIdx).setConstant(ikTaskKV.second.phiLimit_);
             ikTaskIdx++;
+          }
+          if(optimizeBeta)
+          {
+            constexpr double deltaBetaLimit = 0.5;
+            qpCoeff.x_min_.tail(betaDim).setConstant(-1 * deltaBetaLimit);
+            qpCoeff.x_max_.tail(betaDim).setConstant(deltaBetaLimit);
           }
           deltaConfig = qpSolver->solve(qpCoeff);
         }
@@ -733,6 +773,12 @@ int main(int argc, char * argv[])
               smplpp::toEigenMatrix(ikTask.calcActualPos().to(torch::kCPU)).cast<double>().transpose();
 
           ikTaskIdx++;
+        }
+
+        if(optimizeBeta)
+        {
+          g_beta.set_requires_grad(false);
+          g_beta += smplpp::toTorchTensor<float>(deltaConfig.tail(betaDim).cast<float>(), true).view_as(g_beta);
         }
 
         // Project point onto mesh
@@ -959,6 +1005,7 @@ int main(int argc, char * argv[])
       actualPoseArrPub.publish(actualPoseArrMsg);
     }
 
+    // Publish mocap marker
     if(solveMocap)
     {
       visualization_msgs::MarkerArray markerArrMsg;
@@ -1103,6 +1150,7 @@ int main(int argc, char * argv[])
     //   closestPointMarkerArrPub.publish(markerArrMsg);
     // }
 
+    // Check terminal condition
     if(solveMocapBody)
     {
       if(ikIter % 10 == 0)
