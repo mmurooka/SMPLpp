@@ -298,6 +298,7 @@ int main(int argc, char * argv[])
   pnh.getParam("enable_vertex_color", enableVertexColor);
   bool visualizeNormal = false;
   pnh.getParam("visualize_normal", visualizeNormal);
+  bool printDuration = !solveMocap;
 
   ros::Publisher markerArrPub = nh.advertise<visualization_msgs::MarkerArray>("smplpp/marker_arr", 1);
   ros::Publisher targetPoseArrPub = nh.advertise<geometry_msgs::PoseArray>("smplpp/target_pose_arr", 1);
@@ -449,10 +450,13 @@ int main(int argc, char * argv[])
     SINGLE_SMPL::get()->setModelPath(smplPath);
     SINGLE_SMPL::get()->init();
 
-    ROS_INFO_STREAM("Duration to load SMPL: " << std::chrono::duration_cast<std::chrono::duration<double>>(
-                                                     std::chrono::system_clock::now() - startTime)
-                                                     .count()
-                                              << " [s]");
+    if(printDuration)
+    {
+      ROS_INFO_STREAM("Duration to load SMPL: " << std::chrono::duration_cast<std::chrono::duration<double>>(
+                                                       std::chrono::system_clock::now() - startTime)
+                                                       .count()
+                                                << " [s]");
+    }
   }
 
   // Load VPoser model
@@ -473,10 +477,13 @@ int main(int argc, char * argv[])
     vposer->eval();
     vposer->to(*device);
 
-    ROS_INFO_STREAM("Duration to load VPoser: " << std::chrono::duration_cast<std::chrono::duration<double>>(
-                                                       std::chrono::system_clock::now() - startTime)
-                                                       .count()
-                                                << " [s]");
+    if(printDuration)
+    {
+      ROS_INFO_STREAM("Duration to load VPoser: " << std::chrono::duration_cast<std::chrono::duration<double>>(
+                                                         std::chrono::system_clock::now() - startTime)
+                                                         .count()
+                                                  << " [s]");
+    }
   }
 
   // Load C3D file
@@ -762,19 +769,23 @@ int main(int argc, char * argv[])
         }
       }
 
-      ROS_INFO_STREAM_THROTTLE(10.0,
-                               "Duration to update SMPL: " << std::chrono::duration_cast<std::chrono::duration<double>>(
-                                                                  std::chrono::system_clock::now() - startTime)
-                                                                      .count()
-                                                                  * 1e3
-                                                           << " [ms]");
-      std::string durationListStr;
-      for(const auto & durationKV : durationList)
+      if(printDuration)
       {
-        durationListStr += "  - Duration to " + durationKV.first + ": " + std::to_string(durationKV.second) + " [ms]\n";
+        ROS_INFO_STREAM_THROTTLE(10.0, "Duration to update SMPL: "
+                                           << std::chrono::duration_cast<std::chrono::duration<double>>(
+                                                  std::chrono::system_clock::now() - startTime)
+                                                      .count()
+                                                  * 1e3
+                                           << " [ms]");
+        std::string durationListStr;
+        for(const auto & durationKV : durationList)
+        {
+          durationListStr +=
+              "  - Duration to " + durationKV.first + ": " + std::to_string(durationKV.second) + " [ms]\n";
+        }
+        durationListStr.pop_back();
+        ROS_INFO_STREAM_THROTTLE(10.0, durationListStr);
       }
-      durationListStr.pop_back();
-      ROS_INFO_STREAM_THROTTLE(10.0, durationListStr);
     }
 
     // Publish SMPL model
@@ -889,12 +900,15 @@ int main(int argc, char * argv[])
       }
       markerArrPub.publish(markerArrMsg);
 
-      ROS_INFO_STREAM_THROTTLE(10.0, "Duration to publish SMPL model: "
-                                         << std::chrono::duration_cast<std::chrono::duration<double>>(
-                                                std::chrono::system_clock::now() - startTime)
-                                                    .count()
-                                                * 1e3
-                                         << " [ms]");
+      if(printDuration)
+      {
+        ROS_INFO_STREAM_THROTTLE(10.0, "Duration to publish SMPL model: "
+                                           << std::chrono::duration_cast<std::chrono::duration<double>>(
+                                                  std::chrono::system_clock::now() - startTime)
+                                                      .count()
+                                                  * 1e3
+                                           << " [ms]");
+      }
     }
 
     // Publish IK pose
@@ -1093,7 +1107,7 @@ int main(int argc, char * argv[])
     {
       if(ikIter % 10 == 0)
       {
-        ROS_INFO_STREAM("[Iter: " << ikIter << "] Solving mocap body.");
+        ROS_INFO_STREAM("[Iter " << ikIter << "] Solving mocap body.");
       }
       if(ikIter == 100)
       {
@@ -1104,7 +1118,7 @@ int main(int argc, char * argv[])
     {
       if(mocapFrameIdx % 10 == 0)
       {
-        ROS_INFO_STREAM("[Frame: " << mocapFrameIdx << " / " << c3d->header().nbFrames() << "] Solving mocap motion.");
+        ROS_INFO_STREAM("[Frame " << mocapFrameIdx << " / " << c3d->header().nbFrames() << "] Solving mocap motion.");
       }
       mocapFrameIdx++;
       if(c3d->header().nbFrames() == mocapFrameIdx)
