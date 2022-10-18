@@ -5,6 +5,37 @@
 #include <smplpp/toolbox/GeometryUtils.h>
 #include <smplpp/toolbox/TorchEigenUtils.hpp>
 
+void testCalcRotMatFromNormalOnce(const Eigen::Vector3d & normal)
+{
+  Eigen::Matrix3d rotMat = smplpp::calcRotMatFromNormal(normal);
+  Eigen::Vector3d normalRestored = rotMat.col(2);
+
+  EXPECT_LT((normal - normalRestored).norm(), 1e-8) << "normal:\n"
+                                                    << normal << std::endl
+                                                    << "normalRestored:\n"
+                                                    << normalRestored << std::endl;
+  EXPECT_LT((rotMat * rotMat.transpose() - Eigen::Matrix3d::Identity()).norm(), 1e-8) << "rotMat:\n"
+                                                                                      << rotMat << std::endl;
+  EXPECT_LT((rotMat.transpose() * rotMat - Eigen::Matrix3d::Identity()).norm(), 1e-8) << "rotMat:\n"
+                                                                                      << rotMat << std::endl;
+  EXPECT_LT((rotMat.col(0).cross(rotMat.col(1)) - rotMat.col(2)).norm(), 1e-8) << "rotMat:\n" << rotMat << std::endl;
+}
+
+TEST(TestGeometryUtils, calcRotMatFromNormal)
+{
+  testCalcRotMatFromNormalOnce(Eigen::Vector3d::UnitX());
+  testCalcRotMatFromNormalOnce(Eigen::Vector3d::UnitY());
+  testCalcRotMatFromNormalOnce(Eigen::Vector3d::UnitZ());
+  testCalcRotMatFromNormalOnce(-1 * Eigen::Vector3d::UnitX());
+  testCalcRotMatFromNormalOnce(-1 * Eigen::Vector3d::UnitY());
+  testCalcRotMatFromNormalOnce(-1 * Eigen::Vector3d::UnitZ());
+
+  for(int randIdx = 0; randIdx < 1000; randIdx++)
+  {
+    testCalcRotMatFromNormalOnce(Eigen::Vector3d::Random().normalized());
+  }
+}
+
 void testCalcTriangleVertexWeightsOnce(const std::vector<torch::Tensor> & vertices, const torch::Tensor & weights)
 {
   torch::Tensor pos = torch::zeros({3});
