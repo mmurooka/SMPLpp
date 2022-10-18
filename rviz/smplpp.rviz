@@ -60,13 +60,13 @@ Visualization Manager:
       Value: true
     - Class: rviz/InteractiveMarkers
       Enable Transparency: true
-      Enabled: true
+      Enabled: false
       Name: InteractiveMarkers
       Show Axes: false
       Show Descriptions: true
       Show Visual Aids: false
       Update Topic: /ik_target_manager/update
-      Value: true
+      Value: false
     - Class: rviz/MarkerArray
       Enabled: true
       Marker Topic: /smplpp/marker_arr
@@ -120,7 +120,7 @@ Visualization Manager:
       Marker Topic: /mocap/marker_arr
       Name: MocapMarkerArray
       Namespaces:
-        Mocap points: true
+        {}
       Queue Size: 100
       Value: true
   Enabled: true
@@ -151,25 +151,25 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 5.277319431304932
+      Distance: 2.5528829097747803
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: 0.050295017659664154
-        Y: 0.49218031764030457
-        Z: 0.5951900482177734
+        X: 0.14002414047718048
+        Y: 0.5507981777191162
+        Z: 0.38294994831085205
       Focal Shape Fixed Size: false
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.23039864003658295
+      Pitch: 0.005398654378950596
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 5.633581161499023
+      Yaw: 5.213582515716553
     Saved: ~
 Window Geometry:
   Displays:
