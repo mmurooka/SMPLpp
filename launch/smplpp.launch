@@ -45,7 +45,10 @@
           output="log" clear_params="true" />
   </group>
 
-  <node pkg="rqt_ez_publisher" type="rqt_ez_publisher" name="rqt_ez_publisher_shape"
-        args="--slider-file $(find smplpp)/rqt/smplpp_shape.yaml"
-        output="log" clear_params="true" />
+  <group unless="$(arg solve_mocap_body)" >
+    <node unless="$(arg solve_mocap_motion)"
+          pkg="rqt_ez_publisher" type="rqt_ez_publisher" name="rqt_ez_publisher_shape"
+          args="--slider-file $(find smplpp)/rqt/smplpp_shape.yaml"
+          output="log" clear_params="true" />
+  </group>
 </launch>
