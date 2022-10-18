@@ -64,10 +64,10 @@
 
 //===== MAIN FUNCTION =========================================================
 
-class IkTarget
+class IkTask
 {
 public:
-  IkTarget(int64_t faceIdx, torch::Tensor targetPos, torch::Tensor targetNormal)
+  IkTask(int64_t faceIdx, torch::Tensor targetPos, torch::Tensor targetNormal)
   : faceIdx_(faceIdx), targetPos_(targetPos), targetNormal_(targetNormal)
   {
   }
@@ -175,7 +175,7 @@ constexpr int64_t LATENT_POSE_DIM = smplpp::LATENT_DIM + 12;
 
 torch::Tensor g_theta;
 torch::Tensor g_beta;
-std::unordered_map<std::string, IkTarget> g_ikTargetList;
+std::unordered_map<std::string, IkTask> g_ikTaskList;
 
 void latentPoseParamCallback(const std_msgs::Float64MultiArray::ConstPtr & msg)
 {
@@ -226,16 +226,16 @@ void shapeParamCallback(const std_msgs::Float64MultiArray::ConstPtr & msg)
 
 void ikTargetPoseCallback(const geometry_msgs::TransformStamped::ConstPtr & msg)
 {
-  auto & ikTarget = g_ikTargetList.at(msg->child_frame_id);
-  ikTarget.targetPos_.index_put_({0}, msg->transform.translation.x);
-  ikTarget.targetPos_.index_put_({1}, msg->transform.translation.y);
-  ikTarget.targetPos_.index_put_({2}, msg->transform.translation.z);
+  auto & ikTask = g_ikTaskList.at(msg->child_frame_id);
+  ikTask.targetPos_.index_put_({0}, msg->transform.translation.x);
+  ikTask.targetPos_.index_put_({1}, msg->transform.translation.y);
+  ikTask.targetPos_.index_put_({2}, msg->transform.translation.z);
   Eigen::Quaterniond quat(msg->transform.rotation.w, msg->transform.rotation.x, msg->transform.rotation.y,
                           msg->transform.rotation.z);
   Eigen::Vector3d normal = quat.toRotationMatrix().col(2);
-  ikTarget.targetNormal_.index_put_({0}, normal.x());
-  ikTarget.targetNormal_.index_put_({1}, normal.y());
-  ikTarget.targetNormal_.index_put_({2}, normal.z());
+  ikTask.targetNormal_.index_put_({0}, normal.x());
+  ikTask.targetNormal_.index_put_({1}, normal.y());
+  ikTask.targetNormal_.index_put_({2}, normal.z());
 }
 
 void clickedPointCallback(const geometry_msgs::PointStamped::ConstPtr & msg)
@@ -342,21 +342,17 @@ int main(int argc, char * argv[])
       g_theta.index({1}).fill_(1.2092);
     }
 
-    g_ikTargetList.emplace("LeftHand",
-                           IkTarget(2581, smplpp::toTorchTensor<float>(Eigen::Vector3f(0.5, 0.5, 1.0), true),
-                                    smplpp::toTorchTensor<float>(Eigen::Vector3f::UnitZ(), true)));
-    g_ikTargetList.emplace("RightHand",
-                           IkTarget(9469, smplpp::toTorchTensor<float>(Eigen::Vector3f(0.5, -0.5, 1.0), true),
-                                    smplpp::toTorchTensor<float>(Eigen::Vector3f::UnitZ(), true)));
-    g_ikTargetList.emplace("LeftFoot",
-                           IkTarget(5925, smplpp::toTorchTensor<float>(Eigen::Vector3f(0.0, 0.2, 0.0), true),
-                                    smplpp::toTorchTensor<float>(Eigen::Vector3f::UnitZ(), true)));
-    g_ikTargetList.emplace("RightFoot",
-                           IkTarget(12812, smplpp::toTorchTensor<float>(Eigen::Vector3f(0.0, -0.2, 0.0), true),
-                                    smplpp::toTorchTensor<float>(Eigen::Vector3f::UnitZ(), true)));
-    for(auto & ikTargetKV : g_ikTargetList)
+    g_ikTaskList.emplace("LeftHand", IkTask(2581, smplpp::toTorchTensor<float>(Eigen::Vector3f(0.5, 0.5, 1.0), true),
+                                            smplpp::toTorchTensor<float>(Eigen::Vector3f::UnitZ(), true)));
+    g_ikTaskList.emplace("RightHand", IkTask(9469, smplpp::toTorchTensor<float>(Eigen::Vector3f(0.5, -0.5, 1.0), true),
+                                             smplpp::toTorchTensor<float>(Eigen::Vector3f::UnitZ(), true)));
+    g_ikTaskList.emplace("LeftFoot", IkTask(5925, smplpp::toTorchTensor<float>(Eigen::Vector3f(0.0, 0.2, 0.0), true),
+                                            smplpp::toTorchTensor<float>(Eigen::Vector3f::UnitZ(), true)));
+    g_ikTaskList.emplace("RightFoot", IkTask(12812, smplpp::toTorchTensor<float>(Eigen::Vector3f(0.0, -0.2, 0.0), true),
+                                             smplpp::toTorchTensor<float>(Eigen::Vector3f::UnitZ(), true)));
+    for(auto & ikTaskKV : g_ikTaskList)
     {
-      ikTargetKV.second.to(*device);
+      ikTaskKV.second.to(*device);
     }
   }
 
@@ -417,7 +413,7 @@ int main(int argc, char * argv[])
       auto startTime = std::chrono::system_clock::now();
 
       // Setup gradient
-      if(g_ikTargetList.size() > 0)
+      if(g_ikTaskList.size() > 0)
       {
         g_theta.set_requires_grad(true);
         auto & g_theta_grad = g_theta.mutable_grad();
@@ -453,33 +449,33 @@ int main(int argc, char * argv[])
                                                     * 1e3);
 
       // Solve IK
-      if(g_ikTargetList.size() > 0)
+      if(g_ikTaskList.size() > 0)
       {
         int32_t thetaDim = enableVposer ? LATENT_POSE_DIM : 3 * (smplpp::JOINT_NUM + 1);
-        int32_t phiDim = 2 * g_ikTargetList.size();
-        Eigen::VectorXd e(4 * g_ikTargetList.size());
-        Eigen::MatrixXd J(4 * g_ikTargetList.size(), thetaDim + phiDim);
+        int32_t phiDim = 2 * g_ikTaskList.size();
+        Eigen::VectorXd e(4 * g_ikTaskList.size());
+        Eigen::MatrixXd J(4 * g_ikTaskList.size(), thetaDim + phiDim);
         J.rightCols(phiDim).setZero();
         int64_t rowIdx = 0;
 
         // Set end-effector position task
         auto startTimeSetupIk = std::chrono::system_clock::now();
-        int32_t ikTargetIdx = 0;
-        for(auto & ikTargetKV : g_ikTargetList)
+        int32_t ikTaskIdx = 0;
+        for(auto & ikTaskKV : g_ikTaskList)
         {
-          auto & ikTarget = ikTargetKV.second;
+          auto & ikTask = ikTaskKV.second;
 
-          ikTarget.setupTangents();
+          ikTask.setupTangents();
 
-          torch::Tensor posError = ikTarget.calcPosError().to(torch::kCPU);
-          torch::Tensor normalError = ikTarget.calcNormalError().to(torch::kCPU);
+          torch::Tensor posError = ikTask.calcPosError().to(torch::kCPU);
+          torch::Tensor normalError = ikTask.calcNormalError().to(torch::kCPU);
 
           // Set task value
           e.segment<3>(rowIdx) = smplpp::toEigenMatrix(posError).cast<double>();
           e.segment<1>(rowIdx + 3) = smplpp::toEigenMatrix(normalError.view({1})).cast<double>();
 
           // Set task Jacobian
-          J.block<3, 2>(rowIdx, thetaDim + 2 * ikTargetIdx) = smplpp::toEigenMatrix(ikTarget.tangents_).cast<double>();
+          J.block<3, 2>(rowIdx, thetaDim + 2 * ikTaskIdx) = smplpp::toEigenMatrix(ikTask.tangents_).cast<double>();
           for(int32_t i = 0; i < 3; i++)
           {
             // Calculate backward of each element
@@ -503,7 +499,7 @@ int main(int argc, char * argv[])
             rowIdx++;
           }
 
-          ikTargetIdx++;
+          ikTaskIdx++;
         }
         durationList.emplace_back("setup IK matrices", std::chrono::duration_cast<std::chrono::duration<double>>(
                                                            std::chrono::system_clock::now() - startTimeSetupIk)
@@ -511,7 +507,7 @@ int main(int argc, char * argv[])
                                                            * 1e3);
 
         // \todo Temporarily disable normal task
-        for(int64_t i = 0; i < g_ikTargetList.size(); i++)
+        for(int64_t i = 0; i < g_ikTaskList.size(); i++)
         {
           e(4 * i + 3) = 0.0;
           J.row(4 * i + 3).setZero();
@@ -570,19 +566,19 @@ int main(int argc, char * argv[])
         g_theta.set_requires_grad(false);
         g_theta += smplpp::toTorchTensor<float>(deltaConfig.head(thetaDim).cast<float>(), true).view_as(g_theta);
 
-        Eigen::MatrixXd actualPosList(g_ikTargetList.size(), 3);
-        ikTargetIdx = 0;
-        for(auto & ikTargetKV : g_ikTargetList)
+        Eigen::MatrixXd actualPosList(g_ikTaskList.size(), 3);
+        ikTaskIdx = 0;
+        for(auto & ikTaskKV : g_ikTaskList)
         {
-          auto & ikTarget = ikTargetKV.second;
+          auto & ikTask = ikTaskKV.second;
 
-          ikTarget.phi_ =
-              smplpp::toTorchTensor<float>(deltaConfig.segment<2>(thetaDim + 2 * ikTargetIdx).cast<float>(), true);
+          ikTask.phi_ =
+              smplpp::toTorchTensor<float>(deltaConfig.segment<2>(thetaDim + 2 * ikTaskIdx).cast<float>(), true);
 
-          actualPosList.row(ikTargetIdx) =
-              smplpp::toEigenMatrix(ikTarget.calcActualPos().to(torch::kCPU)).cast<double>().transpose();
+          actualPosList.row(ikTaskIdx) =
+              smplpp::toEigenMatrix(ikTask.calcActualPos().to(torch::kCPU)).cast<double>().transpose();
 
-          ikTargetIdx++;
+          ikTaskIdx++;
         }
 
         // Project point onto mesh
@@ -601,15 +597,15 @@ int main(int argc, char * argv[])
         }
 
         // Update IK target
-        ikTargetIdx = 0;
-        for(auto & ikTargetKV : g_ikTargetList)
+        ikTaskIdx = 0;
+        for(auto & ikTaskKV : g_ikTaskList)
         {
-          auto & ikTarget = ikTargetKV.second;
+          auto & ikTask = ikTaskKV.second;
 
-          ikTarget.updateFaceIdx(closestFaceIndices(ikTargetIdx),
-                                 smplpp::toTorchTensor<float>(closestPoints.row(ikTargetIdx).cast<float>(), true));
+          ikTask.updateFaceIdx(closestFaceIndices(ikTaskIdx),
+                               smplpp::toTorchTensor<float>(closestPoints.row(ikTaskIdx).cast<float>(), true));
 
-          ikTargetIdx++;
+          ikTaskIdx++;
         }
       }
 
@@ -702,7 +698,7 @@ int main(int argc, char * argv[])
     }
 
     // Publish IK pose
-    if(g_ikTargetList.size() > 0)
+    if(g_ikTaskList.size() > 0)
     {
       geometry_msgs::PoseArray targetPoseArrMsg;
       geometry_msgs::PoseArray actualPoseArrMsg;
@@ -713,26 +709,26 @@ int main(int argc, char * argv[])
       actualPoseArrMsg.header.stamp = timeNow;
       actualPoseArrMsg.header.frame_id = "world";
 
-      for(const auto & ikTargetKV : g_ikTargetList)
+      for(const auto & ikTaskKV : g_ikTaskList)
       {
-        const auto & ikTarget = ikTargetKV.second;
+        const auto & ikTask = ikTaskKV.second;
 
         geometry_msgs::Pose targetPoseMsg;
         geometry_msgs::Pose actualPoseMsg;
 
         Eigen::Quaterniond targetQuat(
-            smplpp::calcRotMatFromNormal(smplpp::toEigenMatrix(ikTarget.targetNormal_.to(torch::kCPU)).cast<double>()));
-        targetPoseMsg.position.x = ikTarget.targetPos_.index({0}).item<float>();
-        targetPoseMsg.position.y = ikTarget.targetPos_.index({1}).item<float>();
-        targetPoseMsg.position.z = ikTarget.targetPos_.index({2}).item<float>();
+            smplpp::calcRotMatFromNormal(smplpp::toEigenMatrix(ikTask.targetNormal_.to(torch::kCPU)).cast<double>()));
+        targetPoseMsg.position.x = ikTask.targetPos_.index({0}).item<float>();
+        targetPoseMsg.position.y = ikTask.targetPos_.index({1}).item<float>();
+        targetPoseMsg.position.z = ikTask.targetPos_.index({2}).item<float>();
         targetPoseMsg.orientation.w = targetQuat.w();
         targetPoseMsg.orientation.x = targetQuat.x();
         targetPoseMsg.orientation.y = targetQuat.y();
         targetPoseMsg.orientation.z = targetQuat.z();
         targetPoseArrMsg.poses.push_back(targetPoseMsg);
 
-        torch::Tensor actualPos = ikTarget.calcActualPos().to(torch::kCPU);
-        torch::Tensor actualNormal = ikTarget.calcActualNormal().to(torch::kCPU);
+        torch::Tensor actualPos = ikTask.calcActualPos().to(torch::kCPU);
+        torch::Tensor actualNormal = ikTask.calcActualNormal().to(torch::kCPU);
         Eigen::Quaterniond actualQuat(smplpp::calcRotMatFromNormal(smplpp::toEigenMatrix(actualNormal).cast<double>()));
         actualPoseMsg.position.x = actualPos.index({0}).item<float>();
         actualPoseMsg.position.y = actualPos.index({1}).item<float>();
