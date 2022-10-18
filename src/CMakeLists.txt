@@ -22,6 +22,7 @@ target_link_libraries(smplpp PUBLIC
   ${xtensor_blas_LIBRARIES}
   nlohmann_json::nlohmann_json
   ${TORCH_LIBRARIES}
+  ezc3d
   stdc++fs # std::experimental::filesystem
   ${catkin_LIBRARIES}
 )

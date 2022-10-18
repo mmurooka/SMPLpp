@@ -57,6 +57,11 @@
 //----------
 #include <qp_solver_collection/QpSolverCollection.h>
 //----------
+#include <ezc3d/Data.h>
+#include <ezc3d/Header.h>
+#include <ezc3d/Parameters.h>
+#include <ezc3d/ezc3d.h>
+//----------
 
 //===== FORWARD DECLARATIONS ==================================================
 
@@ -276,8 +281,9 @@ int main(int argc, char * argv[])
   ros::Publisher markerArrPub = nh.advertise<visualization_msgs::MarkerArray>("smplpp/marker_arr", 1);
   ros::Publisher targetPoseArrPub = nh.advertise<geometry_msgs::PoseArray>("smplpp/target_pose_arr", 1);
   ros::Publisher actualPoseArrPub = nh.advertise<geometry_msgs::PoseArray>("smplpp/actual_pose_arr", 1);
-  ros::Publisher closestPointMarkerArrPub =
-      nh.advertise<visualization_msgs::MarkerArray>("smplpp/closest_point_marker_arr", 1);
+  // ros::Publisher closestPointMarkerArrPub =
+  //     nh.advertise<visualization_msgs::MarkerArray>("smplpp/closest_point_marker_arr", 1);
+  ros::Publisher mocapMarkerArrPub = nh.advertise<visualization_msgs::MarkerArray>("mocap/marker_arr", 1);
   ros::Subscriber latentPoseParamSub;
   ros::Subscriber poseParamSub;
   if(!enableIk)
@@ -390,6 +396,65 @@ int main(int argc, char * argv[])
                                                        std::chrono::system_clock::now() - startTime)
                                                        .count()
                                                 << " [s]");
+  }
+
+  // Load C3D file
+  if(false)
+  {
+    ezc3d::c3d c3d(ros::package::getPath("smplpp") + "/data/sample_walk.c3d");
+    // c3d.header().print();
+    // c3d.parameters().print();
+
+    ROS_INFO_STREAM("C3D frame rate: " << c3d.header().frameRate());
+    std::vector<std::string> pointLabelList = c3d.parameters().group("POINT").parameter("LABELS").valuesAsString();
+    ROS_INFO_STREAM("C3D point labels:");
+    for(const auto & pointLabel : pointLabelList)
+    {
+      ROS_INFO_STREAM("  - " << pointLabel);
+    }
+
+    ros::Rate rate(c3d.header().frameRate());
+    for(size_t frameIdx = 0; frameIdx < c3d.data().nbFrames(); frameIdx++)
+    {
+      visualization_msgs::MarkerArray markerArrMsg;
+      visualization_msgs::Marker markerMsg;
+      markerMsg.header.stamp = ros::Time::now();
+      markerMsg.header.frame_id = "world";
+      markerMsg.ns = "Mocap points";
+      markerMsg.id = 0;
+      markerMsg.type = visualization_msgs::Marker::SPHERE_LIST;
+      markerMsg.action = visualization_msgs::Marker::ADD;
+      markerMsg.pose.orientation.w = 1.0;
+      markerMsg.scale.x = 0.05;
+      markerMsg.scale.y = 0.05;
+      markerMsg.scale.z = 0.05;
+      markerMsg.color.r = 0.8;
+      markerMsg.color.g = 0.1;
+      markerMsg.color.b = 0.8;
+      markerMsg.color.a = 1.0;
+
+      const auto & points = c3d.data().frame(frameIdx).points();
+      constexpr size_t mocapMarkerNum = 42;
+      for(size_t markerIdx = 0; markerIdx < mocapMarkerNum; markerIdx++)
+      {
+        const auto & point = points.point(markerIdx);
+        if(point.isEmpty())
+        {
+          continue;
+        }
+
+        geometry_msgs::Point pointMsg;
+        pointMsg.x = point.x();
+        pointMsg.y = point.y();
+        pointMsg.z = point.z();
+        markerMsg.points.push_back(pointMsg);
+      }
+
+      markerArrMsg.markers.push_back(markerMsg);
+      mocapMarkerArrPub.publish(markerArrMsg);
+
+      rate.sleep();
+    }
   }
 
   double rateFreq = 30.0;

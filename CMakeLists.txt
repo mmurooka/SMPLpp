@@ -37,6 +37,9 @@ list(PREPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 include(libigl)
 igl_include(core)
 
+# ezc3d
+find_package(ezc3d REQUIRED)
+
 add_message_files(
   FILES
   PoseParam.msg
