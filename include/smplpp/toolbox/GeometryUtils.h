@@ -39,13 +39,13 @@ Eigen::Matrix3d calcRotMatFromNormal(const Eigen::Vector3d & normal)
       - https://www.geisya.or.jp/~mwm48961/koukou/complex_line2.htm
       - https://homeskill.hatenadiary.org/entry/20110112/1294831298
 */
-torch::Tensor calcTriangleVertexWeights(const torch::Tensor & pos, const std::vector<torch::Tensor> & vertices)
+torch::Tensor calcTriangleVertexWeights(const torch::Tensor & pos, const torch::Tensor & vertices)
 {
   torch::Tensor weights = torch::empty({3});
 
-  weights.index_put_({0}, at::cross(vertices[1] - pos, vertices[2] - pos).norm());
-  weights.index_put_({1}, at::cross(vertices[2] - pos, vertices[0] - pos).norm());
-  weights.index_put_({2}, at::cross(vertices[0] - pos, vertices[1] - pos).norm());
+  weights.index_put_({0}, at::cross(vertices.index({1}) - pos, vertices.index({2}) - pos).norm());
+  weights.index_put_({1}, at::cross(vertices.index({2}) - pos, vertices.index({0}) - pos).norm());
+  weights.index_put_({2}, at::cross(vertices.index({0}) - pos, vertices.index({1}) - pos).norm());
   weights /= weights.sum();
 
   return weights;

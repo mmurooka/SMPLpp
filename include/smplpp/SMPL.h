@@ -246,6 +246,7 @@ public: // PUBLIC METHODS
   torch::Tensor getRestJoint() noexcept(false);
   torch::Tensor getVertex() noexcept(false);
   torch::Tensor getVertexRaw(int64_t idx) noexcept(false);
+  torch::Tensor getVertexRaw(const torch::Tensor & idx) noexcept(false);
   torch::Tensor calcNormal(int64_t faceIdx) noexcept(false);
 
   // %% Modeling %%

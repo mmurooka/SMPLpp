@@ -421,6 +421,11 @@ torch::Tensor LinearBlendSkinning::getVertexRaw(int64_t idx) noexcept(false)
   return m__posedVert.index({0, idx});
 }
 
+torch::Tensor LinearBlendSkinning::getVertexRaw(const torch::Tensor & idx) noexcept(false)
+{
+  return m__posedVert.index({0, idx});
+}
+
 /**skinning
  *
  * Brief

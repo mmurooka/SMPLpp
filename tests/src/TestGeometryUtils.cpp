@@ -36,7 +36,7 @@ TEST(TestGeometryUtils, calcRotMatFromNormal)
   }
 }
 
-void testCalcTriangleVertexWeightsOnce(const std::vector<torch::Tensor> & vertices, const torch::Tensor & weights)
+void testCalcTriangleVertexWeightsOnce(const torch::Tensor & vertices, const torch::Tensor & weights)
 {
   torch::Tensor pos = torch::zeros({3});
   for(int32_t i = 0; i < 3; i++)
@@ -78,11 +78,7 @@ TEST(TestGeometryUtils, calcTriangleVertexWeights)
 
   for(int randVerticesIdx = 0; randVerticesIdx < 100; randVerticesIdx++)
   {
-    std::vector<torch::Tensor> vertices;
-    for(int32_t i = 0; i < 3; i++)
-    {
-      vertices.push_back(10.0 * (torch::rand({3}) - 0.5));
-    }
+    torch::Tensor vertices = 10.0 * (torch::rand({3, 3}) - 0.5);
 
     for(const torch::Tensor & weights : weightsCornerCases)
     {

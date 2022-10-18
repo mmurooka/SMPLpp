@@ -77,13 +77,9 @@ public:
     faceIdx_ = faceIdx;
 
     torch::Tensor faceVertexIdxs = SINGLE_SMPL::get()->getFaceIndexRaw(faceIdx_).to(torch::kCPU) - 1;
-    std::vector<torch::Tensor> faceVertices;
-    for(int32_t i = 0; i < 3; i++)
-    {
-      int32_t faceVertexIdx = faceVertexIdxs.index({i}).item<int32_t>();
-      // Clone and detach vertex tensors to separate tangents from the computation graph
-      faceVertices.push_back(SINGLE_SMPL::get()->getVertexRaw(faceVertexIdx).to(torch::kCPU).clone().detach());
-    }
+    // Clone and detach vertex tensors to separate tangents from the computation graph
+    torch::Tensor faceVertices =
+        SINGLE_SMPL::get()->getVertexRaw(faceVertexIdxs.to(torch::kInt64)).to(torch::kCPU).clone().detach();
 
     phi_.zero_();
     setupTangents();
@@ -95,15 +91,12 @@ public:
   void setupTangents()
   {
     torch::Tensor faceVertexIdxs = SINGLE_SMPL::get()->getFaceIndexRaw(faceIdx_).to(torch::kCPU) - 1;
-    std::vector<torch::Tensor> faceVertices;
-    for(int32_t i = 0; i < 3; i++)
-    {
-      int32_t faceVertexIdx = faceVertexIdxs.index({i}).item<int32_t>();
-      // Clone and detach vertex tensors to separate tangents from the computation graph
-      faceVertices.push_back(SINGLE_SMPL::get()->getVertexRaw(faceVertexIdx).to(torch::kCPU).clone().detach());
-    }
-    torch::Tensor tangent1 = faceVertices[1] - faceVertices[0];
-    torch::Tensor normal = at::cross(tangent1, faceVertices[2] - faceVertices[0]);
+    // Clone and detach vertex tensors to separate tangents from the computation graph
+    torch::Tensor faceVertices =
+        SINGLE_SMPL::get()->getVertexRaw(faceVertexIdxs.to(torch::kInt64)).to(torch::kCPU).clone().detach();
+
+    torch::Tensor tangent1 = faceVertices.index({1}) - faceVertices.index({0});
+    torch::Tensor normal = at::cross(tangent1, faceVertices.index({2}) - faceVertices.index({0}));
     torch::Tensor tangent2 = at::cross(normal, tangent1);
     tangent1 = torch::nn::functional::normalize(tangent1, torch::nn::functional::NormalizeFuncOptions().dim(-1));
     tangent2 = torch::nn::functional::normalize(tangent2, torch::nn::functional::NormalizeFuncOptions().dim(-1));

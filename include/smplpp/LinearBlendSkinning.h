@@ -189,6 +189,7 @@ public: // PUBLIC METHODS
 
   torch::Tensor getVertex() noexcept(false);
   torch::Tensor getVertexRaw(int64_t idx) noexcept(false);
+  torch::Tensor getVertexRaw(const torch::Tensor & idx) noexcept(false);
 
   // %% Linear Blend Skinning %%
   void skinning() noexcept(false);
