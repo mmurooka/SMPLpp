@@ -35,7 +35,10 @@ torch::Tensor smplpp::convertRotMatToAxisAngle(const torch::Tensor & rotMat)
 
   torch::Tensor trace = rotMat.index({at::indexing::Slice()}).diagonal(0, 1, 2).sum(-1);
   // See https://github.com/pytorch/pytorch/issues/8069
-  torch::Tensor theta = at::arccos(at::clamp(0.5 * (trace - 1.0), -1.0 + eps, 1.0 - eps));
+  // Clamp allows to avoid NaN gradient, but the gradient will be lost at clamp
+  // torch::Tensor theta = at::arccos(at::clamp(0.5 * (trace - 1.0), -1.0 + eps, 1.0 - eps));
+  // The following workaround reduces the accuracy, but preserves the gradient.
+  torch::Tensor theta = at::arccos((1.0 - eps) * 0.5 * (trace - 1.0));
 
   torch::Tensor w = torch::empty({rotMat.sizes()[0], 3}, device);
   w.index_put_({at::indexing::Slice(), 0},
@@ -51,8 +54,10 @@ torch::Tensor smplpp::convertRotMatToAxisAngle(const torch::Tensor & rotMat)
   torch::Tensor s = (2.0 * rotMat.index({thetaPiCondRes}).diagonal(0, 1, 2)
                      + (1.0 - trace.index({thetaPiCondRes})).view({-1, 1}).expand({-1, 3}))
                     / (3.0 - trace.index({thetaPiCondRes})).view({-1, 1});
-  // Apply clamp_min to avoid NaN gradient. However, this reduces accuracy
-  torch::Tensor tn2 = at::sqrt(at::clamp_min(s, eps)) * theta.index({thetaPiCondRes}).view({-1, 1});
+  // Clamp allows to avoid NaN gradient, but the gradient will be lost at clamp
+  // torch::Tensor tn2 = at::sqrt(at::clamp_min(s, eps)) * theta.index({thetaPiCondRes}).view({-1, 1});
+  // The following workaround reduces the accuracy, but preserves the gradient.
+  torch::Tensor tn2 = at::sqrt(s + eps) * theta.index({thetaPiCondRes}).view({-1, 1});
 
   auto thetaPiCondRes1 = theta.index({thetaPiCondRes}) > M_PI - 1e-4;
 
