@@ -658,12 +658,20 @@ int main(int argc, char * argv[])
 
           ikTask.setupTangents();
 
-          torch::Tensor posError = ikTask.calcPosError().to(torch::kCPU);
-          torch::Tensor normalError = ikTask.calcNormalError().to(torch::kCPU);
-
           // Set task value
+          torch::Tensor posError = ikTask.calcPosError().to(torch::kCPU);
           e.segment<3>(rowIdx) = smplpp::toEigenMatrix(posError).cast<double>();
-          e.segment<1>(rowIdx + 3) = smplpp::toEigenMatrix(normalError.view({1})).cast<double>();
+
+          torch::Tensor normalError;
+          if(ikTask.normalTaskWeight_ > 0.0)
+          {
+            normalError = ikTask.calcNormalError().to(torch::kCPU);
+            e.segment<1>(rowIdx + 3) = smplpp::toEigenMatrix(normalError.view({1})).cast<double>();
+          }
+          else
+          {
+            e.segment<1>(rowIdx + 3).setZero();
+          }
 
           // Set task Jacobian
           for(int32_t i = 0; i < 3; i++)
@@ -684,6 +692,7 @@ int main(int argc, char * argv[])
               g_beta.mutable_grad().zero_();
             }
           }
+          if(ikTask.normalTaskWeight_ > 0.0)
           {
             normalError.backward({}, true);
 
@@ -697,6 +706,11 @@ int main(int argc, char * argv[])
                   smplpp::toEigenMatrix(g_beta.grad().view({betaDim}).to(torch::kCPU)).transpose().cast<double>();
               g_beta.mutable_grad().zero_();
             }
+          }
+          else
+          {
+            J.row(rowIdx + 3).head(thetaDim).setZero();
+            J.row(rowIdx + 3).tail(betaDim).setZero();
           }
           {
             J.block<3, 2>(rowIdx, thetaDim + 2 * ikTaskIdx) =
