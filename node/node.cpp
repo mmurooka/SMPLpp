@@ -1155,7 +1155,7 @@ int main(int argc, char * argv[])
       markerMsg.color.a = 1.0;
 
       const auto & points = c3d->data().frame(mocapFrameIdx).points();
-      constexpr size_t mocapMarkerNum = 42;
+      constexpr size_t mocapMarkerNum = 41;
       for(size_t mocapMarkerIdx = 0; mocapMarkerIdx < mocapMarkerNum; mocapMarkerIdx++)
       {
         const auto & point = points.point(mocapMarkerIdx);
