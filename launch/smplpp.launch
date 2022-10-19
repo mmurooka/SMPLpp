@@ -8,7 +8,8 @@
   <arg name="visualize_normal" default="false" />
   <arg name="device" default="CPU" />
 
-  <node pkg="smplpp" type="node" name="smplpp" output="screen">
+  <node pkg="smplpp" type="node" name="smplpp"
+        output="screen" clear_params="true" >
     <rosparam subst_value="true">
       enable_vposer: $(arg enable_vposer)
       enable_ik: $(arg enable_ik)
@@ -23,6 +24,7 @@
       mocap_path: $(find smplpp)/data/sample_walk.c3d
       device: $(arg device)
       rate: 30.0
+      initial_rpy: [1.57, 0.0, 1.57]
     </rosparam>
   </node>
 

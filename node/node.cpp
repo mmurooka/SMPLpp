@@ -359,13 +359,18 @@ int main(int argc, char * argv[])
   if(enableIk)
   {
     // Set initial root orientation
+    std::vector<double> initialRpy = {0.0, 0.0, 0.0};
+    pnh.getParam("initial_rpy", initialRpy);
+    Eigen::AngleAxisf aa(Eigen::AngleAxisf(initialRpy[2], Eigen::Vector3f::UnitZ())
+                         * Eigen::AngleAxisf(initialRpy[1], Eigen::Vector3f::UnitY())
+                         * Eigen::AngleAxisf(initialRpy[0], Eigen::Vector3f::UnitX()));
     if(enableVposer)
     {
-      g_theta.index({at::indexing::Slice(3, 6)}).fill_(1.2092);
+      g_theta.index_put_({at::indexing::Slice(3, 6)}, smplpp::toTorchTensor<float>(aa.angle() * aa.axis(), true));
     }
     else
     {
-      g_theta.index({1}).fill_(1.2092);
+      g_theta.index_put_({1}, smplpp::toTorchTensor<float>(aa.angle() * aa.axis(), true));
     }
 
     // Set IK task list
