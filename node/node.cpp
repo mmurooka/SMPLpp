@@ -52,7 +52,9 @@
 #include <ros/ros.h>
 #include <std_msgs/Float64MultiArray.h>
 #include <visualization_msgs/MarkerArray.h>
+#include <rosbag/bag.h>
 #include <smplpp/PoseParam.h>
+#include <smplpp/Motion.h>
 //----------
 #include <igl/point_mesh_squared_distance.h>
 //----------
@@ -580,6 +582,7 @@ int main(int argc, char * argv[])
   {
     pnh.getParam("mocap_frame_interval", mocapFrameInterval);
   }
+  smplpp::Motion motionMsg;
 
   double rateFreq = 30.0;
   pnh.getParam("rate", rateFreq);
@@ -626,28 +629,30 @@ int main(int argc, char * argv[])
       }
 
       // Forward SMPL model
-      auto startTimeForward = std::chrono::system_clock::now();
-      torch::Tensor theta;
-      if(enableVposer)
       {
-        theta = torch::empty({smplpp::JOINT_NUM + 1, 3});
-        theta.index_put_({0}, g_theta.index({at::indexing::Slice(0, 3)}));
-        theta.index_put_({1}, g_theta.index({at::indexing::Slice(3, 6)}));
-        torch::Tensor vposerIn = g_theta.index({at::indexing::Slice(6, smplpp::LATENT_DIM + 6)}).to(*device);
-        torch::Tensor vposerOut = vposer->forward(vposerIn.view({1, -1})).index({0});
-        theta.index_put_({at::indexing::Slice(2, 2 + 21)}, vposerOut);
-        theta.index_put_({23}, g_theta.index({at::indexing::Slice(smplpp::LATENT_DIM + 6, smplpp::LATENT_DIM + 9)}));
-        theta.index_put_({24}, g_theta.index({at::indexing::Slice(smplpp::LATENT_DIM + 9, smplpp::LATENT_DIM + 12)}));
+        auto startTimeForward = std::chrono::system_clock::now();
+        torch::Tensor theta;
+        if(enableVposer)
+        {
+          theta = torch::empty({smplpp::JOINT_NUM + 1, 3});
+          theta.index_put_({0}, g_theta.index({at::indexing::Slice(0, 3)}));
+          theta.index_put_({1}, g_theta.index({at::indexing::Slice(3, 6)}));
+          torch::Tensor vposerIn = g_theta.index({at::indexing::Slice(6, smplpp::LATENT_DIM + 6)}).to(*device);
+          torch::Tensor vposerOut = vposer->forward(vposerIn.view({1, -1})).index({0});
+          theta.index_put_({at::indexing::Slice(2, 2 + 21)}, vposerOut);
+          theta.index_put_({23}, g_theta.index({at::indexing::Slice(smplpp::LATENT_DIM + 6, smplpp::LATENT_DIM + 9)}));
+          theta.index_put_({24}, g_theta.index({at::indexing::Slice(smplpp::LATENT_DIM + 9, smplpp::LATENT_DIM + 12)}));
+        }
+        else
+        {
+          theta = g_theta;
+        }
+        SINGLE_SMPL::get()->launch(g_beta.view({1, -1}), theta.view({1, theta.size(0), theta.size(1)}));
+        durationList.emplace_back("forward SMPL", std::chrono::duration_cast<std::chrono::duration<double>>(
+                                                      std::chrono::system_clock::now() - startTimeForward)
+                                                          .count()
+                                                      * 1e3);
       }
-      else
-      {
-        theta = g_theta;
-      }
-      SINGLE_SMPL::get()->launch(g_beta.view({1, -1}), theta.view({1, theta.size(0), theta.size(1)}));
-      durationList.emplace_back("forward SMPL", std::chrono::duration_cast<std::chrono::duration<double>>(
-                                                    std::chrono::system_clock::now() - startTimeForward)
-                                                        .count()
-                                                    * 1e3);
 
       // Update IK target from mocap
       int32_t validMocapMarkerNum = 0;
@@ -853,7 +858,7 @@ int main(int argc, char * argv[])
               smplpp::toTorchTensor<float>(deltaConfig.segment<2>(thetaDim + 2 * ikTaskIdx).cast<float>(), true);
 
           actualPosList.row(ikTaskIdx) =
-              smplpp::toEigenMatrix(ikTask.calcActualPos().to(torch::kCPU)).cast<double>().transpose();
+              smplpp::toEigenMatrix(ikTask.calcActualPos().to(torch::kCPU)).transpose().cast<double>();
 
           ikTaskIdx++;
         }
@@ -1156,6 +1161,38 @@ int main(int argc, char * argv[])
       mocapMarkerArrPub.publish(markerArrMsg);
     }
 
+    // Store theta
+    if(solveMocapMotion)
+    {
+      Eigen::MatrixXd theta;
+      if(enableVposer)
+      {
+        theta.resize(smplpp::JOINT_NUM + 1, 3);
+        theta.row(0) = smplpp::toEigenMatrix(g_theta.index({at::indexing::Slice(0, 3)})).transpose().cast<double>();
+        theta.row(1) = smplpp::toEigenMatrix(g_theta.index({at::indexing::Slice(3, 6)})).transpose().cast<double>();
+        torch::Tensor vposerIn = g_theta.index({at::indexing::Slice(6, smplpp::LATENT_DIM + 6)}).to(*device);
+        torch::Tensor vposerOut = vposer->forward(vposerIn.view({1, -1})).index({0});
+        theta.middleRows(2, 21) = smplpp::toEigenMatrix(vposerOut).cast<double>();
+        theta.row(23) =
+            smplpp::toEigenMatrix(g_theta.index({at::indexing::Slice(smplpp::LATENT_DIM + 6, smplpp::LATENT_DIM + 9)}))
+                .transpose()
+                .cast<double>();
+        theta.row(24) =
+            smplpp::toEigenMatrix(g_theta.index({at::indexing::Slice(smplpp::LATENT_DIM + 9, smplpp::LATENT_DIM + 12)}))
+                .transpose()
+                .cast<double>();
+      }
+      else
+      {
+        theta = smplpp::toEigenMatrix(g_theta).cast<double>();
+      }
+
+      smplpp::Theta thetaMsg;
+      thetaMsg.theta.resize(theta.size());
+      Eigen::VectorXd::Map(&thetaMsg.theta[0], theta.size()) = Eigen::Map<Eigen::VectorXd>(theta.data(), theta.size());
+      motionMsg.theta_list.push_back(thetaMsg);
+    }
+
     // Check terminal condition
     if(solveMocapBody)
     {
@@ -1189,6 +1226,7 @@ int main(int argc, char * argv[])
     rate.sleep();
   }
 
+  // Dump mocap body
   if(solveMocapBody)
   {
     std::string mocapBodyPath = "/tmp/MocapBody.yaml";
@@ -1204,6 +1242,12 @@ int main(int argc, char * argv[])
       ofs << "    faceIdx: " << ikTask.faceIdx_ << std::endl;
       ofs << "    vertexWeights: " << smplpp::toEigenMatrix(ikTask.vertexWeights_).transpose().format(fmt) << std::endl;
     }
+  }
+  else if(solveMocapMotion)
+  {
+    std::string rosbagPath = "/tmp/mocapMotion.bag";
+    rosbag::Bag bag(rosbagPath, rosbag::bagmode::Write);
+    bag.write("smplpp/motion", ros::Time::now(), motionMsg);
   }
 
   SINGLE_SMPL::destroy();

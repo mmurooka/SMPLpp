@@ -12,6 +12,7 @@ find_package(catkin REQUIRED COMPONENTS
   message_generation
   roscpp
   roslib
+  rosbag
   std_msgs
   geometry_msgs
   visualization_msgs
@@ -42,6 +43,8 @@ find_package(ezc3d REQUIRED)
 
 add_message_files(
   FILES
+  Motion.msg
+  Theta.msg
   PoseParam.msg
 )
 
@@ -54,6 +57,7 @@ catkin_package(
   message_runtime
   roscpp
   roslib
+  rosbag
   std_msgs
   geometry_msgs
   visualization_msgs
