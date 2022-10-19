@@ -1161,38 +1161,6 @@ int main(int argc, char * argv[])
       mocapMarkerArrPub.publish(markerArrMsg);
     }
 
-    // Store theta
-    if(solveMocapMotion)
-    {
-      Eigen::MatrixXd theta;
-      if(enableVposer)
-      {
-        theta.resize(smplpp::JOINT_NUM + 1, 3);
-        theta.row(0) = smplpp::toEigenMatrix(g_theta.index({at::indexing::Slice(0, 3)})).transpose().cast<double>();
-        theta.row(1) = smplpp::toEigenMatrix(g_theta.index({at::indexing::Slice(3, 6)})).transpose().cast<double>();
-        torch::Tensor vposerIn = g_theta.index({at::indexing::Slice(6, smplpp::LATENT_DIM + 6)}).to(*device);
-        torch::Tensor vposerOut = vposer->forward(vposerIn.view({1, -1})).index({0});
-        theta.middleRows(2, 21) = smplpp::toEigenMatrix(vposerOut).cast<double>();
-        theta.row(23) =
-            smplpp::toEigenMatrix(g_theta.index({at::indexing::Slice(smplpp::LATENT_DIM + 6, smplpp::LATENT_DIM + 9)}))
-                .transpose()
-                .cast<double>();
-        theta.row(24) =
-            smplpp::toEigenMatrix(g_theta.index({at::indexing::Slice(smplpp::LATENT_DIM + 9, smplpp::LATENT_DIM + 12)}))
-                .transpose()
-                .cast<double>();
-      }
-      else
-      {
-        theta = smplpp::toEigenMatrix(g_theta).cast<double>();
-      }
-
-      smplpp::Theta thetaMsg;
-      thetaMsg.theta.resize(theta.size());
-      Eigen::VectorXd::Map(&thetaMsg.theta[0], theta.size()) = Eigen::Map<Eigen::VectorXd>(theta.data(), theta.size());
-      motionMsg.theta_list.push_back(thetaMsg);
-    }
-
     // Check terminal condition
     if(solveMocapBody)
     {
@@ -1214,9 +1182,42 @@ int main(int argc, char * argv[])
       }
       if(ikIter > 30)
       {
+        // Store theta
+        if(solveMocapMotion)
+        {
+          Eigen::MatrixXd theta;
+          if(enableVposer)
+          {
+            theta.resize(smplpp::JOINT_NUM + 1, 3);
+            theta.row(0) = smplpp::toEigenMatrix(g_theta.index({at::indexing::Slice(0, 3)})).transpose().cast<double>();
+            theta.row(1) = smplpp::toEigenMatrix(g_theta.index({at::indexing::Slice(3, 6)})).transpose().cast<double>();
+            torch::Tensor vposerIn = g_theta.index({at::indexing::Slice(6, smplpp::LATENT_DIM + 6)}).to(*device);
+            torch::Tensor vposerOut = vposer->forward(vposerIn.view({1, -1})).index({0});
+            theta.middleRows(2, 21) = smplpp::toEigenMatrix(vposerOut).cast<double>();
+            theta.row(23) = smplpp::toEigenMatrix(
+                                g_theta.index({at::indexing::Slice(smplpp::LATENT_DIM + 6, smplpp::LATENT_DIM + 9)}))
+                                .transpose()
+                                .cast<double>();
+            theta.row(24) = smplpp::toEigenMatrix(
+                                g_theta.index({at::indexing::Slice(smplpp::LATENT_DIM + 9, smplpp::LATENT_DIM + 12)}))
+                                .transpose()
+                                .cast<double>();
+          }
+          else
+          {
+            theta = smplpp::toEigenMatrix(g_theta).cast<double>();
+          }
+
+          smplpp::Theta thetaMsg;
+          thetaMsg.theta.resize(theta.size());
+          Eigen::VectorXd::Map(&thetaMsg.theta[0], theta.size()) =
+              Eigen::Map<Eigen::VectorXd>(theta.data(), theta.size());
+          motionMsg.theta_list.push_back(thetaMsg);
+        }
+
         mocapFrameIdx += mocapFrameInterval;
       }
-      if(c3d->header().nbFrames() == mocapFrameIdx)
+      if(mocapFrameIdx == c3d->header().nbFrames())
       {
         break;
       }
