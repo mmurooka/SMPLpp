@@ -1170,9 +1170,13 @@ int main(int argc, char * argv[])
     {
       if(mocapFrameIdx % 10 == 0)
       {
-        ROS_INFO_STREAM("[Frame " << mocapFrameIdx << " / " << c3d->header().nbFrames() << "] Solving mocap motion.");
+        ROS_INFO_STREAM("[Iter " << ikIter << ", Frame " << mocapFrameIdx << " / " << c3d->header().nbFrames()
+                                 << "] Solving mocap motion.");
       }
-      mocapFrameIdx += mocapFrameInterval;
+      if(ikIter > 30)
+      {
+        mocapFrameIdx += mocapFrameInterval;
+      }
       if(c3d->header().nbFrames() == mocapFrameIdx)
       {
         break;
