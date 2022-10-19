@@ -53,8 +53,8 @@
 #include <std_msgs/Float64MultiArray.h>
 #include <visualization_msgs/MarkerArray.h>
 #include <rosbag/bag.h>
-#include <smplpp/PoseParam.h>
 #include <smplpp/Motion.h>
+#include <smplpp/PoseParam.h>
 //----------
 #include <igl/point_mesh_squared_distance.h>
 //----------
@@ -1226,11 +1226,11 @@ int main(int argc, char * argv[])
     rate.sleep();
   }
 
-  // Dump mocap body
+  // Save mocap results
   if(solveMocapBody)
   {
     std::string mocapBodyPath = "/tmp/MocapBody.yaml";
-    ROS_INFO_STREAM("Dump IK task list for mocap to " << mocapBodyPath);
+    ROS_INFO_STREAM("Save IK task list for mocap to " << mocapBodyPath);
     std::ofstream ofs(mocapBodyPath);
     const Eigen::IOFormat fmt(Eigen::FullPrecision, Eigen::DontAlignCols, ", ", "\n", "[", "]", "", "");
     ofs << "beta: " << smplpp::toEigenMatrix(g_beta).transpose().format(fmt) << std::endl;
@@ -1246,6 +1246,7 @@ int main(int argc, char * argv[])
   else if(solveMocapMotion)
   {
     std::string rosbagPath = "/tmp/mocapMotion.bag";
+    ROS_INFO_STREAM("Save rosbag of mocap motion to " << rosbagPath);
     rosbag::Bag bag(rosbagPath, rosbag::bagmode::Write);
     bag.write("smplpp/motion", ros::Time::now(), motionMsg);
   }
