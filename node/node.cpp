@@ -650,6 +650,7 @@ int main(int argc, char * argv[])
                                                     * 1e3);
 
       // Update IK target from mocap
+      int32_t validMocapMarkerNum = 0;
       if(solveMocap)
       {
         const auto & points = c3d->data().frame(mocapFrameIdx).points();
@@ -671,6 +672,7 @@ int main(int argc, char * argv[])
           }
           else
           {
+            validMocapMarkerNum++;
             ikTask.posTaskWeight_ = 1.0;
             ikTask.targetPos_.index_put_({0}, point.x());
             ikTask.targetPos_.index_put_({1}, point.y());
@@ -689,7 +691,7 @@ int main(int argc, char * argv[])
       }
 
       // Solve IK
-      if(enableIk)
+      if(enableIk && !(solveMocapMotion && validMocapMarkerNum < g_ikTaskList.size() / 2))
       {
         int32_t thetaDim = enableVposer ? LATENT_POSE_DIM : 3 * (smplpp::JOINT_NUM + 1);
         int32_t phiDim = 2 * g_ikTaskList.size();
@@ -1168,7 +1170,7 @@ int main(int argc, char * argv[])
     }
     else if(solveMocapMotion)
     {
-      if(mocapFrameIdx % 10 == 0)
+      if(ikIter % 10 == 0)
       {
         ROS_INFO_STREAM("[Iter " << ikIter << ", Frame " << mocapFrameIdx << " / " << c3d->header().nbFrames()
                                  << "] Solving mocap motion.");
