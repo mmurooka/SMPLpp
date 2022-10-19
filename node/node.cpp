@@ -583,6 +583,7 @@ int main(int argc, char * argv[])
     pnh.getParam("mocap_frame_interval", mocapFrameInterval);
   }
   smplpp::Motion motionMsg;
+  motionMsg.frame_rate = c3d->header().frameRate() / static_cast<double>(mocapFrameInterval);
 
   double rateFreq = 30.0;
   pnh.getParam("rate", rateFreq);
