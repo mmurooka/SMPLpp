@@ -434,7 +434,26 @@ int main(int argc, char * argv[])
     }
     else if(solveMocapMotion)
     {
-      // todo
+      auto getDoubleValue = [](const XmlRpc::XmlRpcValue & param) -> double {
+        return param.getType() == XmlRpc::XmlRpcValue::TypeInt ? static_cast<double>(static_cast<int>(param))
+                                                               : static_cast<double>(param);
+      };
+
+      XmlRpc::XmlRpcValue ikTaskListParam;
+      pnh.getParam("ikTaskList", ikTaskListParam);
+      for(int32_t paramIdx = 0; paramIdx < ikTaskListParam.size(); paramIdx++)
+      {
+        const XmlRpc::XmlRpcValue & ikTaskParam = ikTaskListParam[paramIdx];
+        std::string name = static_cast<std::string>(ikTaskParam["name"]);
+        int64_t faceIdx = static_cast<int>(ikTaskParam["faceIdx"]);
+        const XmlRpc::XmlRpcValue & vertexWeightsParam = ikTaskParam["vertexWeights"];
+        Eigen::Vector3d vertexWeightsVec;
+        vertexWeightsVec << getDoubleValue(vertexWeightsParam[0]), getDoubleValue(vertexWeightsParam[1]),
+            getDoubleValue(vertexWeightsParam[2]);
+        IkTask ikTask(faceIdx);
+        ikTask.vertexWeights_ = smplpp::toTorchTensor<float>(vertexWeightsVec.cast<float>(), true);
+        g_ikTaskList.emplace(name, ikTask);
+      }
     }
     else
     {
