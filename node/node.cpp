@@ -1204,6 +1204,13 @@ int main(int argc, char * argv[])
         break;
       }
     }
+    else if(solveMocapMotion && loadMotion)
+    {
+      if(ikIter == motionMsg.data_list.size() - 1)
+      {
+        break;
+      }
+    }
     else if(solveMocapMotion && !loadMotion)
     {
       if(ikIter % 10 == 0)
