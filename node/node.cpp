@@ -424,13 +424,6 @@ int main(int argc, char * argv[])
       g_ikTaskList.emplace("RToeOut", IkTask(12889));
       g_ikTaskList.emplace("RToeTip", IkTask(12478));
       g_ikTaskList.emplace("RHeel", IkTask(12705));
-
-      for(auto & ikTaskKV : g_ikTaskList)
-      {
-        auto & ikTask = ikTaskKV.second;
-        ikTask.normalTaskWeight_ = 0.0;
-        ikTask.normalOffset_ = 0.015;
-      }
     }
     else if(solveMocapMotion)
     {
@@ -478,6 +471,17 @@ int main(int argc, char * argv[])
       g_ikTaskList.emplace("RightFoot",
                            IkTask(12812, smplpp::toTorchTensor<float>(Eigen::Vector3f(0.0, -0.2, 0.0), true),
                                   smplpp::toTorchTensor<float>(Eigen::Vector3f::UnitZ(), true)));
+    }
+
+    if(solveMocap)
+    {
+      for(auto & ikTaskKV : g_ikTaskList)
+      {
+        auto & ikTask = ikTaskKV.second;
+        ikTask.normalTaskWeight_ = 0.0;
+        // Add offset of mocap marker thickness
+        ikTask.normalOffset_ = 0.015; // [mm]
+      }
     }
 
     for(auto & ikTaskKV : g_ikTaskList)
