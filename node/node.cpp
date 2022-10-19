@@ -439,6 +439,17 @@ int main(int argc, char * argv[])
                                                                : static_cast<double>(param);
       };
 
+      std::vector<double> betaVec;
+      pnh.getParam("beta", betaVec);
+      if(betaVec.size() != smplpp::SHAPE_BASIS_DIM)
+      {
+        throw smplpp::smpl_error("node", "Size of beta must be " + std::to_string(smplpp::SHAPE_BASIS_DIM) + " but "
+                                             + std::to_string(betaVec.size()));
+      }
+      g_beta = torch::from_blob(std::vector<float>(betaVec.begin(), betaVec.end()).data(),
+                                {static_cast<int64_t>(betaVec.size())})
+                   .clone();
+
       XmlRpc::XmlRpcValue ikTaskListParam;
       pnh.getParam("ikTaskList", ikTaskListParam);
       for(int32_t paramIdx = 0; paramIdx < ikTaskListParam.size(); paramIdx++)
