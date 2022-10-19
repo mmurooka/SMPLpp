@@ -570,11 +570,25 @@ int main(int argc, char * argv[])
     }
   }
 
-  double rateFreq = solveMocap ? c3d->header().frameRate() : 30.0;
-  pnh.getParam("rate", rateFreq);
-  ros::Rate rate(rateFreq);
   int32_t mocapFrameIdx = 0;
-  pnh.getParam("mocap_frame_idx", mocapFrameIdx);
+  int32_t mocapFrameInterval = 1;
+  if(solveMocapBody)
+  {
+    pnh.getParam("mocap_frame_idx", mocapFrameIdx);
+  }
+  else if(solveMocapMotion)
+  {
+    pnh.getParam("mocap_frame_interval", mocapFrameInterval);
+  }
+
+  double rateFreq = 30.0;
+  pnh.getParam("rate", rateFreq);
+  if(solveMocapMotion)
+  {
+    rateFreq = c3d->header().frameRate() / static_cast<double>(mocapFrameInterval);
+  }
+  ros::Rate rate(rateFreq);
+
   for(int64_t ikIter = 0; ros::ok(); ikIter++)
   {
     // Update SMPL model and solve IK
@@ -1158,7 +1172,7 @@ int main(int argc, char * argv[])
       {
         ROS_INFO_STREAM("[Frame " << mocapFrameIdx << " / " << c3d->header().nbFrames() << "] Solving mocap motion.");
       }
-      mocapFrameIdx++;
+      mocapFrameIdx += mocapFrameInterval;
       if(c3d->header().nbFrames() == mocapFrameIdx)
       {
         break;

@@ -17,6 +17,7 @@
       solve_mocap_body: $(arg solve_mocap_body)
       solve_mocap_motion: $(arg solve_mocap_motion)
       mocap_frame_idx: 10
+      mocap_frame_interval: 1
       enable_vertex_color: $(arg enable_vertex_color)
       visualize_normal: $(arg visualize_normal)
       smpl_path: $(find smplpp)/data/smpl_male.json
