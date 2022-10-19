@@ -460,10 +460,6 @@ int main(int argc, char * argv[])
 
     std::string smplPath;
     pnh.getParam("smpl_path", smplPath);
-    if(smplPath.empty())
-    {
-      smplPath = ros::package::getPath("smplpp") + "/data/smpl_male.json";
-    }
     ROS_INFO_STREAM("Load SMPL model from " << smplPath);
 
     SINGLE_SMPL::get()->setDevice(*device);
@@ -487,10 +483,6 @@ int main(int argc, char * argv[])
 
     std::string vposerPath;
     pnh.getParam("vposer_path", vposerPath);
-    if(vposerPath.empty())
-    {
-      vposerPath = ros::package::getPath("smplpp") + "/data/vposer_parameters.json";
-    }
     ROS_INFO_STREAM("Load VPoser model from " << vposerPath);
 
     vposer->loadParamsFromJson(vposerPath);
@@ -513,10 +505,6 @@ int main(int argc, char * argv[])
   {
     std::string mocapPath;
     pnh.getParam("mocap_path", mocapPath);
-    if(mocapPath.empty())
-    {
-      mocapPath = ros::package::getPath("smplpp") + "/data/sample_walk.c3d";
-    }
     ROS_INFO_STREAM("Load mocap from " << mocapPath);
 
     c3d = std::make_shared<ezc3d::c3d>(mocapPath);
