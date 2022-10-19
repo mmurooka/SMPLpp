@@ -375,7 +375,7 @@ int main(int argc, char * argv[])
     }
 
     // Set IK task list
-    if(solveMocap)
+    if(solveMocapBody)
     {
       // Ref. https://docs.optitrack.com/markersets/full-body/baseline-41
       g_ikTaskList.emplace("HeadTop", IkTask(7324));
@@ -431,6 +431,10 @@ int main(int argc, char * argv[])
         ikTask.normalTaskWeight_ = 0.0;
         ikTask.normalOffset_ = 0.015;
       }
+    }
+    else if(solveMocapMotion)
+    {
+      // todo
     }
     else
     {
