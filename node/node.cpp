@@ -130,6 +130,11 @@ public:
 
     actualPos += torch::matmul(tangents_, phi_).to(SINGLE_SMPL::get()->getDevice());
 
+    if(normalOffset_ > 0.0)
+    {
+      actualPos += normalOffset_ * calcActualNormal();
+    }
+
     return actualPos;
   }
 
@@ -162,7 +167,9 @@ public:
 
   double normalTaskWeight_ = 1.0;
 
-  double phiLimit_ = 0.04;
+  double phiLimit_ = 0.04; // [m]
+
+  double normalOffset_ = 0.0; // [m]
 
   torch::Tensor vertexWeights_ = torch::empty({3}).fill_(1.0 / 3.0);
 
@@ -411,6 +418,13 @@ int main(int argc, char * argv[])
       g_ikTaskList.emplace("RToeOut", IkTask(12889));
       g_ikTaskList.emplace("RToeTip", IkTask(12478));
       g_ikTaskList.emplace("RHeel", IkTask(12705));
+
+      for(auto & ikTaskKV : g_ikTaskList)
+      {
+        auto & ikTask = ikTaskKV.second;
+        ikTask.normalTaskWeight_ = 0.0;
+        ikTask.normalOffset_ = 0.015;
+      }
     }
     else
     {
@@ -607,7 +621,6 @@ int main(int argc, char * argv[])
             ikTask.targetPos_.index_put_({1}, point.y());
             ikTask.targetPos_.index_put_({2}, point.z());
           }
-          ikTask.normalTaskWeight_ = 0.0; // Disable normal task for mocap
 
           if(solveMocapBody)
           {
