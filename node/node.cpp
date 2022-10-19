@@ -447,7 +447,8 @@ int main(int argc, char * argv[])
 
     for(auto & ikTaskKV : g_ikTaskList)
     {
-      ikTaskKV.second.normalTaskWeight_ = 0.0; // \todo Temporary
+      // ikTaskKV.second.normalTaskWeight_ = 0.0; // \todo Temporary
+      ikTaskKV.second.phiLimit_ = 0.0; // \todo Temporary
       ikTaskKV.second.to(*device);
     }
   }
