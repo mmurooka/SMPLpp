@@ -28,7 +28,7 @@
       initial_rpy: [1.57, 0.0, 3.14]
     </rosparam>
     <rosparam if="$(arg solve_mocap_motion)"
-              command="load" file="$(find smplpp)/data/ikTaskListMocap.yaml" />
+              command="load" file="$(find smplpp)/data/MocapBody.yaml" />
   </node>
 
   <node if="$(arg enable_ik)"

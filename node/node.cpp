@@ -1171,9 +1171,9 @@ int main(int argc, char * argv[])
 
   if(solveMocapBody)
   {
-    std::string ikTaskListPath = "/tmp/ikTaskListMocap.yaml";
-    ROS_INFO_STREAM("Dump IK task list for mocap to " << ikTaskListPath);
-    std::ofstream ofs(ikTaskListPath);
+    std::string mocapBodyPath = "/tmp/MocapBody.yaml";
+    ROS_INFO_STREAM("Dump IK task list for mocap to " << mocapBodyPath);
+    std::ofstream ofs(mocapBodyPath);
     const Eigen::IOFormat fmt(Eigen::FullPrecision, Eigen::DontAlignCols, ", ", "\n", "[", "]", "", "");
     ofs << "beta: " << smplpp::toEigenMatrix(g_beta).transpose().format(fmt) << std::endl;
     ofs << "ikTaskList:" << std::endl;
