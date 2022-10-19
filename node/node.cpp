@@ -301,12 +301,20 @@ int main(int argc, char * argv[])
   pnh.getParam("solve_mocap_body", solveMocapBody);
   bool solveMocapMotion = false;
   pnh.getParam("solve_mocap_motion", solveMocapMotion);
-  bool solveMocap = solveMocapBody || solveMocapMotion;
   bool enableVertexColor = false;
   pnh.getParam("enable_vertex_color", enableVertexColor);
   bool visualizeNormal = false;
   pnh.getParam("visualize_normal", visualizeNormal);
-  bool printDuration = !solveMocap;
+  bool printDuration = true;
+
+  bool solveMocap = solveMocapBody || solveMocapMotion;
+  if(solveMocap)
+  {
+    enableVposer = true;
+    enableIk = true;
+    enableQp = true;
+    printDuration = false;
+  }
 
   ros::Publisher markerArrPub = nh.advertise<visualization_msgs::MarkerArray>("smplpp/marker_arr", 1);
   ros::Publisher targetPoseArrPub = nh.advertise<geometry_msgs::PoseArray>("smplpp/target_pose_arr", 1);
