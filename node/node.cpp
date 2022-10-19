@@ -31,6 +31,7 @@
 
 //----------
 #include <chrono>
+#include <fstream>
 //----------
 #include <Eigen/Dense>
 //----------
@@ -1132,6 +1133,22 @@ int main(int argc, char * argv[])
 
     ros::spinOnce();
     rate.sleep();
+  }
+
+  if(solveMocapBody)
+  {
+    std::string ikTaskListPath = "/tmp/ikTaskListMocap.yaml";
+    ROS_INFO_STREAM("Dump IK task list for mocap to " << ikTaskListPath);
+    std::ofstream ofs(ikTaskListPath);
+    ofs << "ikTaskList:" << std::endl;
+    const Eigen::IOFormat fmt(Eigen::FullPrecision, Eigen::DontAlignCols, ", ", "\n", "[", "]", "", "");
+    for(const auto & ikTaskKV : g_ikTaskList)
+    {
+      const auto & ikTask = ikTaskKV.second;
+      ofs << "  - name: " << ikTaskKV.first << std::endl;
+      ofs << "    faceIdx: " << ikTask.faceIdx_ << std::endl;
+      ofs << "    vertexWeights: " << smplpp::toEigenMatrix(ikTask.vertexWeights_).transpose().format(fmt) << std::endl;
+    }
   }
 
   SINGLE_SMPL::destroy();
