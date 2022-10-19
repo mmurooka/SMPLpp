@@ -1151,8 +1151,9 @@ int main(int argc, char * argv[])
     std::string ikTaskListPath = "/tmp/ikTaskListMocap.yaml";
     ROS_INFO_STREAM("Dump IK task list for mocap to " << ikTaskListPath);
     std::ofstream ofs(ikTaskListPath);
-    ofs << "ikTaskList:" << std::endl;
     const Eigen::IOFormat fmt(Eigen::FullPrecision, Eigen::DontAlignCols, ", ", "\n", "[", "]", "", "");
+    ofs << "beta: " << smplpp::toEigenMatrix(g_beta).transpose().format(fmt) << std::endl;
+    ofs << "ikTaskList:" << std::endl;
     for(const auto & ikTaskKV : g_ikTaskList)
     {
       const auto & ikTask = ikTaskKV.second;
