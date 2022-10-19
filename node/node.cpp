@@ -361,6 +361,7 @@ int main(int argc, char * argv[])
       g_theta.index({1}).fill_(1.2092);
     }
 
+    // Set IK task list
     if(solveMocap)
     {
       // Ref. https://docs.optitrack.com/markersets/full-body/baseline-41
@@ -533,7 +534,7 @@ int main(int argc, char * argv[])
       }
 
       // Setup gradient
-      if(g_ikTaskList.size() > 0)
+      if(enableIk)
       {
         g_theta.set_requires_grad(true);
         auto & g_theta_grad = g_theta.mutable_grad();
@@ -620,7 +621,7 @@ int main(int argc, char * argv[])
       }
 
       // Solve IK
-      if(g_ikTaskList.size() > 0)
+      if(enableIk)
       {
         int32_t thetaDim = enableVposer ? LATENT_POSE_DIM : 3 * (smplpp::JOINT_NUM + 1);
         int32_t phiDim = 2 * g_ikTaskList.size();
@@ -956,7 +957,7 @@ int main(int argc, char * argv[])
     }
 
     // Publish IK pose
-    if(g_ikTaskList.size() > 0)
+    if(enableIk)
     {
       geometry_msgs::PoseArray targetPoseArrMsg;
       geometry_msgs::PoseArray actualPoseArrMsg;
