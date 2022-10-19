@@ -10,7 +10,7 @@
   <arg name="device" default="CPU" />
 
   <node pkg="smplpp" type="node" name="smplpp"
-        output="screen" clear_params="true" >
+        output="screen" clear_params="true" required="true" >
     <rosparam subst_value="true">
       enable_vposer: $(arg enable_vposer)
       enable_ik: $(arg enable_ik)
@@ -28,6 +28,7 @@
       rosbag_path: $(find smplpp)/data/MocapMotion.bag
       device: $(arg device)
       rate: 30.0
+      initial_pos: [1.0, 0.0, 0.0]
       <!-- initial_rpy: [1.57, 0.0, 1.57] -->
       initial_rpy: [1.57, 0.0, 3.14]
     </rosparam>

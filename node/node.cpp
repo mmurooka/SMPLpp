@@ -371,19 +371,26 @@ int main(int argc, char * argv[])
   g_beta = torch::zeros({smplpp::SHAPE_BASIS_DIM});
   if(enableIk)
   {
-    // Set initial root orientation
-    std::vector<double> initialRpy = {0.0, 0.0, 0.0};
-    pnh.getParam("initial_rpy", initialRpy);
-    Eigen::AngleAxisf aa(Eigen::AngleAxisf(initialRpy[2], Eigen::Vector3f::UnitZ())
-                         * Eigen::AngleAxisf(initialRpy[1], Eigen::Vector3f::UnitY())
-                         * Eigen::AngleAxisf(initialRpy[0], Eigen::Vector3f::UnitX()));
+    // Set initial root pose
+    std::vector<double> initialPosVec = {0.0, 0.0, 0.0};
+    pnh.getParam("initial_pos", initialPosVec);
+    std::vector<double> initialRpyVec = {0.0, 0.0, 0.0};
+    pnh.getParam("initial_rpy", initialRpyVec);
+    Eigen::AngleAxisf initialAa(Eigen::AngleAxisf(initialRpyVec[2], Eigen::Vector3f::UnitZ())
+                                * Eigen::AngleAxisf(initialRpyVec[1], Eigen::Vector3f::UnitY())
+                                * Eigen::AngleAxisf(initialRpyVec[0], Eigen::Vector3f::UnitX()));
+    torch::Tensor initialPosTensor =
+        smplpp::toTorchTensor<float>(Eigen::Vector3d::Map(&initialPosVec[0]).cast<float>(), true);
+    torch::Tensor initialRpyTensor = smplpp::toTorchTensor<float>(initialAa.angle() * initialAa.axis(), true);
     if(enableVposer)
     {
-      g_theta.index_put_({at::indexing::Slice(3, 6)}, smplpp::toTorchTensor<float>(aa.angle() * aa.axis(), true));
+      g_theta.index_put_({at::indexing::Slice(0, 3)}, initialPosTensor);
+      g_theta.index_put_({at::indexing::Slice(3, 6)}, initialRpyTensor);
     }
     else
     {
-      g_theta.index_put_({1}, smplpp::toTorchTensor<float>(aa.angle() * aa.axis(), true));
+      g_theta.index_put_({0}, initialPosTensor);
+      g_theta.index_put_({1}, initialRpyTensor);
     }
 
     // Set IK task list
