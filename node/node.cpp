@@ -369,7 +369,7 @@ int main(int argc, char * argv[])
   // Setup variables
   g_theta = enableVposer ? torch::zeros({LATENT_POSE_DIM}) : torch::zeros({smplpp::JOINT_NUM + 1, 3});
   g_beta = torch::zeros({smplpp::SHAPE_BASIS_DIM});
-  if(enableIk)
+  if(enableIk || loadMotion)
   {
     // Set initial root pose
     std::vector<double> initialPosVec = {0.0, 0.0, 0.0};
