@@ -24,7 +24,8 @@
       mocap_path: $(find smplpp)/data/sample_walk.c3d
       device: $(arg device)
       rate: 30.0
-      initial_rpy: [1.57, 0.0, 1.57]
+      <!-- initial_rpy: [1.57, 0.0, 1.57] -->
+      initial_rpy: [1.57, 0.0, 3.14]
     </rosparam>
   </node>
 
