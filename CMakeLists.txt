@@ -44,7 +44,7 @@ find_package(ezc3d REQUIRED)
 add_message_files(
   FILES
   Motion.msg
-  Theta.msg
+  Instant.msg
   PoseParam.msg
 )
 

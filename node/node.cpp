@@ -53,6 +53,7 @@
 #include <std_msgs/Float64MultiArray.h>
 #include <visualization_msgs/MarkerArray.h>
 #include <rosbag/bag.h>
+#include <rosbag/view.h>
 #include <smplpp/Motion.h>
 #include <smplpp/PoseParam.h>
 //----------
@@ -303,17 +304,18 @@ int main(int argc, char * argv[])
   pnh.getParam("solve_mocap_body", solveMocapBody);
   bool solveMocapMotion = false;
   pnh.getParam("solve_mocap_motion", solveMocapMotion);
+  bool loadMotion = false;
+  pnh.getParam("load_motion", loadMotion);
   bool enableVertexColor = false;
   pnh.getParam("enable_vertex_color", enableVertexColor);
   bool visualizeNormal = false;
   pnh.getParam("visualize_normal", visualizeNormal);
   bool printDuration = true;
-
   bool solveMocap = solveMocapBody || solveMocapMotion;
   if(solveMocap)
   {
-    enableVposer = true;
-    enableIk = true;
+    enableVposer = !loadMotion;
+    enableIk = !loadMotion;
     enableQp = true;
     printDuration = false;
   }
@@ -578,18 +580,38 @@ int main(int argc, char * argv[])
   {
     pnh.getParam("mocap_frame_idx", mocapFrameIdx);
   }
-  else if(solveMocapMotion)
+  else if(solveMocapMotion && !loadMotion)
   {
     pnh.getParam("mocap_frame_interval", mocapFrameInterval);
   }
+
   smplpp::Motion motionMsg;
-  motionMsg.frame_rate = c3d->header().frameRate() / static_cast<double>(mocapFrameInterval);
+  if(loadMotion)
+  {
+    // Load message from rosbag
+    std::string rosbagPath;
+    pnh.getParam("rosbag_path", rosbagPath);
+    ROS_INFO_STREAM("Load rosbag of mocap motion from " << rosbagPath);
+    rosbag::Bag bag(rosbagPath, rosbag::bagmode::Read);
+    for(const auto & msg : rosbag::View(bag))
+    {
+      if(msg.isType<smplpp::Motion>())
+      {
+        motionMsg = *(msg.instantiate<smplpp::Motion>());
+        break;
+      }
+    }
+  }
+  else
+  {
+    motionMsg.frame_rate = c3d->header().frameRate() / static_cast<double>(mocapFrameInterval);
+  }
 
   double rateFreq = 30.0;
   pnh.getParam("rate", rateFreq);
   if(solveMocapMotion)
   {
-    rateFreq = c3d->header().frameRate() / static_cast<double>(mocapFrameInterval);
+    rateFreq = motionMsg.frame_rate;
   }
   ros::Rate rate(rateFreq);
 
@@ -633,7 +655,15 @@ int main(int argc, char * argv[])
       {
         auto startTimeForward = std::chrono::system_clock::now();
         torch::Tensor theta;
-        if(enableVposer)
+        if(loadMotion)
+        {
+          const smplpp::Instant & instantMsg = motionMsg.data_list[ikIter];
+          mocapFrameIdx = instantMsg.frame_idx;
+          theta = smplpp::toTorchTensor<float>(
+              Eigen::VectorXd::Map(&instantMsg.theta[0], instantMsg.theta.size()).cast<float>(), true)
+              .view({smplpp::JOINT_NUM + 1, 3});
+        }
+        else if(enableVposer)
         {
           theta = torch::empty({smplpp::JOINT_NUM + 1, 3});
           theta.index_put_({0}, g_theta.index({at::indexing::Slice(0, 3)}));
@@ -1174,7 +1204,7 @@ int main(int argc, char * argv[])
         break;
       }
     }
-    else if(solveMocapMotion)
+    else if(solveMocapMotion && !loadMotion)
     {
       if(ikIter % 10 == 0)
       {
@@ -1183,8 +1213,7 @@ int main(int argc, char * argv[])
       }
       if(ikIter > 30)
       {
-        // Store theta
-        if(solveMocapMotion)
+        // Store data to message
         {
           Eigen::MatrixXd theta;
           if(enableVposer)
@@ -1209,11 +1238,12 @@ int main(int argc, char * argv[])
             theta = smplpp::toEigenMatrix(g_theta).cast<double>();
           }
 
-          smplpp::Theta thetaMsg;
-          thetaMsg.theta.resize(theta.size());
-          Eigen::VectorXd::Map(&thetaMsg.theta[0], theta.size()) =
+          smplpp::Instant instantMsg;
+          instantMsg.frame_idx = mocapFrameIdx;
+          instantMsg.theta.resize(theta.size());
+          Eigen::VectorXd::Map(&instantMsg.theta[0], theta.size()) =
               Eigen::Map<Eigen::VectorXd>(theta.data(), theta.size());
-          motionMsg.theta_list.push_back(thetaMsg);
+          motionMsg.data_list.push_back(instantMsg);
         }
 
         mocapFrameIdx += mocapFrameInterval;
@@ -1245,9 +1275,9 @@ int main(int argc, char * argv[])
       ofs << "    vertexWeights: " << smplpp::toEigenMatrix(ikTask.vertexWeights_).transpose().format(fmt) << std::endl;
     }
   }
-  else if(solveMocapMotion)
+  else if(solveMocapMotion && !loadMotion)
   {
-    std::string rosbagPath = "/tmp/mocapMotion.bag";
+    std::string rosbagPath = "/tmp/MocapMotion.bag";
     ROS_INFO_STREAM("Save rosbag of mocap motion to " << rosbagPath);
     rosbag::Bag bag(rosbagPath, rosbag::bagmode::Write);
     bag.write("smplpp/motion", ros::Time::now(), motionMsg);

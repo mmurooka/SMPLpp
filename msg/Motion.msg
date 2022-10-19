@@ -1,3 +1,5 @@
-float64 frame_rate # [Hz]
+# Frame rate [Hz]
+float64 frame_rate
 
-Theta[] theta_list
+# Motion data list
+Instant[] data_list
