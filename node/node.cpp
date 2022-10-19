@@ -593,25 +593,28 @@ int main(int argc, char * argv[])
   }
 
   smplpp::Motion motionMsg;
-  if(loadMotion)
+  if(solveMocapMotion)
   {
-    // Load message from rosbag
-    std::string rosbagPath;
-    pnh.getParam("rosbag_path", rosbagPath);
-    ROS_INFO_STREAM("Load rosbag of mocap motion from " << rosbagPath);
-    rosbag::Bag bag(rosbagPath, rosbag::bagmode::Read);
-    for(const auto & msg : rosbag::View(bag))
+    if(loadMotion)
     {
-      if(msg.isType<smplpp::Motion>())
+      // Load message from rosbag
+      std::string rosbagPath;
+      pnh.getParam("rosbag_path", rosbagPath);
+      ROS_INFO_STREAM("Load rosbag of mocap motion from " << rosbagPath);
+      rosbag::Bag bag(rosbagPath, rosbag::bagmode::Read);
+      for(const auto & msg : rosbag::View(bag))
       {
-        motionMsg = *(msg.instantiate<smplpp::Motion>());
-        break;
+        if(msg.isType<smplpp::Motion>())
+        {
+          motionMsg = *(msg.instantiate<smplpp::Motion>());
+          break;
+        }
       }
     }
-  }
-  else
-  {
-    motionMsg.frame_rate = c3d->header().frameRate() / static_cast<double>(mocapFrameInterval);
+    else
+    {
+      motionMsg.frame_rate = c3d->header().frameRate() / static_cast<double>(mocapFrameInterval);
+    }
   }
 
   double rateFreq = 30.0;
@@ -632,7 +635,7 @@ int main(int argc, char * argv[])
       bool optimizeBeta = false;
       if(solveMocapBody)
       {
-        optimizeBeta = (ikIter >= 30);
+        optimizeBeta = (ikIter >= 25);
       }
 
       // Setup gradient
@@ -724,7 +727,7 @@ int main(int argc, char * argv[])
 
           if(solveMocapBody)
           {
-            ikTask.phiLimit_ = ikIter < 30 ? 0.0 : 0.04;
+            ikTask.phiLimit_ = ikIter < 25 ? 0.0 : 0.04;
           }
           else if(solveMocapMotion)
           {
@@ -1206,7 +1209,7 @@ int main(int argc, char * argv[])
       {
         ROS_INFO_STREAM("[Iter " << ikIter << "] Solving mocap body.");
       }
-      if(ikIter == 100)
+      if(ikIter == 50)
       {
         break;
       }

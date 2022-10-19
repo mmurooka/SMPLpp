@@ -28,7 +28,7 @@
       rosbag_path: $(find smplpp)/data/MocapMotion.bag
       device: $(arg device)
       rate: 30.0
-      initial_pos: [1.0, 0.0, 0.0]
+      initial_pos: [0.0, 0.0, 1.0]
       <!-- initial_rpy: [1.57, 0.0, 1.57] -->
       initial_rpy: [1.57, 0.0, 3.14]
     </rosparam>
