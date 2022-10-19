@@ -15,7 +15,7 @@ namespace smplpp
     \param mat Eigen matrix
     \param tensor1d whether to convert to 1D tensor
 
-    Even if the matrix of colum major is passed as an argument, it is automatically converted to row major.
+    Even if the matrix of column major is passed as an argument, it is automatically converted to row major.
 */
 template<typename Scalar = float>
 inline torch::Tensor toTorchTensor(const Eigen::Matrix<Scalar, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> & mat,

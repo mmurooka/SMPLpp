@@ -660,8 +660,8 @@ int main(int argc, char * argv[])
           const smplpp::Instant & instantMsg = motionMsg.data_list[ikIter];
           mocapFrameIdx = instantMsg.frame_idx;
           theta = smplpp::toTorchTensor<float>(
-              Eigen::VectorXd::Map(&instantMsg.theta[0], instantMsg.theta.size()).cast<float>(), true)
-              .view({smplpp::JOINT_NUM + 1, 3});
+                      Eigen::VectorXd::Map(&instantMsg.theta[0], instantMsg.theta.size()).cast<float>(), true)
+                      .view({smplpp::JOINT_NUM + 1, 3});
         }
         else if(enableVposer)
         {
@@ -1240,9 +1240,10 @@ int main(int argc, char * argv[])
 
           smplpp::Instant instantMsg;
           instantMsg.frame_idx = mocapFrameIdx;
-          instantMsg.theta.resize(theta.size());
-          Eigen::VectorXd::Map(&instantMsg.theta[0], theta.size()) =
-              Eigen::Map<Eigen::VectorXd>(theta.data(), theta.size());
+          Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> thetaRowMajor = theta;
+          instantMsg.theta.resize(thetaRowMajor.size());
+          Eigen::VectorXd::Map(&instantMsg.theta[0], thetaRowMajor.size()) =
+              Eigen::Map<const Eigen::VectorXd>(thetaRowMajor.data(), thetaRowMajor.size());
           motionMsg.data_list.push_back(instantMsg);
         }
 
