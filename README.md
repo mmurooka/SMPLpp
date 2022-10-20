@@ -116,6 +116,8 @@ You can change the SMPL body parameters (`beta`) and pose parameters (`theta`) f
 
 If you set `enable_vposer:=true` instead of `enable_vposer:=false` in the `roslaunch` arguments, you can change the latent variables from the sliders instead of the pose parameters.
 
+https://user-images.githubusercontent.com/6636600/196848840-437fe145-9998-4f1b-8c49-deb2677c69c0.mp4
+
 ### Inverse kinematics
 ```bash
 $ roslaunch smplpp smplpp.launch enable_vertex_color:=false enable_ik:=true enable_vposer:=true
@@ -125,5 +127,7 @@ By moving the interactive markers on Rviz, you can specify the position and norm
 You can change the SMPL body parameters (`beta`) from the sliders in the rqt window.
 
 If you set `enable_vposer:=false` instead of `enable_vposer:=true` in the `roslaunch` arguments, pose parameters can be optimized directly instead of latent variables. In this case, the body pose prior is not taken into account and the generated pose will be unnatural.
+
+https://user-images.githubusercontent.com/6636600/196848863-971793eb-a620-4266-837d-e90cc9360303.mp4
 
 ### Motion capture fittings
