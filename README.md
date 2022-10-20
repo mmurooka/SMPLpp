@@ -3,6 +3,8 @@ Inverse kinematics with 3D human model SMPL
 
 ## Overview
 This repository [mmurooka/SMPLpp](https://github.com/mmurooka/SMPLpp) is a fork of [YeeCY/SMPLpp](https://github.com/YeeCY/SMPLpp).
+This README, written by [mmurooka](https://github.com/mmurooka), describes [mmurooka/SMPLpp](https://github.com/mmurooka/SMPLpp).
+
 Most of the source code is identical to the original repository, and their licenses follow the original repository.
 Newly added source code in this repository is available under [MIT license](https://github.com/mmurooka/SMPLpp/blob/master/LICENSE), as in the original repository.
 
@@ -12,12 +14,6 @@ This repository contains the following updates and extensions to the original re
 - Function for fitting SMPL models to motion capture data
 - Minor bug fixes (https://github.com/YeeCY/SMPLpp/pull/13, https://github.com/YeeCY/SMPLpp/pull/14)
 - ROS packaging
-
-For more information on the technical methods, please see the following papers:
-- 3D human model: M. Loper, et al. SMPL: A skinned multi-person linear model. ToG, 2015.
-- Body pose prior: G. Pavlakos, et al. Expressive body capture: 3d hands, face, and body from a single image. CVPR, 2019.
-- Inverse kinematics: M. Loper, et al. MoSh: Motion and shape capture from sparse markers. ToG, 2014.
-- Inverse kinematics: M. Naureen, et al. AMASS: Archive of motion capture as surface shapes. ICCV, 2019.
 
 This repository does not contain model parameter files.
 They can be downloaded from the following project pages of the paper authors.
@@ -126,8 +122,26 @@ You will see a window of Rviz and a window of rqt.
 By moving the interactive markers on Rviz, you can specify the position and normal direction of the hands and feet of the SMPL model.
 You can change the SMPL body parameters (`beta`) from the sliders in the rqt window.
 
-If you set `enable_vposer:=false` instead of `enable_vposer:=true` in the `roslaunch` arguments, pose parameters can be optimized directly instead of latent variables. In this case, the body pose prior is not taken into account and the generated pose will be unnatural.
+If you set `enable_vposer:=false` instead of `enable_vposer:=true` in the `roslaunch` arguments, the pose parameters can be optimized directly instead of the latent variables. In this case, the body pose prior is not taken into account and the generated pose will be unnatural.
 
 https://user-images.githubusercontent.com/6636600/196848863-971793eb-a620-4266-837d-e90cc9360303.mp4
 
 ### Motion capture fittings
+
+### Notes
+#### Note on vertex-colored meshes in Rviz
+If you set `enable_vertex_color:=true` instead of `enable_vertex_color:=false` in the `roslaunch` arguments, the color of each vertex is determined by its Z-position. However, Rviz on the default branch does not provide good visualization for vertex-colored meshes. Building Rviz from source code with [this patch](https://github.com/mmurooka/rviz/commit/ad4ac3206c2e72c073498b4568edeeff0c256f82) solves this problem.
+
+#### Interactive retrieval of vertex and face indices
+When you click the `Publish Point` button in Rviz and then click on the SMPL model, the indices of the vertex and face closest to the clicked point are printed in the terminal as follows. This is useful for determining the inverse-kinematics target on the SMPL model.
+```bash
+[ INFO][/smplpp]: Vertex idx closest to clicked point: 6875
+[ INFO][/smplpp]: Face idx closest to clicked point: 13353
+```
+
+## Technical details
+For more information on the technical details, please see the following papers:
+- 3D human model: M. Loper, et al. SMPL: A skinned multi-person linear model. ToG, 2015.
+- Body pose prior: G. Pavlakos, et al. Expressive body capture: 3d hands, face, and body from a single image. CVPR, 2019.
+- Inverse kinematics: M. Loper, et al. MoSh: Motion and shape capture from sparse markers. ToG, 2014.
+- Inverse kinematics: M. Naureen, et al. AMASS: Archive of motion capture as surface shapes. ICCV, 2019.
