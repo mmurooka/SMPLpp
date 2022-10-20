@@ -9,6 +9,7 @@ Newly added source code in this repository is available under [MIT license](http
 This repository contains the following updates and extensions to the original repository:
 - C++ implementation of inverse kinematics (MoSh, MoSh++)
 - C++ implementation of body pose prior (VPoser)
+- Function for fitting SMPL models to motion capture data
 - Minor bug fixes (https://github.com/YeeCY/SMPLpp/pull/13, https://github.com/YeeCY/SMPLpp/pull/14)
 - ROS packaging
 
@@ -105,3 +106,24 @@ Confirm that the files `smpl_male.{json|npz}` and `smpl_female.{json|npz}` have 
 $ rosrun smplpp preprocess_vposer.py <path to V02_05_epoch=08_val_loss=0.03.ckpt> `rospack find smplpp`/data
 ```
 Confirm that the files `vposer_parameters.{json|npz}` have been generated in `rospack find smplpp`/data.
+
+### Forward kinematics
+```bash
+$ roslaunch smplpp smplpp.launch enable_vertex_color:=false enable_ik:=false enable_vposer:=false
+```
+You will see a window of Rviz and two windows of rqt.
+You can change the SMPL body parameters (`beta`) and pose parameters (`theta`) from the sliders in the two rqt windows, and watch the SMPL model visualized in Rviz change.
+
+If you set `enable_vposer:=true` instead of `enable_vposer:=false` in the `roslaunch` arguments, you can change the latent variables from the sliders instead of the pose parameters.
+
+### Inverse kinematics
+```bash
+$ roslaunch smplpp smplpp.launch enable_vertex_color:=false enable_ik:=true enable_vposer:=true
+```
+You will see a window of Rviz and a window of rqt.
+By moving the interactive markers on Rviz, you can specify the position and normal direction of the hands and feet of the SMPL model.
+You can change the SMPL body parameters (`beta`) from the sliders in the rqt window.
+
+If you set `enable_vposer:=false` instead of `enable_vposer:=true` in the `roslaunch` arguments, pose parameters can be optimized directly instead of latent variables. In this case, the body pose prior is not taken into account and the generated pose will be unnatural.
+
+### Motion capture fittings
