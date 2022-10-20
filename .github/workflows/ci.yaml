@@ -129,7 +129,7 @@ jobs:
           cd ${GITHUB_WORKSPACE}/src/eigen-qld/
           mkdir build
           cd build
-          cmake .. -DCMAKE_BUILD_TYPE=${{ matrix.build-type }}
+          cmake .. -DCMAKE_BUILD_TYPE=${{ matrix.build-type }} -DPYTHON_BINDING=OFF -DBUILD_TESTING=OFF
           make -j4
           sudo make install
       - name: Download libtorch
