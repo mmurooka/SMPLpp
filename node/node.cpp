@@ -1282,7 +1282,6 @@ int main(int argc, char * argv[])
 
     ros::spinOnce();
     rate.sleep();
-    rate.reset(); // Set start time to the current time
 
     if(loadMotion && rate.cycleTime().toSec() > rate.expectedCycleTime().toSec())
     {
