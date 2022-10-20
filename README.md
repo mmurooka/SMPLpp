@@ -73,4 +73,35 @@ $ catkin build smplpp -DCMAKE_BUILD_TYPE=RelWithDebInfo -DLIBTORCH_PATH=<absolut
 ```
 `<absolute path to libtorch>` is the path to the directory named libtorch that was extracted in step 1.
 
-## Examples
+## Samples
+
+### Prerequisites: download and preprocessing of model parameters
+
+1. Download model parameter files.
+
+Download the model parameter file from the `Download version 1.0.0 for Python 2.7 (female/male. 10 shape PCs)` link on the following project page of the paper authors. Please note the license on the project page.
+- https://smpl.is.tue.mpg.de/
+
+Download the model parameter file from the `Download VPoser v2.0 - not-evaluated (80.0 MB)` link on the following project page of the paper authors. Please note the license on the project page.
+- https://smpl-x.is.tue.mpg.de/
+
+2. Extract the downloaded zip files.
+
+Extract the zip file `SMPL_python_v.1.0.0.zip`.
+The extracted zip files contain the model parameter files: `basicmodel_m_lbs_10_207_0_v1.0.0.pkl` and `basicModel_f_lbs_10_207_0_v1.0.0.pkl`.
+
+Extract the zip file `V02_05.zip`.
+The extracted zip files contain the model parameter file: `V02_05_epoch=08_val_loss=0.03.ckpt`.
+
+3. Preprocess SMPL model parameter files.
+```bash
+$ rosrun smplpp preprocess.py male <path to basicmodel_m_lbs_10_207_0_v1.0.0.pkl> `rospack find smplpp`/data
+$ rosrun smplpp preprocess.py female <path to basicModel_f_lbs_10_207_0_v1.0.0.pkl> `rospack find smplpp`/data
+```
+Confirm that the files `smpl_male.{json|npz}` and `smpl_female.{json|npz}` have been generated in `rospack find smplpp`/data.
+
+4. Preprocess VPoser model parameter file.
+```bash
+$ rosrun smplpp preprocess_vposer.py <path to V02_05_epoch=08_val_loss=0.03.ckpt> `rospack find smplpp`/data
+```
+Confirm that the files `vposer_parameters.{json|npz}` have been generated in `rospack find smplpp`/data.
