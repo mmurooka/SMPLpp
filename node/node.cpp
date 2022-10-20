@@ -369,7 +369,7 @@ int main(int argc, char * argv[])
   // Setup variables
   g_theta = enableVposer ? torch::zeros({LATENT_POSE_DIM}) : torch::zeros({smplpp::JOINT_NUM + 1, 3});
   g_beta = torch::zeros({smplpp::SHAPE_BASIS_DIM});
-  if(enableIk || loadMotion)
+  if(enableIk)
   {
     // Set initial root pose
     std::vector<double> initialPosVec = {0.0, 0.0, 0.0};
@@ -392,8 +392,11 @@ int main(int argc, char * argv[])
       g_theta.index_put_({0}, initialPosTensor);
       g_theta.index_put_({1}, initialRpyTensor);
     }
+  }
 
-    // Set IK task list
+  // Setup IK task list
+  if(enableIk || loadMotion)
+  {
     if(solveMocapBody)
     {
       // Ref. https://docs.optitrack.com/markersets/full-body/baseline-41
@@ -822,10 +825,10 @@ int main(int argc, char * argv[])
           rowIdx += 4;
           ikTaskIdx++;
         }
-        durationList.emplace_back("setup IK matrices", std::chrono::duration_cast<std::chrono::duration<double>>(
-                                                           std::chrono::system_clock::now() - startTimeSetupIk)
-                                                               .count()
-                                                           * 1e3);
+        durationList.emplace_back("calculate IK matrices", std::chrono::duration_cast<std::chrono::duration<double>>(
+                                                               std::chrono::system_clock::now() - startTimeSetupIk)
+                                                                   .count()
+                                                               * 1e3);
 
         // Add regularization term
         Eigen::MatrixXd linearEqA = J.transpose() * J;
