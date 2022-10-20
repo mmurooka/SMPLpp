@@ -257,6 +257,8 @@ JointRegression & JointRegression::operator=(const JointRegression & jointRegres
   {
     m__joints = jointRegression.m__joints.clone().to(m__device);
   }
+
+  return *this;
 }
 
 /**setDevice
