@@ -150,6 +150,8 @@ The representative frame can be changed as needed via the `mocap_frame_idx` argu
 
 It outputs a yaml file `/tmp/MocapBody.yaml` that records `beta` and `phi`. This will be used in the following step.
 
+https://user-images.githubusercontent.com/6636600/196866465-763991b2-9aab-43de-973a-2164522a9a9a.mp4
+
 #### Solving for the motion
 In the second step, the SMPL body parameters (`beta`) and surface position parameter (`phi`) are fixed and only the pose parameters (`theta`) are optimized.
 ```bash
@@ -172,7 +174,12 @@ $ ROSBAG_PATH=/tmp/MocapMotion.bag
 $ roslaunch smplpp smplpp.launch solve_mocap_motion:=true load_motion:=true mocap_frame_interval:=4 \
   mocap_path:=${C3D_PATH} mocap_body_path:=${MOCAP_BODY_PATH} rosbag_path:=${ROSBAG_PATH}
 ```
+
+https://user-images.githubusercontent.com/6636600/196866500-ca054a3a-2aa3-4aea-b723-80750f634907.mp4
+
 Animation of the SMPL model fitted to motion capture data is displayed at real speed.
+
+  
 
 ### Notes
 #### Note on vertex-colored meshes in Rviz
