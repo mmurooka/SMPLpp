@@ -587,7 +587,7 @@ int main(int argc, char * argv[])
   {
     pnh.getParam("mocap_frame_idx", mocapFrameIdx);
   }
-  else if(solveMocapMotion && !loadMotion)
+  else if(solveMocapMotion)
   {
     pnh.getParam("mocap_frame_interval", mocapFrameInterval);
   }
@@ -622,6 +622,10 @@ int main(int argc, char * argv[])
   if(solveMocapMotion)
   {
     rateFreq = motionMsg.frame_rate;
+    if(loadMotion)
+    {
+      rateFreq /= static_cast<double>(mocapFrameInterval);
+    }
   }
   ros::Rate rate(rateFreq);
 
@@ -1216,7 +1220,8 @@ int main(int argc, char * argv[])
     }
     else if(solveMocapMotion && loadMotion)
     {
-      if(ikIter == motionMsg.data_list.size() - 1)
+      ikIter += mocapFrameInterval - 1;
+      if(ikIter >= motionMsg.data_list.size() - 1)
       {
         break;
       }
@@ -1274,6 +1279,14 @@ int main(int argc, char * argv[])
 
     ros::spinOnce();
     rate.sleep();
+    rate.reset(); // Set start time to the current time
+
+    if(loadMotion && rate.cycleTime().toSec() > rate.expectedCycleTime().toSec())
+    {
+      ROS_WARN_STREAM_THROTTLE(10.0, "Playback is delayed to real time. expected duration: "
+                                         << rate.expectedCycleTime().toSec()
+                                         << " [s], actual duration: " << rate.cycleTime().toSec() << " [s]");
+    }
   }
 
   // Save mocap results

@@ -14,6 +14,9 @@
   <arg name="mocap_path" default="$(find smplpp)/data/sample_walk.c3d" />
   <arg name="rosbag_path" default="$(find smplpp)/data/MocapMotion.bag" />
 
+  <arg name="mocap_frame_idx" default="10" />
+  <arg name="mocap_frame_interval" default="1" />
+
   <node pkg="smplpp" type="node" name="smplpp"
         output="screen" clear_params="true" required="true" >
     <rosparam subst_value="true">
@@ -34,8 +37,8 @@
       <!-- initial_rpy: [1.57, 0.0, 1.57] -->
       initial_rpy: [1.57, 0.0, 3.14]
       rate: 30.0
-      mocap_frame_idx: 10
-      mocap_frame_interval: 1
+      mocap_frame_idx: $(arg mocap_frame_idx)
+      mocap_frame_interval: $(arg mocap_frame_interval)
     </rosparam>
     <rosparam if="$(arg solve_mocap_motion)"
               command="load" file="$(find smplpp)/data/MocapBody.yaml" />
