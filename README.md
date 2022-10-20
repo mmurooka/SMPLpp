@@ -1,6 +1,8 @@
 # [SMPLpp](https://github.com/mmurooka/SMPLpp)
 Inverse kinematics with 3D human model SMPL
 
+[![CI](https://github.com/mmurooka/SMPLpp/actions/workflows/ci.yaml/badge.svg)](https://github.com/mmurooka/SMPLpp/actions/workflows/ci.yaml)
+
 ## Overview
 This repository [mmurooka/SMPLpp](https://github.com/mmurooka/SMPLpp) is a fork of [YeeCY/SMPLpp](https://github.com/YeeCY/SMPLpp).
 This README, written by [mmurooka](https://github.com/mmurooka), describes [mmurooka/SMPLpp](https://github.com/mmurooka/SMPLpp).
