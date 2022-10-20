@@ -125,6 +125,7 @@ jobs:
         run: |
           set -e
           set -x
+          sudo apt-get install -y -qq libeigen3-dev
           cd ${GITHUB_WORKSPACE}/src/eigen-qld/
           mkdir build
           cd build
