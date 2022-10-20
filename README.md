@@ -127,6 +127,52 @@ If you set `enable_vposer:=false` instead of `enable_vposer:=true` in the `rosla
 https://user-images.githubusercontent.com/6636600/196848863-971793eb-a620-4266-837d-e90cc9360303.mp4
 
 ### Motion capture fittings
+Inverse kinematics can be used to fit the SMPL model to the labeled marker trajectories.
+
+The position of each marker on the SMPL model needs to be roughly predefined.
+Fine-tuning is done automatically by optimizing the surface position parameters.
+Currently, only the [Baseline marker set](https://docs.optitrack.com/markersets/full-body/baseline-41) (consisting of 41 markers) provided by OptiTrack is supported.
+With a little work (about 30 minutes), other marker sets can easily be added.
+
+Export the motion-capture measurement data as a C3D file.
+There is a sample C3D file in (data/sample_walk.c3d)[https://github.com/mmurooka/SMPLpp/blob/master/data/sample_walk.c3d] that measures the walking motion.
+
+Motion capture fitting consists of three steps: solving for the body, solving the motion, and playback of the motion.
+
+#### Solving for the body
+In the first step, the SMPL pose parameters (`theta`), body parameters (`beta`), and surface position parameters (`phi`) are simultaneously optimized using a single representative frame.
+```bash
+$ C3D_PATH=`rospack find smplpp`/data/sample_walk.c3d
+$ roslaunch smplpp smplpp.launch solve_mocap_body:=true mocap_path:=${C3D_PATH}
+```
+It usually takes less than a minute.
+The representative frame can be changed as needed via the `mocap_frame_idx` argument.
+
+It outputs a yaml file `/tmp/MocapBody.yaml` that records `beta` and `phi`. This will be used in the following step.
+
+#### Solving for the motion
+In the second step, the SMPL body parameters (`beta`) and surface position parameter (`phi`) are fixed and only the pose parameters (`theta`) are optimized.
+```bash
+$ C3D_PATH=`rospack find smplpp`/data/sample_walk.c3d
+$ MOCAP_BODY_PATH=/tmp/MocapBody.yaml
+$ roslaunch smplpp smplpp.launch solve_mocap_motion:=true mocap_path:=${C3D_PATH} mocap_body_path:=${MOCAP_BODY_PATH}
+```
+The inverse kinematics calculation takes about 1 second per frame (on a local PC it was 0.7 seconds). Thus, if the C3D data holds 120 FPS, it would take approximately 2 hours to convert 1 minute of motion.
+This is a long processing time, but thanks to the C++ implementation, it is still faster than the Python implementation from the authors of the original paper. See section 1 of [this supplementary material](https://files.is.tue.mpg.de/black/papers/amass-sup.pdf).
+
+It outputs a rosbag file `/tmp/MocapMotion.bag` that records the `theta` of the time series.
+Move the rosbag file to a safe location before it is lost in a reboot.
+
+#### Playback of the motion
+The third step is to play back the recorded motion data.
+```bash
+$ C3D_PATH=`rospack find smplpp`/data/sample_walk.c3d
+$ MOCAP_BODY_PATH=/tmp/MocapBody.yaml
+$ ROSBAG_PATH=/tmp/MocapMotion.bag
+$ roslaunch smplpp smplpp.launch solve_mocap_motion:=true load_motion:=true mocap_frame_interval:=4 \
+  mocap_path:=${C3D_PATH} mocap_body_path:=${MOCAP_BODY_PATH} rosbag_path:=${ROSBAG_PATH}
+```
+Animation of the SMPL model fitted to motion capture data is displayed at real speed.
 
 ### Notes
 #### Note on vertex-colored meshes in Rviz
