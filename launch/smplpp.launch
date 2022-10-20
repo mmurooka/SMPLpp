@@ -13,6 +13,7 @@
   <arg name="vposer_path" default="$(find smplpp)/data/vposer_parameters.json" />
   <arg name="mocap_path" default="$(find smplpp)/data/sample_walk.c3d" />
   <arg name="rosbag_path" default="$(find smplpp)/data/MocapMotion.bag" />
+  <arg name="mocap_body_path" default="$(find smplpp)/data/MocapBody.yaml" />
 
   <arg name="mocap_frame_idx" default="10" />
   <arg name="mocap_frame_interval" default="1" />
@@ -40,8 +41,7 @@
       mocap_frame_idx: $(arg mocap_frame_idx)
       mocap_frame_interval: $(arg mocap_frame_interval)
     </rosparam>
-    <rosparam if="$(arg solve_mocap_motion)"
-              command="load" file="$(find smplpp)/data/MocapBody.yaml" />
+    <rosparam if="$(arg solve_mocap_motion)" command="load" file="$(arg mocap_body_path)" />
   </node>
 
   <node if="$(arg enable_ik)"
