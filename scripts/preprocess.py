@@ -1,3 +1,5 @@
+#!/usr/bin/python2
+
 # Copyright 2018 Chongyi Zheng. All rights reserved.
 #
 # This software implements a 3D human skinning model, SMPL, with tensorflow
@@ -15,7 +17,6 @@
 # data and write them in to numpy and json format.
 #
 # =============================================================================
-#!/usr/bin/python2
 
 from __future__ import absolute_import
 from __future__ import division
