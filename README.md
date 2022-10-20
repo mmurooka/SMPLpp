@@ -17,3 +17,9 @@ For more information on the technical methods, please see the following papers:
 - Body pose prior: G. Pavlakos, et al. Expressive body capture: 3d hands, face, and body from a single image. CVPR, 2019.
 - Inverse kinematics: M. Loper, et al. MoSh: Motion and shape capture from sparse markers. ToG, 2014.
 - Inverse kinematics: M. Naureen, et al. AMASS: Archive of motion capture as surface shapes. ICCV, 2019.
+
+This repository does not contain model parameter files.
+They can be downloaded from the following project pages of the paper authors.
+Please see the project page for the license.
+- SMPL: https://smpl.is.tue.mpg.de/
+- VPoser https://smpl-x.is.tue.mpg.de/
