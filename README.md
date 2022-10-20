@@ -58,7 +58,7 @@ $ wstool set -t src mmurooka/SMPLpp git@github.com:mmurooka/SMPLpp.git --git -y
 $ wstool update -t src
 ```
 
-3. Install dependent packages.
+3. Install dependent ROS packages.
 ```bash
 $ source /opt/ros/${ROS_DISTRO}/setup.bash
 $ rosdep install -y -r --from-paths src --ignore-src
