@@ -221,19 +221,22 @@ Eigen::Matrix<Scalar, 3, 1> getGridPos(const Eigen::Vector3i & gridIdx)
   return GRID_SCALE * gridIdx.cast<Scalar>();
 }
 
-Eigen::Vector3i getGridIdx(const Eigen::Vector3d & gridPos)
+template<typename Scalar = float>
+Eigen::Vector3i getGridIdx(const Eigen::Matrix<Scalar, 3, 1> & gridPos)
 {
-  return (gridPos / GRID_SCALE).array().round().matrix().cast<int>();
+  return (gridPos / GRID_SCALE).array().round().matrix().template cast<int>();
 }
 
-Eigen::Vector3i getGridIdxFloor(const Eigen::Vector3d & gridPos)
+template<typename Scalar = float>
+Eigen::Vector3i getGridIdxFloor(const Eigen::Matrix<Scalar, 3, 1> & gridPos)
 {
-  return (gridPos / GRID_SCALE).array().floor().matrix().cast<int>();
+  return (gridPos / GRID_SCALE).array().floor().matrix().template cast<int>();
 }
 
-Eigen::Vector3i getGridIdxCeil(const Eigen::Vector3d & gridPos)
+template<typename Scalar = float>
+Eigen::Vector3i getGridIdxCeil(const Eigen::Matrix<Scalar, 3, 1> & gridPos)
 {
-  return (gridPos / GRID_SCALE).array().ceil().matrix().cast<int>();
+  return (gridPos / GRID_SCALE).array().ceil().matrix().template cast<int>();
 }
 
 void latentPoseParamCallback(const std_msgs::Float64MultiArray::ConstPtr & msg)
@@ -304,19 +307,19 @@ void ikTargetPoseCallback(const geometry_msgs::TransformStamped::ConstPtr & msg)
 
 void clickedPointCallback(const geometry_msgs::PointStamped::ConstPtr & msg)
 {
-  Eigen::Vector3d clickedPos = Eigen::Vector3d(msg->point.x, msg->point.y, msg->point.z);
+  Eigen::Vector3f clickedPos = Eigen::Vector3f(msg->point.x, msg->point.y, msg->point.z);
 
   torch::Tensor vertexTensor = SINGLE_SMPL::get()->getVertex().index({0}).to(torch::kCPU);
-  Eigen::MatrixX3d vertexMat = smplpp::toEigenMatrix(vertexTensor).cast<double>();
+  Eigen::MatrixX3f vertexMat = smplpp::toEigenMatrix(vertexTensor);
   torch::Tensor faceIdxTensor = SINGLE_SMPL::get()->getFaceIndex().to(torch::kCPU) - 1;
   Eigen::MatrixX3i faceIdxMat = smplpp::toEigenMatrix<int>(faceIdxTensor);
 
-  Eigen::MatrixX3d facePosMat = Eigen::MatrixX3d::Zero(faceIdxMat.rows(), 3);
+  Eigen::MatrixX3f facePosMat = Eigen::MatrixX3f::Zero(faceIdxMat.rows(), 3);
   for(int64_t faceIdx = 0; faceIdx < faceIdxMat.rows(); faceIdx++)
   {
     for(int32_t i = 0; i < 3; i++)
     {
-      int64_t vertexIdx = faceIdxMat(faceIdx, i);
+      int32_t vertexIdx = faceIdxMat(faceIdx, i);
       facePosMat.row(faceIdx) += vertexMat.row(vertexIdx);
     }
   }
@@ -947,7 +950,7 @@ int main(int argc, char * argv[])
         g_theta.set_requires_grad(false);
         g_theta += smplpp::toTorchTensor<float>(deltaConfig.head(thetaDim).cast<float>(), true).view_as(g_theta);
 
-        Eigen::MatrixXd actualPosList(g_ikTaskList.size(), 3);
+        Eigen::MatrixXf actualPosList(g_ikTaskList.size(), 3);
         ikTaskIdx = 0;
         for(auto & ikTaskKV : g_ikTaskList)
         {
@@ -956,8 +959,7 @@ int main(int argc, char * argv[])
           ikTask.phi_ =
               smplpp::toTorchTensor<float>(deltaConfig.segment<2>(thetaDim + 2 * ikTaskIdx).cast<float>(), true);
 
-          actualPosList.row(ikTaskIdx) =
-              smplpp::toEigenMatrix(ikTask.calcActualPos().to(torch::kCPU)).transpose().cast<double>();
+          actualPosList.row(ikTaskIdx) = smplpp::toEigenMatrix(ikTask.calcActualPos().to(torch::kCPU)).transpose();
 
           ikTaskIdx++;
         }
@@ -970,16 +972,16 @@ int main(int argc, char * argv[])
 
         // Project point onto mesh
         Eigen::VectorXi closestFaceIndices;
-        Eigen::MatrixX3d closestPoints;
+        Eigen::MatrixX3f closestPoints;
         {
           auto startTimeProjectPoint = std::chrono::system_clock::now();
 
           torch::Tensor vertexTensor = SINGLE_SMPL::get()->getVertex().index({0}).to(torch::kCPU);
-          Eigen::MatrixXd vertexMat = smplpp::toEigenMatrix(vertexTensor).cast<double>();
+          Eigen::MatrixXf vertexMat = smplpp::toEigenMatrix(vertexTensor);
           torch::Tensor faceIdxTensor = SINGLE_SMPL::get()->getFaceIndex().to(torch::kCPU) - 1;
           Eigen::MatrixXi faceIdxMat = smplpp::toEigenMatrix<int>(faceIdxTensor);
 
-          Eigen::VectorXd squaredDists;
+          Eigen::VectorXf squaredDists;
           igl::point_mesh_squared_distance(actualPosList, vertexMat, faceIdxMat, squaredDists, closestFaceIndices,
                                            closestPoints);
 
@@ -996,7 +998,7 @@ int main(int argc, char * argv[])
           auto & ikTask = ikTaskKV.second;
 
           ikTask.updateFaceIdx(closestFaceIndices(ikTaskIdx),
-                               smplpp::toTorchTensor<float>(closestPoints.row(ikTaskIdx).cast<float>(), true));
+                               smplpp::toTorchTensor<float>(closestPoints.row(ikTaskIdx), true));
 
           ikTaskIdx++;
         }
@@ -1027,12 +1029,12 @@ int main(int argc, char * argv[])
       auto startTime = std::chrono::system_clock::now();
 
       torch::Tensor vertexTensor = SINGLE_SMPL::get()->getVertex().index({0}).to(torch::kCPU);
-      Eigen::MatrixXd vertexMat = smplpp::toEigenMatrix(vertexTensor).cast<double>();
+      Eigen::MatrixXf vertexMat = smplpp::toEigenMatrix(vertexTensor);
       torch::Tensor faceIdxTensor = SINGLE_SMPL::get()->getFaceIndex().to(torch::kCPU) - 1;
       Eigen::MatrixXi faceIdxMat = smplpp::toEigenMatrix<int>(faceIdxTensor);
 
-      Eigen::Vector3i gridIdxMin = getGridIdxFloor(vertexMat.colwise().minCoeff());
-      Eigen::Vector3i gridIdxMax = getGridIdxCeil(vertexMat.colwise().maxCoeff());
+      Eigen::Vector3i gridIdxMin = getGridIdxFloor<float>(vertexMat.colwise().minCoeff());
+      Eigen::Vector3i gridIdxMax = getGridIdxCeil<float>(vertexMat.colwise().maxCoeff());
       Eigen::Vector3i gridNum = gridIdxMax - gridIdxMin + Eigen::Vector3i::Ones();
       Eigen::MatrixXi gridIdxMat(gridNum[0] * gridNum[1] * gridNum[2], 3);
       int gridTotalIdx = 0;
@@ -1048,7 +1050,7 @@ int main(int argc, char * argv[])
           }
         }
       }
-      Eigen::MatrixXd gridPosMat = GRID_SCALE * gridIdxMat.cast<double>();
+      Eigen::MatrixXf gridPosMat = GRID_SCALE * gridIdxMat.cast<float>();
 
       Eigen::VectorXi windingNumbers;
       igl::winding_number(vertexMat, faceIdxMat, gridPosMat, windingNumbers);
