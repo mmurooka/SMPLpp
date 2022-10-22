@@ -50,6 +50,7 @@
 #include <geometry_msgs/TransformStamped.h>
 #include <ros/package.h>
 #include <ros/ros.h>
+#include <sensor_msgs/PointCloud.h>
 #include <std_msgs/Float64MultiArray.h>
 #include <visualization_msgs/MarkerArray.h>
 #include <rosbag/bag.h>
@@ -58,6 +59,7 @@
 #include <smplpp/PoseParam.h>
 //----------
 #include <igl/point_mesh_squared_distance.h>
+#include <igl/winding_number.h>
 //----------
 #include <qp_solver_collection/QpSolverCollection.h>
 //----------
@@ -186,11 +188,53 @@ public:
   torch::Tensor phi_ = torch::zeros({2});
 };
 
+// Necessary for std::unordered_map
+namespace std
+{
+template<>
+struct hash<Eigen::Vector3i>
+{
+  size_t operator()(const Eigen::Vector3i & v) const
+  {
+    size_t seed = 0;
+    for(int i = 0; i < 3; i++)
+    {
+      seed ^= v[i] + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+    }
+    return seed;
+  }
+};
+} // namespace std
+
 constexpr int64_t LATENT_POSE_DIM = smplpp::LATENT_DIM + 12;
+
+constexpr double GRID_SCALE = 0.025; // [m]
 
 torch::Tensor g_theta;
 torch::Tensor g_beta;
 std::map<std::string, IkTask> g_ikTaskList;
+std::unordered_map<Eigen::Vector3i, double> g_sweepGridList;
+
+template<typename Scalar = float>
+Eigen::Matrix<Scalar, 3, 1> getGridPos(const Eigen::Vector3i & gridIdx)
+{
+  return GRID_SCALE * gridIdx.cast<Scalar>();
+}
+
+Eigen::Vector3i getGridIdx(const Eigen::Vector3d & gridPos)
+{
+  return (gridPos / GRID_SCALE).array().round().matrix().cast<int>();
+}
+
+Eigen::Vector3i getGridIdxFloor(const Eigen::Vector3d & gridPos)
+{
+  return (gridPos / GRID_SCALE).array().floor().matrix().cast<int>();
+}
+
+Eigen::Vector3i getGridIdxCeil(const Eigen::Vector3d & gridPos)
+{
+  return (gridPos / GRID_SCALE).array().ceil().matrix().cast<int>();
+}
 
 void latentPoseParamCallback(const std_msgs::Float64MultiArray::ConstPtr & msg)
 {
@@ -310,6 +354,8 @@ int main(int argc, char * argv[])
   pnh.getParam("enable_vertex_color", enableVertexColor);
   bool visualizeNormal = false;
   pnh.getParam("visualize_normal", visualizeNormal);
+  bool visualizeSweepGrid = false;
+  pnh.getParam("visualize_sweep_grid", visualizeSweepGrid);
   bool printDuration = true;
   bool solveMocap = solveMocapBody || solveMocapMotion;
   if(solveMocap)
@@ -327,6 +373,11 @@ int main(int argc, char * argv[])
   if(solveMocap)
   {
     mocapMarkerArrPub = nh.advertise<visualization_msgs::MarkerArray>("mocap/marker_arr", 1);
+  }
+  ros::Publisher gridCloudPub;
+  if(visualizeSweepGrid)
+  {
+    gridCloudPub = nh.advertise<sensor_msgs::PointCloud>("smplpp/sweep_grid_cloud", 1);
   }
   ros::Subscriber latentPoseParamSub;
   ros::Subscriber poseParamSub;
@@ -970,6 +1021,58 @@ int main(int argc, char * argv[])
       }
     }
 
+    // Calculate sweep grid
+    if(visualizeSweepGrid)
+    {
+      auto startTime = std::chrono::system_clock::now();
+
+      torch::Tensor vertexTensor = SINGLE_SMPL::get()->getVertex().index({0}).to(torch::kCPU);
+      Eigen::MatrixXd vertexMat = smplpp::toEigenMatrix(vertexTensor).cast<double>();
+      torch::Tensor faceIdxTensor = SINGLE_SMPL::get()->getFaceIndex().to(torch::kCPU) - 1;
+      Eigen::MatrixXi faceIdxMat = smplpp::toEigenMatrix<int>(faceIdxTensor);
+
+      Eigen::Vector3i gridIdxMin = getGridIdxFloor(vertexMat.colwise().minCoeff());
+      Eigen::Vector3i gridIdxMax = getGridIdxCeil(vertexMat.colwise().maxCoeff());
+      Eigen::Vector3i gridNum = gridIdxMax - gridIdxMin + Eigen::Vector3i::Ones();
+      Eigen::MatrixXi gridIdxMat(gridNum[0] * gridNum[1] * gridNum[2], 3);
+      int gridTotalIdx = 0;
+      Eigen::Vector3i gridIdx;
+      for(gridIdx[0] = gridIdxMin[0]; gridIdx[0] <= gridIdxMax[0]; gridIdx[0]++)
+      {
+        for(gridIdx[1] = gridIdxMin[1]; gridIdx[1] <= gridIdxMax[1]; gridIdx[1]++)
+        {
+          for(gridIdx[2] = gridIdxMin[2]; gridIdx[2] <= gridIdxMax[2]; gridIdx[2]++)
+          {
+            gridIdxMat.row(gridTotalIdx) = gridIdx.transpose();
+            gridTotalIdx++;
+          }
+        }
+      }
+      Eigen::MatrixXd gridPosMat = GRID_SCALE * gridIdxMat.cast<double>();
+
+      Eigen::VectorXi windingNumbers;
+      igl::winding_number(vertexMat, faceIdxMat, gridPosMat, windingNumbers);
+
+      double timeNowSec = ros::Time::now().toSec();
+      for(gridTotalIdx = 0; gridTotalIdx < windingNumbers.size(); gridTotalIdx++)
+      {
+        if(windingNumbers[gridTotalIdx] > 0.5)
+        {
+          g_sweepGridList[gridIdxMat.row(gridTotalIdx).transpose()] = timeNowSec;
+        }
+      }
+
+      if(printDuration)
+      {
+        ROS_INFO_STREAM_THROTTLE(10.0, "Duration to calculate sweep grid: "
+                                           << std::chrono::duration_cast<std::chrono::duration<double>>(
+                                                  std::chrono::system_clock::now() - startTime)
+                                                      .count()
+                                                  * 1e3
+                                           << " [ms]");
+      }
+    }
+
     // Publish SMPL model
     {
       auto startTime = std::chrono::system_clock::now();
@@ -1207,6 +1310,26 @@ int main(int argc, char * argv[])
       markerArrMsg.markers.push_back(markerMsg);
       markerArrMsg.markers.push_back(ikMarkerMsg);
       mocapMarkerArrPub.publish(markerArrMsg);
+    }
+
+    // Publish sweep grid
+    if(visualizeSweepGrid)
+    {
+      sensor_msgs::PointCloud cloudMsg;
+      cloudMsg.header.stamp = ros::Time::now();
+      cloudMsg.header.frame_id = "world";
+
+      for(const auto & sweepGridKV : g_sweepGridList)
+      {
+        Eigen::Vector3f gridPos = getGridPos(sweepGridKV.first);
+        geometry_msgs::Point32 pointMsg;
+        pointMsg.x = gridPos.x();
+        pointMsg.y = gridPos.y();
+        pointMsg.z = gridPos.z();
+        cloudMsg.points.push_back(pointMsg);
+      }
+
+      gridCloudPub.publish(cloudMsg);
     }
 
     // Check terminal condition

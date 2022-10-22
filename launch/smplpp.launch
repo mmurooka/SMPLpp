@@ -7,6 +7,7 @@
   <arg name="load_motion" default="false" />
   <arg name="enable_vertex_color" default="true" />
   <arg name="visualize_normal" default="false" />
+  <arg name="visualize_sweep_grid" default="false" />
   <arg name="device" default="CPU" />
 
   <arg name="smpl_path" default="$(find smplpp)/data/smpl_male.json" />
@@ -29,6 +30,7 @@
       load_motion: $(arg load_motion)
       enable_vertex_color: $(arg enable_vertex_color)
       visualize_normal: $(arg visualize_normal)
+      visualize_sweep_grid: $(arg visualize_sweep_grid)
       device: $(arg device)
       smpl_path: $(arg smpl_path)
       vposer_path: $(arg vposer_path)

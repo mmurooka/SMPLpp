@@ -16,6 +16,7 @@ find_package(catkin REQUIRED COMPONENTS
   std_msgs
   geometry_msgs
   visualization_msgs
+  sensor_msgs
   qp_solver_collection
 )
 
@@ -61,6 +62,7 @@ catkin_package(
   std_msgs
   geometry_msgs
   visualization_msgs
+  sensor_msgs
   qp_solver_collection
 )
 
