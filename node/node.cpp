@@ -1280,6 +1280,10 @@ int main(int argc, char * argv[])
         pointMsg.z = point.z();
         markerMsg.points.push_back(pointMsg);
       }
+      if(markerMsg.points.size() == 0)
+      {
+        markerMsg.action = visualization_msgs::Marker::DELETE;
+      }
 
       visualization_msgs::Marker ikMarkerMsg;
       ikMarkerMsg.header = markerMsg.header;
@@ -1305,6 +1309,10 @@ int main(int argc, char * argv[])
         pointMsg.y = actualPos.index({1}).item<float>();
         pointMsg.z = actualPos.index({2}).item<float>();
         ikMarkerMsg.points.push_back(pointMsg);
+      }
+      if(ikMarkerMsg.points.size() == 0)
+      {
+        ikMarkerMsg.action = visualization_msgs::Marker::DELETE;
       }
 
       markerArrMsg.markers.push_back(markerMsg);
