@@ -92,23 +92,7 @@ public:
   {
   }
 
-  void updateFaceIdx(int64_t faceIdx, const torch::Tensor & actualPos)
-  {
-    faceIdx_ = faceIdx;
-
-    torch::Tensor faceVertexIdxs = SINGLE_SMPL::get()->getFaceIndexRaw(faceIdx_).to(torch::kCPU) - 1;
-    // Clone and detach vertex tensors to separate tangents from the computation graph
-    torch::Tensor faceVertices =
-        SINGLE_SMPL::get()->getVertexRaw(faceVertexIdxs.to(torch::kInt64)).to(torch::kCPU).clone().detach();
-
-    phi_.zero_();
-    setupTangents();
-    torch::Tensor pos = actualPos + torch::matmul(tangents_, phi_);
-
-    vertexWeights_ = smplpp::calcTriangleVertexWeights(pos, faceVertices).to(SINGLE_SMPL::get()->getDevice());
-  }
-
-  void setupTangents()
+  void calcTangents()
   {
     torch::Tensor faceVertexIdxs = SINGLE_SMPL::get()->getFaceIndexRaw(faceIdx_).to(torch::kCPU) - 1;
     // Clone and detach vertex tensors to separate tangents from the computation graph
@@ -122,6 +106,18 @@ public:
     tangent2 = torch::nn::functional::normalize(tangent2, torch::nn::functional::NormalizeFuncOptions().dim(-1));
     tangents_.index_put_({at::indexing::Slice(), 0}, tangent1);
     tangents_.index_put_({at::indexing::Slice(), 1}, tangent2);
+    tangents_ = tangents_.clone().detach();
+  }
+
+  void calcVertexWeights(const torch::Tensor & actualPos)
+  {
+    torch::Tensor faceVertexIdxs = SINGLE_SMPL::get()->getFaceIndexRaw(faceIdx_).to(torch::kCPU) - 1;
+    // Clone and detach vertex tensors to separate tangents from the computation graph
+    torch::Tensor faceVertices =
+        SINGLE_SMPL::get()->getVertexRaw(faceVertexIdxs.to(torch::kInt64)).to(torch::kCPU).clone().detach();
+
+    torch::Tensor pos = actualPos + torch::matmul(tangents_, phi_);
+    vertexWeights_ = smplpp::calcTriangleVertexWeights(pos, faceVertices).to(SINGLE_SMPL::get()->getDevice());
   }
 
   torch::Tensor calcActualPos() const
@@ -800,64 +796,12 @@ int main(int argc, char * argv[])
         optimizeBeta = (ikIter >= 25);
       }
 
-      // Setup gradient
-      if(enableIk)
-      {
-        g_theta.set_requires_grad(true);
-        auto & g_theta_grad = g_theta.mutable_grad();
-        if(g_theta_grad.defined())
-        {
-          g_theta_grad = g_theta_grad.detach();
-          g_theta_grad.zero_();
-        }
-
-        if(optimizeBeta)
-        {
-          g_beta.set_requires_grad(true);
-          auto & g_beta_grad = g_beta.mutable_grad();
-          if(g_beta_grad.defined())
-          {
-            g_beta_grad = g_beta_grad.detach();
-            g_beta_grad.zero_();
-          }
-        }
-      }
-
-      // Forward SMPL model
-      {
-        auto startTimeForward = std::chrono::system_clock::now();
-        torch::Tensor theta;
-        if(loadMotion)
-        {
-          const smplpp::Instant & instantMsg = motionMsg.data_list[ikIter];
-          mocapFrameIdx = instantMsg.frame_idx;
-          theta = smplpp::toTorchTensor<float>(
-                      Eigen::VectorXd::Map(&instantMsg.theta[0], instantMsg.theta.size()).cast<float>(), true)
-                      .view({smplpp::JOINT_NUM + 1, 3});
-        }
-        else if(enableVposer)
-        {
-          theta = torch::empty({smplpp::JOINT_NUM + 1, 3});
-          theta.index_put_({0}, g_theta.index({at::indexing::Slice(0, 3)}));
-          theta.index_put_({1}, g_theta.index({at::indexing::Slice(3, 6)}));
-          torch::Tensor vposerIn = g_theta.index({at::indexing::Slice(6, smplpp::LATENT_DIM + 6)}).to(*device);
-          torch::Tensor vposerOut = vposer->forward(vposerIn.view({1, -1})).index({0});
-          theta.index_put_({at::indexing::Slice(2, 2 + 21)}, vposerOut);
-          theta.index_put_({23}, g_theta.index({at::indexing::Slice(smplpp::LATENT_DIM + 6, smplpp::LATENT_DIM + 9)}));
-          theta.index_put_({24}, g_theta.index({at::indexing::Slice(smplpp::LATENT_DIM + 9, smplpp::LATENT_DIM + 12)}));
-        }
-        else
-        {
-          theta = g_theta;
-        }
-        SINGLE_SMPL::get()->launch(g_beta.view({1, -1}), theta.view({1, theta.size(0), theta.size(1)}));
-        durationList.emplace_back("forward SMPL", std::chrono::duration_cast<std::chrono::duration<double>>(
-                                                      std::chrono::system_clock::now() - startTimeForward)
-                                                          .count()
-                                                      * 1e3);
-      }
-
       // Update IK target from mocap
+      if(loadMotion)
+      {
+        const smplpp::Instant & instantMsg = motionMsg.data_list[ikIter];
+        mocapFrameIdx = instantMsg.frame_idx;
+      }
       int32_t validMocapMarkerNum = 0;
       if(solveMocap)
       {
@@ -898,6 +842,85 @@ int main(int argc, char * argv[])
         }
       }
 
+      // Setup gradient
+      if(enableIk)
+      {
+        g_theta.set_requires_grad(true);
+        auto & g_theta_grad = g_theta.mutable_grad();
+        if(g_theta_grad.defined())
+        {
+          g_theta_grad = g_theta_grad.detach();
+          g_theta_grad.zero_();
+        }
+
+        for(auto & ikTaskKV : g_ikTaskList)
+        {
+          auto & ikTask = ikTaskKV.second;
+          if(ikTask.phiLimit_ > 0.0)
+          {
+            ikTask.phi_.set_requires_grad(true);
+            auto & phi_grad = ikTask.phi_.mutable_grad();
+            if(phi_grad.defined())
+            {
+              phi_grad = phi_grad.detach();
+              phi_grad.zero_();
+            }
+          }
+          else
+          {
+            ikTask.phi_.set_requires_grad(false);
+          }
+        }
+
+        if(optimizeBeta)
+        {
+          g_beta.set_requires_grad(true);
+          auto & g_beta_grad = g_beta.mutable_grad();
+          if(g_beta_grad.defined())
+          {
+            g_beta_grad = g_beta_grad.detach();
+            g_beta_grad.zero_();
+          }
+        }
+        else
+        {
+          g_beta.set_requires_grad(false);
+        }
+      }
+
+      // Forward SMPL model
+      {
+        auto startTimeForward = std::chrono::system_clock::now();
+        torch::Tensor theta;
+        if(loadMotion)
+        {
+          const smplpp::Instant & instantMsg = motionMsg.data_list[ikIter];
+          theta = smplpp::toTorchTensor<float>(
+                      Eigen::VectorXd::Map(&instantMsg.theta[0], instantMsg.theta.size()).cast<float>(), true)
+                      .view({smplpp::JOINT_NUM + 1, 3});
+        }
+        else if(enableVposer)
+        {
+          theta = torch::empty({smplpp::JOINT_NUM + 1, 3});
+          theta.index_put_({0}, g_theta.index({at::indexing::Slice(0, 3)}));
+          theta.index_put_({1}, g_theta.index({at::indexing::Slice(3, 6)}));
+          torch::Tensor vposerIn = g_theta.index({at::indexing::Slice(6, smplpp::LATENT_DIM + 6)}).to(*device);
+          torch::Tensor vposerOut = vposer->forward(vposerIn.view({1, -1})).index({0});
+          theta.index_put_({at::indexing::Slice(2, 2 + 21)}, vposerOut);
+          theta.index_put_({23}, g_theta.index({at::indexing::Slice(smplpp::LATENT_DIM + 6, smplpp::LATENT_DIM + 9)}));
+          theta.index_put_({24}, g_theta.index({at::indexing::Slice(smplpp::LATENT_DIM + 9, smplpp::LATENT_DIM + 12)}));
+        }
+        else
+        {
+          theta = g_theta;
+        }
+        SINGLE_SMPL::get()->launch(g_beta.view({1, -1}), theta.view({1, theta.size(0), theta.size(1)}));
+        durationList.emplace_back("forward SMPL", std::chrono::duration_cast<std::chrono::duration<double>>(
+                                                      std::chrono::system_clock::now() - startTimeForward)
+                                                          .count()
+                                                      * 1e3);
+      }
+
       // Solve IK
       if(enableIk && !(solveMocapMotion && validMocapMarkerNum < g_ikTaskList.size() / 2))
       {
@@ -916,7 +939,9 @@ int main(int argc, char * argv[])
         {
           auto & ikTask = ikTaskKV.second;
 
-          ikTask.setupTangents();
+          // Update tangents and vertex weights
+          ikTask.calcTangents();
+          ikTask.calcVertexWeights(ikTask.calcActualPos().clone().detach());
 
           // Set task value
           torch::Tensor posError = ikTask.calcPosError().to(torch::kCPU);
@@ -945,6 +970,12 @@ int main(int argc, char * argv[])
                 smplpp::toEigenMatrix(g_theta.grad().view({thetaDim}).to(torch::kCPU)).transpose().cast<double>();
             g_theta.mutable_grad().zero_();
 
+            if(ikTask.phiLimit_ > 0.0)
+            {
+              // \todo Set Jacobian here
+              ikTask.phi_.mutable_grad().zero_();
+            }
+
             if(optimizeBeta)
             {
               J.row(rowIdx + i).tail(betaDim) =
@@ -959,6 +990,13 @@ int main(int argc, char * argv[])
             J.row(rowIdx + 3).head(thetaDim) =
                 smplpp::toEigenMatrix(g_theta.grad().view({thetaDim}).to(torch::kCPU)).transpose().cast<double>();
             g_theta.mutable_grad().zero_();
+
+            if(ikTask.phiLimit_ > 0.0)
+            {
+              J.row(rowIdx + 3).segment<2>(thetaDim + 2 * ikTaskIdx) =
+                  smplpp::toEigenMatrix(ikTask.phi_.grad().to(torch::kCPU)).transpose().cast<double>();
+              ikTask.phi_.mutable_grad().zero_();
+            }
 
             if(optimizeBeta)
             {
@@ -1057,10 +1095,12 @@ int main(int argc, char * argv[])
         {
           auto & ikTask = ikTaskKV.second;
 
+          ikTask.phi_.set_requires_grad(false);
           ikTask.phi_ =
               smplpp::toTorchTensor<float>(deltaConfig.segment<2>(thetaDim + 2 * ikTaskIdx).cast<float>(), true);
 
           actualPosList.row(ikTaskIdx) = smplpp::toEigenMatrix(ikTask.calcActualPos().to(torch::kCPU)).transpose();
+          ikTask.phi_.zero_(); // Set phi zero after calculating actual pos
 
           ikTaskIdx++;
         }
@@ -1092,14 +1132,14 @@ int main(int argc, char * argv[])
                                                          * 1e3);
         }
 
-        // Update IK target
+        // Update face and vertex weights
         ikTaskIdx = 0;
         for(auto & ikTaskKV : g_ikTaskList)
         {
           auto & ikTask = ikTaskKV.second;
 
-          ikTask.updateFaceIdx(closestFaceIndices(ikTaskIdx),
-                               smplpp::toTorchTensor<float>(closestPoints.row(ikTaskIdx), true));
+          ikTask.faceIdx_ = closestFaceIndices(ikTaskIdx);
+          ikTask.calcVertexWeights(smplpp::toTorchTensor<float>(closestPoints.row(ikTaskIdx), true));
 
           ikTaskIdx++;
         }
