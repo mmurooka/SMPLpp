@@ -941,7 +941,7 @@ int main(int argc, char * argv[])
 
           // Update tangents and vertex weights
           ikTask.calcTangents();
-          ikTask.calcVertexWeights(ikTask.calcActualPos().clone().detach());
+          ikTask.calcVertexWeights(ikTask.calcActualPos().to(torch::kCPU).clone().detach());
 
           // Set task value
           torch::Tensor posError = ikTask.calcPosError().to(torch::kCPU);
