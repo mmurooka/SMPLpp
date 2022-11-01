@@ -398,9 +398,9 @@ void clickedPointCallback(const geometry_msgs::PointStamped::ConstPtr & msg)
     adjacentMarkerMsg.type = visualization_msgs::Marker::LINE_LIST;
     adjacentMarkerMsg.action = visualization_msgs::Marker::ADD;
     adjacentMarkerMsg.pose.orientation.w = 1.0;
-    adjacentMarkerMsg.scale.x = 0.005;
-    adjacentMarkerMsg.scale.y = 0.005;
-    adjacentMarkerMsg.scale.z = 0.005;
+    adjacentMarkerMsg.scale.x = 0.004;
+    adjacentMarkerMsg.scale.y = 0.004;
+    adjacentMarkerMsg.scale.z = 0.004;
     adjacentMarkerMsg.color.r = 0.0;
     adjacentMarkerMsg.color.g = 0.0;
     adjacentMarkerMsg.color.b = 0.5;
@@ -425,6 +425,56 @@ void clickedPointCallback(const geometry_msgs::PointStamped::ConstPtr & msg)
       }
     }
     markerArrMsg.markers.push_back(adjacentMarkerMsg);
+
+    visualization_msgs::Marker normalMarkerMsg;
+    normalMarkerMsg.header = pointMarkerMsg.header;
+    normalMarkerMsg.ns = "Clicked normals";
+    normalMarkerMsg.id = 3;
+    normalMarkerMsg.type = visualization_msgs::Marker::LINE_LIST;
+    normalMarkerMsg.action = visualization_msgs::Marker::ADD;
+    normalMarkerMsg.pose.orientation.w = 1.0;
+    normalMarkerMsg.scale.x = 0.001;
+    normalMarkerMsg.scale.y = 0.001;
+    normalMarkerMsg.scale.z = 0.001;
+    normalMarkerMsg.color.r = 0.5;
+    normalMarkerMsg.color.g = 0.0;
+    normalMarkerMsg.color.b = 0.5;
+    normalMarkerMsg.color.a = 1.0;
+    IkTask ikTask(0);
+    for(const auto & adjacentFaceKV : SINGLE_SMPL::get()->getAdjacentFaces(vertexIdx))
+    {
+      ikTask.faceIdx_ = adjacentFaceKV.first;
+
+      int32_t alphaMax = 3;
+      for(int32_t alpha = 0; alpha <= alphaMax; alpha++)
+      {
+        float alphaRatio = static_cast<float>(alpha) / alphaMax;
+        int32_t betaMax = std::round(alphaMax * (1.0 - alphaRatio));
+        for(int32_t beta = 0; beta <= betaMax; beta++)
+        {
+          float betaRatio = static_cast<float>(beta) / betaMax * (1.0 - alphaRatio);
+          ikTask.vertexWeights_.index_put_({0}, alphaRatio);
+          ikTask.vertexWeights_.index_put_({1}, betaRatio);
+          ikTask.vertexWeights_.index_put_({2}, 1.0 - (alphaRatio + betaRatio));
+
+          torch::Tensor actualPos = ikTask.calcActualPos();
+          torch::Tensor actualNormal = ikTask.calcActualNormal();
+
+          geometry_msgs::Point startPointMsg;
+          startPointMsg.x = actualPos.index({0}).item<float>();
+          startPointMsg.y = actualPos.index({1}).item<float>();
+          startPointMsg.z = actualPos.index({2}).item<float>();
+          normalMarkerMsg.points.push_back(startPointMsg);
+
+          geometry_msgs::Point endPointMsg = startPointMsg;
+          endPointMsg.x += 0.02 * actualNormal.index({0}).item<float>();
+          endPointMsg.y += 0.02 * actualNormal.index({1}).item<float>();
+          endPointMsg.z += 0.02 * actualNormal.index({2}).item<float>();
+          normalMarkerMsg.points.push_back(endPointMsg);
+        }
+      }
+    }
+    markerArrMsg.markers.push_back(normalMarkerMsg);
 
     g_clickedMarkerArrPub.publish(markerArrMsg);
   }
