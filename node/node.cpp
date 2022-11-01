@@ -127,12 +127,9 @@ public:
   torch::Tensor calcActualPos() const
   {
     torch::Tensor faceVertexIdxs = SINGLE_SMPL::get()->getFaceIndexRaw(faceIdx_).to(torch::kCPU) - 1;
-    torch::Tensor actualPos = torch::zeros({3}, SINGLE_SMPL::get()->getDevice());
-    for(int32_t i = 0; i < 3; i++)
-    {
-      int32_t faceVertexIdx = faceVertexIdxs.index({i}).item<int32_t>();
-      actualPos += vertexWeights_.index({i}) * SINGLE_SMPL::get()->getVertexRaw(faceVertexIdx);
-    }
+    torch::Tensor faceVertices = SINGLE_SMPL::get()->getVertexRaw(faceVertexIdxs.to(torch::kInt64));
+
+    torch::Tensor actualPos = torch::matmul(torch::transpose(faceVertices, 0, 1), vertexWeights_);
 
     actualPos += torch::matmul(tangents_, phi_).to(SINGLE_SMPL::get()->getDevice());
 
