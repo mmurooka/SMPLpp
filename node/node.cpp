@@ -972,7 +972,8 @@ int main(int argc, char * argv[])
 
             if(ikTask.phiLimit_ > 0.0)
             {
-              // \todo Set Jacobian here
+              J.row(rowIdx + i).segment<2>(thetaDim + 2 * ikTaskIdx) =
+                  smplpp::toEigenMatrix(ikTask.phi_.grad().to(torch::kCPU)).transpose().cast<double>();
               ikTask.phi_.mutable_grad().zero_();
             }
 
@@ -1009,10 +1010,6 @@ int main(int argc, char * argv[])
           {
             J.row(rowIdx + 3).head(thetaDim).setZero();
             J.row(rowIdx + 3).tail(betaDim).setZero();
-          }
-          {
-            J.block<3, 2>(rowIdx, thetaDim + 2 * ikTaskIdx) =
-                ikTask.posTaskWeight_ * smplpp::toEigenMatrix(ikTask.tangents_).cast<double>();
           }
 
           rowIdx += 4;
