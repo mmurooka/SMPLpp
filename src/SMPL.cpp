@@ -524,6 +524,21 @@ torch::Tensor SMPL::calcNormal(int64_t faceIdx) noexcept(false)
       torch::nn::functional::NormalizeFuncOptions().dim(-1));
 }
 
+torch::Tensor SMPL::calcVertexNormal(int64_t idx) noexcept(false)
+{
+  torch::Tensor vertexNormal = torch::zeros({3}, m__device);
+  for(const auto & face : m__adjacentFacesList[idx])
+  {
+    vertexNormal += face.second * calcNormal(face.first);
+  }
+  return vertexNormal;
+}
+
+const std::unordered_map<int64_t, float> & SMPL::getAdjacentFaces(int64_t idx) const noexcept(false)
+{
+  return m__adjacentFacesList[idx];
+}
+
 /**init
  *
  * Brief
@@ -599,6 +614,29 @@ void SMPL::init() noexcept(false)
   else
   {
     throw smpl_error("SMPL", "Cannot initialize a SMPL model!");
+  }
+
+  // Set m__adjacentFacesList
+  m__adjacentFacesList.resize(VERTEX_NUM);
+  for(int64_t faceIdx = 0; faceIdx < FACE_INDEX_NUM; faceIdx++)
+  {
+    for(int32_t i = 0; i < 3; i++)
+    {
+      int64_t vertexIdx = m__faceIndices.index({faceIdx, i}).item<int32_t>() - 1;
+      m__adjacentFacesList[vertexIdx].emplace(faceIdx, 1.0);
+    }
+  }
+  for(int64_t idx = 0; idx < VERTEX_NUM; idx++)
+  {
+    float weightSum = 0.0;
+    for(const auto & adjacentFace : m__adjacentFacesList[idx])
+    {
+      weightSum += adjacentFace.second;
+    }
+    for(auto & adjacentFace : m__adjacentFacesList[idx])
+    {
+      adjacentFace.second /= weightSum;
+    }
   }
 
   return;

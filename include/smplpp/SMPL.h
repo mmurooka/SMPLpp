@@ -119,6 +119,9 @@ namespace smplpp
  *      - m__skinner: <private>
  *          A module to do linear blend skinning.
  *
+ *      - m__adjacentFacesList: <private>
+ *          List of mappings from vertex index to indices and weights of adjacent faces.
+ *
  * METHODS:
  *
  *      %
@@ -177,6 +180,13 @@ namespace smplpp
  *
  *      - calcNormal: <public>
  *          Calculate unit normal vector of face.
+ *
+ *      - calcVertexNormal: <public>
+ *          Calculate unit normal vector of vertex. Vertex normal is a weighted average of the normals of adjacent
+ *          faces.
+ *
+ *      - getAdjacentFaces: <public>
+ *          Get indices and weights of adjacent faces of vertex.
  *      %%
  *
  *      %
@@ -220,6 +230,8 @@ private: // PIRVATE ATTRIBUTES
   WorldTransformation m__transformer;
   LinearBlendSkinning m__skinner;
 
+  std::vector<std::unordered_map<int64_t, float>> m__adjacentFacesList;
+
 protected: // PROTECTED ATTRIBUTES
 public: // PUBLIC ATTRIBUTES
 private: // PRIVATE METHODS
@@ -248,6 +260,8 @@ public: // PUBLIC METHODS
   torch::Tensor getVertexRaw(int64_t idx) noexcept(false);
   torch::Tensor getVertexRaw(const torch::Tensor & idx) noexcept(false);
   torch::Tensor calcNormal(int64_t faceIdx) noexcept(false);
+  torch::Tensor calcVertexNormal(int64_t idx) noexcept(false);
+  const std::unordered_map<int64_t, float> & getAdjacentFaces(int64_t idx) const noexcept(false);
 
   // %% Modeling %%
   void init() noexcept(false);
