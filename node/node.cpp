@@ -143,7 +143,16 @@ public:
 
   torch::Tensor calcActualNormal() const
   {
-    return SINGLE_SMPL::get()->calcNormal(faceIdx_);
+    torch::Tensor faceVertexIdxs = SINGLE_SMPL::get()->getFaceIndexRaw(faceIdx_).to(torch::kCPU) - 1;
+
+    torch::Tensor actualNormal = torch::zeros({3}, SINGLE_SMPL::get()->getDevice());
+    for(int32_t i = 0; i < 3; i++)
+    {
+      int32_t faceVertexIdx = faceVertexIdxs.index({i}).item<int32_t>();
+      actualNormal += vertexWeights_.index({i}) * SINGLE_SMPL::get()->calcVertexNormal(faceVertexIdx);
+    }
+
+    return torch::nn::functional::normalize(actualNormal, torch::nn::functional::NormalizeFuncOptions().dim(-1));
   }
 
   torch::Tensor calcPosError() const

@@ -531,7 +531,7 @@ torch::Tensor SMPL::calcVertexNormal(int64_t idx) noexcept(false)
   {
     vertexNormal += face.second * calcNormal(face.first);
   }
-  return vertexNormal;
+  return torch::nn::functional::normalize(vertexNormal, torch::nn::functional::NormalizeFuncOptions().dim(-1));
 }
 
 const std::unordered_map<int64_t, float> & SMPL::getAdjacentFaces(int64_t idx) const noexcept(false)
