@@ -211,6 +211,7 @@ torch::Tensor g_theta;
 torch::Tensor g_beta;
 std::map<std::string, IkTask> g_ikTaskList;
 std::unordered_map<Eigen::Vector3i, double> g_sweepGridList;
+ros::Publisher g_clickedMarkerArrPub;
 
 template<typename Scalar = float>
 Eigen::Matrix<Scalar, 3, 1> getGridPos(const Eigen::Vector3i & gridIdx)
@@ -329,6 +330,65 @@ void clickedPointCallback(const geometry_msgs::PointStamped::ConstPtr & msg)
   Eigen::Index faceIdx;
   (facePosMat.rowwise() - clickedPos.transpose()).rowwise().squaredNorm().minCoeff(&faceIdx);
   ROS_INFO_STREAM("Face idx closest to clicked point: " << faceIdx);
+
+  const std::unordered_map<int64_t, float> & adjacentFaces = SINGLE_SMPL::get()->getAdjacentFaces(vertexIdx);
+
+  {
+    visualization_msgs::MarkerArray markerArrMsg;
+
+    visualization_msgs::Marker pointMarkerMsg;
+    pointMarkerMsg.header.stamp = ros::Time::now();
+    pointMarkerMsg.header.frame_id = "world";
+    pointMarkerMsg.ns = "Clicked point";
+    pointMarkerMsg.id = 0;
+    pointMarkerMsg.type = visualization_msgs::Marker::SPHERE;
+    pointMarkerMsg.action = visualization_msgs::Marker::ADD;
+    pointMarkerMsg.pose.position.x = vertexMat.row(vertexIdx).x();
+    pointMarkerMsg.pose.position.y = vertexMat.row(vertexIdx).y();
+    pointMarkerMsg.pose.position.z = vertexMat.row(vertexIdx).z();
+    pointMarkerMsg.pose.orientation.w = 1.0;
+    pointMarkerMsg.scale.x = 0.01;
+    pointMarkerMsg.scale.y = 0.01;
+    pointMarkerMsg.scale.z = 0.01;
+    pointMarkerMsg.color.r = 0.5;
+    pointMarkerMsg.color.g = 0.0;
+    pointMarkerMsg.color.b = 0.0;
+    pointMarkerMsg.color.a = 1.0;
+    markerArrMsg.markers.push_back(pointMarkerMsg);
+
+    visualization_msgs::Marker faceMarkerMsg;
+    faceMarkerMsg.header = pointMarkerMsg.header;
+    faceMarkerMsg.ns = "Clicked face";
+    faceMarkerMsg.id = 1;
+    faceMarkerMsg.type = visualization_msgs::Marker::LINE_LIST;
+    faceMarkerMsg.action = visualization_msgs::Marker::ADD;
+    faceMarkerMsg.pose.orientation.w = 1.0;
+    faceMarkerMsg.scale.x = 0.005;
+    faceMarkerMsg.scale.y = 0.005;
+    faceMarkerMsg.scale.z = 0.005;
+    faceMarkerMsg.color.r = 0.0;
+    faceMarkerMsg.color.g = 0.5;
+    faceMarkerMsg.color.b = 0.0;
+    faceMarkerMsg.color.a = 1.0;
+    torch::Tensor faceVertexIdxs = SINGLE_SMPL::get()->getFaceIndexRaw(faceIdx).to(torch::kCPU) - 1;
+    // Clone and detach vertex tensors to separate tangents from the computation graph
+    torch::Tensor faceVertices =
+        SINGLE_SMPL::get()->getVertexRaw(faceVertexIdxs.to(torch::kInt64)).to(torch::kCPU).clone().detach();
+    for(int32_t i = 0; i < 3; i++)
+    {
+      for(int32_t j = 0; j < 2; j++)
+      {
+        geometry_msgs::Point pointMsg;
+        pointMsg.x = faceVertices.index({(i + j) % 3, 0}).item<float>();
+        pointMsg.y = faceVertices.index({(i + j) % 3, 1}).item<float>();
+        pointMsg.z = faceVertices.index({(i + j) % 3, 2}).item<float>();
+        faceMarkerMsg.points.push_back(pointMsg);
+      }
+    }
+    markerArrMsg.markers.push_back(faceMarkerMsg);
+
+    g_clickedMarkerArrPub.publish(markerArrMsg);
+  }
 }
 
 int main(int argc, char * argv[])
@@ -379,6 +439,7 @@ int main(int argc, char * argv[])
   {
     gridCloudPub = nh.advertise<sensor_msgs::PointCloud>("smplpp/sweep_grid_cloud", 1);
   }
+  g_clickedMarkerArrPub = nh.advertise<visualization_msgs::MarkerArray>("smplpp/marker_arr_clicked", 1);
   ros::Subscriber latentPoseParamSub;
   ros::Subscriber poseParamSub;
   if(!enableIk)
