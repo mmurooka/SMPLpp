@@ -331,8 +331,7 @@ void clickedPointCallback(const geometry_msgs::PointStamped::ConstPtr & msg)
   (facePosMat.rowwise() - clickedPos.transpose()).rowwise().squaredNorm().minCoeff(&faceIdx);
   ROS_INFO_STREAM("Face idx closest to clicked point: " << faceIdx);
 
-  const std::unordered_map<int64_t, float> & adjacentFaces = SINGLE_SMPL::get()->getAdjacentFaces(vertexIdx);
-
+  // Publish clicked point and face
   {
     visualization_msgs::MarkerArray markerArrMsg;
 
@@ -386,6 +385,41 @@ void clickedPointCallback(const geometry_msgs::PointStamped::ConstPtr & msg)
       }
     }
     markerArrMsg.markers.push_back(faceMarkerMsg);
+
+    visualization_msgs::Marker adjacentMarkerMsg;
+    adjacentMarkerMsg.header = pointMarkerMsg.header;
+    adjacentMarkerMsg.ns = "Clicked adjacent faces";
+    adjacentMarkerMsg.id = 2;
+    adjacentMarkerMsg.type = visualization_msgs::Marker::LINE_LIST;
+    adjacentMarkerMsg.action = visualization_msgs::Marker::ADD;
+    adjacentMarkerMsg.pose.orientation.w = 1.0;
+    adjacentMarkerMsg.scale.x = 0.005;
+    adjacentMarkerMsg.scale.y = 0.005;
+    adjacentMarkerMsg.scale.z = 0.005;
+    adjacentMarkerMsg.color.r = 0.0;
+    adjacentMarkerMsg.color.g = 0.0;
+    adjacentMarkerMsg.color.b = 0.5;
+    adjacentMarkerMsg.color.a = 1.0;
+    for(const auto & adjacentFaceKV : SINGLE_SMPL::get()->getAdjacentFaces(vertexIdx))
+    {
+      int64_t adjacentFaceIdx = adjacentFaceKV.first;
+      torch::Tensor faceVertexIdxs = SINGLE_SMPL::get()->getFaceIndexRaw(adjacentFaceIdx).to(torch::kCPU) - 1;
+      // Clone and detach vertex tensors to separate tangents from the computation graph
+      torch::Tensor faceVertices =
+          SINGLE_SMPL::get()->getVertexRaw(faceVertexIdxs.to(torch::kInt64)).to(torch::kCPU).clone().detach();
+      for(int32_t i = 0; i < 3; i++)
+      {
+        for(int32_t j = 0; j < 2; j++)
+        {
+          geometry_msgs::Point pointMsg;
+          pointMsg.x = faceVertices.index({(i + j) % 3, 0}).item<float>();
+          pointMsg.y = faceVertices.index({(i + j) % 3, 1}).item<float>();
+          pointMsg.z = faceVertices.index({(i + j) % 3, 2}).item<float>();
+          adjacentMarkerMsg.points.push_back(pointMsg);
+        }
+      }
+    }
+    markerArrMsg.markers.push_back(adjacentMarkerMsg);
 
     g_clickedMarkerArrPub.publish(markerArrMsg);
   }
