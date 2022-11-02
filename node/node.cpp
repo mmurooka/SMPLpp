@@ -441,6 +441,7 @@ void clickedPointCallback(const geometry_msgs::PointStamped::ConstPtr & msg)
     normalMarkerMsg.color.b = 0.5;
     normalMarkerMsg.color.a = 1.0;
     IkTask ikTask(0);
+    ikTask.to(SINGLE_SMPL::get()->getDevice());
     for(const auto & adjacentFaceKV : SINGLE_SMPL::get()->getAdjacentFaces(vertexIdx))
     {
       ikTask.faceIdx_ = adjacentFaceKV.first;
@@ -457,8 +458,8 @@ void clickedPointCallback(const geometry_msgs::PointStamped::ConstPtr & msg)
           ikTask.vertexWeights_.index_put_({1}, betaRatio);
           ikTask.vertexWeights_.index_put_({2}, 1.0 - (alphaRatio + betaRatio));
 
-          torch::Tensor actualPos = ikTask.calcActualPos();
-          torch::Tensor actualNormal = ikTask.calcActualNormal();
+          torch::Tensor actualPos = ikTask.calcActualPos().to(torch::kCPU);
+          torch::Tensor actualNormal = ikTask.calcActualNormal().to(torch::kCPU);
 
           geometry_msgs::Point startPointMsg;
           startPointMsg.x = actualPos.index({0}).item<float>();
