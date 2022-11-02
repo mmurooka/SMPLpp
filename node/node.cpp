@@ -1,42 +1,12 @@
-/* ========================================================================= *
- *                                                                           *
- *                                 SMPL++                                    *
- *                    Copyright (c) 2018, Chongyi Zheng.                     *
- *                          All Rights reserved.                             *
- *                                                                           *
- * ------------------------------------------------------------------------- *
- *                                                                           *
- * This software implements a 3D human skinning model - SMPL: A Skinned      *
- * Multi-Person Linear Model with C++.                                       *
- *                                                                           *
- * For more detail, see the paper published by Max Planck Institute for      *
- * Intelligent Systems on SIGGRAPH ASIA 2015.                                *
- *                                                                           *
- * We provide this software for research purposes only.                      *
- * The original SMPL model is available at http://smpl.is.tue.mpg.           *
- *                                                                           *
- * ========================================================================= */
-
-//=============================================================================
-//
-//  APPLICATION ENTRANCE
-//
-//=============================================================================
-
-//===== MACROS ================================================================
-
 #define SINGLE_SMPL smplpp::Singleton<smplpp::SMPL>
 
-//===== INCLUDES ==============================================================
-
-//----------
 #include <chrono>
 #include <fstream>
-//----------
+
 #include <Eigen/Dense>
-//----------
+
 #include <torch/torch.h>
-//----------
+
 #include <smplpp/SMPL.h>
 #include <smplpp/VPoser.h>
 #include <smplpp/definition/def.h>
@@ -44,7 +14,7 @@
 #include <smplpp/toolbox/Singleton.hpp>
 #include <smplpp/toolbox/TorchEigenUtils.hpp>
 #include <smplpp/toolbox/TorchEx.hpp>
-//----------
+
 #include <geometry_msgs/PointStamped.h>
 #include <geometry_msgs/PoseArray.h>
 #include <geometry_msgs/TransformStamped.h>
@@ -57,23 +27,17 @@
 #include <rosbag/view.h>
 #include <smplpp/Motion.h>
 #include <smplpp/PoseParam.h>
-//----------
+
 #include <igl/point_mesh_squared_distance.h>
 #include <igl/winding_number.h>
-//----------
+
 #include <qp_solver_collection/QpSolverCollection.h>
-//----------
+
 #include <ezc3d/Data.h>
 #include <ezc3d/Header.h>
 #include <ezc3d/Parameters.h>
 #include <ezc3d/ezc3d.h>
-//----------
 
-//===== FORWARD DECLARATIONS ==================================================
-
-//===== NAMESPACE =============================================================
-
-//===== MAIN FUNCTION =========================================================
 
 class IkTask
 {
@@ -1640,8 +1604,4 @@ int main(int argc, char * argv[])
   return 0;
 }
 
-//===== CLEAN AFTERWARD =======================================================
-
 #undef SINGLE_SMPL
-
-//=============================================================================
