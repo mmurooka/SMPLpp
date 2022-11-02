@@ -763,7 +763,8 @@ int main(int argc, char * argv[])
           theta = torch::empty({smplpp::JOINT_NUM + 1, 3});
           theta.index_put_({0}, g_theta.index({at::indexing::Slice(0, 3)}));
           theta.index_put_({1}, g_theta.index({at::indexing::Slice(3, 6)}));
-          torch::Tensor vposerIn = g_theta.index({at::indexing::Slice(6, smplpp::LATENT_DIM + 6)}).to(*device);
+          torch::Tensor vposerIn =
+              g_theta.index({at::indexing::Slice(6, smplpp::LATENT_DIM + 6)}).to(g_smpl->getDevice());
           torch::Tensor vposerOut = vposer->forward(vposerIn.view({1, -1})).index({0});
           theta.index_put_({at::indexing::Slice(2, 2 + 21)}, vposerOut);
           theta.index_put_({23}, g_theta.index({at::indexing::Slice(smplpp::LATENT_DIM + 6, smplpp::LATENT_DIM + 9)}));
@@ -1376,7 +1377,8 @@ int main(int argc, char * argv[])
             theta.resize(smplpp::JOINT_NUM + 1, 3);
             theta.row(0) = smplpp::toEigenMatrix(g_theta.index({at::indexing::Slice(0, 3)})).transpose().cast<double>();
             theta.row(1) = smplpp::toEigenMatrix(g_theta.index({at::indexing::Slice(3, 6)})).transpose().cast<double>();
-            torch::Tensor vposerIn = g_theta.index({at::indexing::Slice(6, smplpp::LATENT_DIM + 6)}).to(*device);
+            torch::Tensor vposerIn =
+                g_theta.index({at::indexing::Slice(6, smplpp::LATENT_DIM + 6)}).to(g_smpl->getDevice());
             torch::Tensor vposerOut = vposer->forward(vposerIn.view({1, -1})).index({0});
             theta.middleRows(2, 21) = smplpp::toEigenMatrix(vposerOut).cast<double>();
             theta.row(23) = smplpp::toEigenMatrix(
