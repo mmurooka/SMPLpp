@@ -869,8 +869,7 @@ int main(int argc, char * argv[])
           }
           else
           {
-            J.row(rowIdx + 3).head(thetaDim).setZero();
-            J.row(rowIdx + 3).tail(betaDim).setZero();
+            J.row(rowIdx + 3).setZero();
           }
 
           rowIdx += 4;
