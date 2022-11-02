@@ -1,4 +1,4 @@
-#define SINGLE_SMPL smplpp::Singleton<smplpp::SMPL>
+/* Author: Masaki Murooka */
 
 #include <chrono>
 #include <fstream>
@@ -11,7 +11,6 @@
 #include <smplpp/VPoser.h>
 #include <smplpp/definition/def.h>
 #include <smplpp/toolbox/GeometryUtils.h>
-#include <smplpp/toolbox/Singleton.hpp>
 #include <smplpp/toolbox/TorchEigenUtils.hpp>
 #include <smplpp/toolbox/TorchEx.hpp>
 
@@ -38,6 +37,7 @@
 #include <ezc3d/Parameters.h>
 #include <ezc3d/ezc3d.h>
 
+std::shared_ptr<smplpp::SMPL> g_smpl;
 
 class IkTask
 {
@@ -58,10 +58,10 @@ public:
 
   void calcTangents()
   {
-    torch::Tensor faceVertexIdxs = SINGLE_SMPL::get()->getFaceIndexRaw(faceIdx_).to(torch::kCPU) - 1;
+    torch::Tensor faceVertexIdxs = g_smpl->getFaceIndexRaw(faceIdx_).to(torch::kCPU) - 1;
     // Clone and detach vertex tensors to separate tangents from the computation graph
     torch::Tensor faceVertices =
-        SINGLE_SMPL::get()->getVertexRaw(faceVertexIdxs.to(torch::kInt64)).to(torch::kCPU).clone().detach();
+        g_smpl->getVertexRaw(faceVertexIdxs.to(torch::kInt64)).to(torch::kCPU).clone().detach();
 
     torch::Tensor tangent1 = faceVertices.index({1}) - faceVertices.index({0});
     torch::Tensor normal = at::cross(tangent1, faceVertices.index({2}) - faceVertices.index({0}));
@@ -75,19 +75,19 @@ public:
 
   void calcVertexWeights(const torch::Tensor & actualPos)
   {
-    torch::Tensor faceVertexIdxs = SINGLE_SMPL::get()->getFaceIndexRaw(faceIdx_).to(torch::kCPU) - 1;
+    torch::Tensor faceVertexIdxs = g_smpl->getFaceIndexRaw(faceIdx_).to(torch::kCPU) - 1;
     // Clone and detach vertex tensors to separate tangents from the computation graph
     torch::Tensor faceVertices =
-        SINGLE_SMPL::get()->getVertexRaw(faceVertexIdxs.to(torch::kInt64)).to(torch::kCPU).clone().detach();
+        g_smpl->getVertexRaw(faceVertexIdxs.to(torch::kInt64)).to(torch::kCPU).clone().detach();
 
     torch::Tensor pos = actualPos + torch::matmul(tangents_, phi_);
-    vertexWeights_ = smplpp::calcTriangleVertexWeights(pos, faceVertices).to(SINGLE_SMPL::get()->getDevice());
+    vertexWeights_ = smplpp::calcTriangleVertexWeights(pos, faceVertices).to(g_smpl->getDevice());
   }
 
   torch::Tensor calcActualPos() const
   {
-    torch::Tensor faceVertexIdxs = SINGLE_SMPL::get()->getFaceIndexRaw(faceIdx_).to(torch::kCPU) - 1;
-    torch::Tensor faceVertices = SINGLE_SMPL::get()->getVertexRaw(faceVertexIdxs.to(torch::kInt64));
+    torch::Tensor faceVertexIdxs = g_smpl->getFaceIndexRaw(faceIdx_).to(torch::kCPU) - 1;
+    torch::Tensor faceVertices = g_smpl->getVertexRaw(faceVertexIdxs.to(torch::kInt64));
 
     torch::Tensor actualPos = torch::matmul(torch::transpose(faceVertices, 0, 1), vertexWeights_);
 
@@ -101,13 +101,13 @@ public:
 
   torch::Tensor calcActualNormal() const
   {
-    torch::Tensor faceVertexIdxs = SINGLE_SMPL::get()->getFaceIndexRaw(faceIdx_).to(torch::kCPU) - 1;
+    torch::Tensor faceVertexIdxs = g_smpl->getFaceIndexRaw(faceIdx_).to(torch::kCPU) - 1;
 
-    torch::Tensor actualNormal = torch::zeros({3}, SINGLE_SMPL::get()->getDevice());
+    torch::Tensor actualNormal = torch::zeros({3}, g_smpl->getDevice());
     for(int32_t i = 0; i < 3; i++)
     {
       int32_t faceVertexIdx = faceVertexIdxs.index({i}).item<int32_t>();
-      actualNormal += vertexWeights_.index({i}) * SINGLE_SMPL::get()->calcVertexNormal(faceVertexIdx);
+      actualNormal += vertexWeights_.index({i}) * g_smpl->calcVertexNormal(faceVertexIdx);
     }
 
     return torch::nn::functional::normalize(actualNormal, torch::nn::functional::NormalizeFuncOptions().dim(-1));
@@ -274,9 +274,9 @@ void clickedPointCallback(const geometry_msgs::PointStamped::ConstPtr & msg)
 {
   Eigen::Vector3f clickedPos = Eigen::Vector3f(msg->point.x, msg->point.y, msg->point.z);
 
-  torch::Tensor vertexTensor = SINGLE_SMPL::get()->getVertex().index({0}).to(torch::kCPU);
+  torch::Tensor vertexTensor = g_smpl->getVertex().index({0}).to(torch::kCPU);
   Eigen::MatrixX3f vertexMat = smplpp::toEigenMatrix(vertexTensor);
-  torch::Tensor faceIdxTensor = SINGLE_SMPL::get()->getFaceIndex().to(torch::kCPU) - 1;
+  torch::Tensor faceIdxTensor = g_smpl->getFaceIndex().to(torch::kCPU) - 1;
   Eigen::MatrixX3i faceIdxMat = smplpp::toEigenMatrix<int>(faceIdxTensor);
 
   Eigen::MatrixX3f facePosMat = Eigen::MatrixX3f::Zero(faceIdxMat.rows(), 3);
@@ -336,10 +336,10 @@ void clickedPointCallback(const geometry_msgs::PointStamped::ConstPtr & msg)
     faceMarkerMsg.color.g = 0.5;
     faceMarkerMsg.color.b = 0.0;
     faceMarkerMsg.color.a = 1.0;
-    torch::Tensor faceVertexIdxs = SINGLE_SMPL::get()->getFaceIndexRaw(faceIdx).to(torch::kCPU) - 1;
+    torch::Tensor faceVertexIdxs = g_smpl->getFaceIndexRaw(faceIdx).to(torch::kCPU) - 1;
     // Clone and detach vertex tensors to separate tangents from the computation graph
     torch::Tensor faceVertices =
-        SINGLE_SMPL::get()->getVertexRaw(faceVertexIdxs.to(torch::kInt64)).to(torch::kCPU).clone().detach();
+        g_smpl->getVertexRaw(faceVertexIdxs.to(torch::kInt64)).to(torch::kCPU).clone().detach();
     for(int32_t i = 0; i < 3; i++)
     {
       for(int32_t j = 0; j < 2; j++)
@@ -367,13 +367,13 @@ void clickedPointCallback(const geometry_msgs::PointStamped::ConstPtr & msg)
     adjacentMarkerMsg.color.g = 0.0;
     adjacentMarkerMsg.color.b = 0.5;
     adjacentMarkerMsg.color.a = 1.0;
-    for(const auto & adjacentFaceKV : SINGLE_SMPL::get()->getAdjacentFaces(vertexIdx))
+    for(const auto & adjacentFaceKV : g_smpl->getAdjacentFaces(vertexIdx))
     {
       int64_t adjacentFaceIdx = adjacentFaceKV.first;
-      torch::Tensor faceVertexIdxs = SINGLE_SMPL::get()->getFaceIndexRaw(adjacentFaceIdx).to(torch::kCPU) - 1;
+      torch::Tensor faceVertexIdxs = g_smpl->getFaceIndexRaw(adjacentFaceIdx).to(torch::kCPU) - 1;
       // Clone and detach vertex tensors to separate tangents from the computation graph
       torch::Tensor faceVertices =
-          SINGLE_SMPL::get()->getVertexRaw(faceVertexIdxs.to(torch::kInt64)).to(torch::kCPU).clone().detach();
+          g_smpl->getVertexRaw(faceVertexIdxs.to(torch::kInt64)).to(torch::kCPU).clone().detach();
       for(int32_t i = 0; i < 3; i++)
       {
         for(int32_t j = 0; j < 2; j++)
@@ -403,8 +403,8 @@ void clickedPointCallback(const geometry_msgs::PointStamped::ConstPtr & msg)
     normalMarkerMsg.color.b = 0.5;
     normalMarkerMsg.color.a = 1.0;
     IkTask ikTask(0);
-    ikTask.to(SINGLE_SMPL::get()->getDevice());
-    for(const auto & adjacentFaceKV : SINGLE_SMPL::get()->getAdjacentFaces(vertexIdx))
+    ikTask.to(g_smpl->getDevice());
+    for(const auto & adjacentFaceKV : g_smpl->getAdjacentFaces(vertexIdx))
     {
       ikTask.faceIdx_ = adjacentFaceKV.first;
 
@@ -686,9 +686,10 @@ int main(int argc, char * argv[])
     pnh.getParam("smpl_path", smplPath);
     ROS_INFO_STREAM("Load SMPL model from " << smplPath);
 
-    SINGLE_SMPL::get()->setDevice(*device);
-    SINGLE_SMPL::get()->setModelPath(smplPath);
-    SINGLE_SMPL::get()->init();
+    g_smpl = std::make_shared<smplpp::SMPL>();
+    g_smpl->setDevice(*device);
+    g_smpl->setModelPath(smplPath);
+    g_smpl->init();
 
     if(printDuration)
     {
@@ -927,7 +928,7 @@ int main(int argc, char * argv[])
         {
           theta = g_theta;
         }
-        SINGLE_SMPL::get()->launch(g_beta.view({1, -1}), theta.view({1, theta.size(0), theta.size(1)}));
+        g_smpl->launch(g_beta.view({1, -1}), theta.view({1, theta.size(0), theta.size(1)}));
         durationList.emplace_back("forward SMPL", std::chrono::duration_cast<std::chrono::duration<double>>(
                                                       std::chrono::system_clock::now() - startTimeForward)
                                                           .count()
@@ -1126,9 +1127,9 @@ int main(int argc, char * argv[])
         {
           auto startTimeProjectPoint = std::chrono::system_clock::now();
 
-          torch::Tensor vertexTensor = SINGLE_SMPL::get()->getVertex().index({0}).to(torch::kCPU);
+          torch::Tensor vertexTensor = g_smpl->getVertex().index({0}).to(torch::kCPU);
           Eigen::MatrixXf vertexMat = smplpp::toEigenMatrix(vertexTensor);
-          torch::Tensor faceIdxTensor = SINGLE_SMPL::get()->getFaceIndex().to(torch::kCPU) - 1;
+          torch::Tensor faceIdxTensor = g_smpl->getFaceIndex().to(torch::kCPU) - 1;
           Eigen::MatrixXi faceIdxMat = smplpp::toEigenMatrix<int>(faceIdxTensor);
 
           Eigen::VectorXf squaredDists;
@@ -1178,9 +1179,9 @@ int main(int argc, char * argv[])
     {
       auto startTime = std::chrono::system_clock::now();
 
-      torch::Tensor vertexTensor = SINGLE_SMPL::get()->getVertex().index({0}).to(torch::kCPU);
+      torch::Tensor vertexTensor = g_smpl->getVertex().index({0}).to(torch::kCPU);
       Eigen::MatrixXf vertexMat = smplpp::toEigenMatrix(vertexTensor);
-      torch::Tensor faceIdxTensor = SINGLE_SMPL::get()->getFaceIndex().to(torch::kCPU) - 1;
+      torch::Tensor faceIdxTensor = g_smpl->getFaceIndex().to(torch::kCPU) - 1;
       Eigen::MatrixXi faceIdxMat = smplpp::toEigenMatrix<int>(faceIdxTensor);
 
       Eigen::Vector3i gridIdxMin = getGridIdxFloor<float>(vertexMat.colwise().minCoeff());
@@ -1264,9 +1265,9 @@ int main(int argc, char * argv[])
         normalMarkerMsg.color.a = 1.0;
       }
 
-      torch::Tensor vertexTensor = SINGLE_SMPL::get()->getVertex().index({0}).to(torch::kCPU);
+      torch::Tensor vertexTensor = g_smpl->getVertex().index({0}).to(torch::kCPU);
       Eigen::MatrixX3d vertexMat = smplpp::toEigenMatrix(vertexTensor).cast<double>();
-      torch::Tensor faceIdxTensor = SINGLE_SMPL::get()->getFaceIndex().to(torch::kCPU) - 1;
+      torch::Tensor faceIdxTensor = g_smpl->getFaceIndex().to(torch::kCPU) - 1;
       Eigen::MatrixX3i faceIdxMat = smplpp::toEigenMatrix<int>(faceIdxTensor);
 
       double zMin = 0.0;
@@ -1599,9 +1600,5 @@ int main(int argc, char * argv[])
     bag.write("smplpp/motion", ros::Time::now(), motionMsg);
   }
 
-  SINGLE_SMPL::destroy();
-
   return 0;
 }
-
-#undef SINGLE_SMPL
