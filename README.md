@@ -38,7 +38,7 @@ This package depends on
 - [nlohmann-json](https://github.com/nlohmann/json)
 - [ezc3d](https://github.com/pyomeca/ezc3d)
 - [eigen-qld](https://github.com/jrl-umi3218/eigen-qld)
-- [libtorch (PyTorch C++ Frontend)](https://pytorch.org/cppdocs/installing.html)
+- [libtorch (PyTorch C++ Frontend)](https://pytorch.org/cppdocs)
 - [libigl](https://libigl.github.io/)
   - libigl is automatically downloaded during the build of this package, so there is no need to install it manually.
 - [QpSolverCollection](https://github.com/isri-aist/QpSolverCollection)
@@ -50,7 +50,9 @@ It is assumed that ROS is installed.
 
 For [xtl](https://github.com/xtensor-stack/xtl), [xtensor](https://github.com/xtensor-stack/xtensor), [nlohmann-json](https://github.com/nlohmann/json), [ezc3d](https://github.com/pyomeca/ezc3d), and [eigen-qld](https://github.com/jrl-umi3218/eigen-qld), download the source code from GitHub and install it with cmake.
 
-For libtorch, follow [the official instructions](https://pytorch.org/cppdocs/installing.html) to download and extract the zip file.
+For libtorch, download and extract the zip file.
+It is recommended to download the LTS version of libtorch from [the official page](https://pytorch.org/get-started/locally/).
+Note that the latest version of libtorch downloaded by [this procedure](https://pytorch.org/cppdocs/installing.html#minimal-example) will cause linking issues with the ROS libraries.
 
 2. Setup catkin workspace.
 ```bash
