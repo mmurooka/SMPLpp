@@ -7,10 +7,12 @@
 
 #include <torch/torch.h>
 
+#include <smplpp/IkTask.h>
 #include <smplpp/SMPL.h>
 #include <smplpp/VPoser.h>
 #include <smplpp/definition/def.h>
 #include <smplpp/toolbox/GeometryUtils.h>
+#include <smplpp/toolbox/GridUtils.hpp>
 #include <smplpp/toolbox/TorchEigenUtils.hpp>
 #include <smplpp/toolbox/TorchEx.hpp>
 
@@ -37,172 +39,14 @@
 #include <ezc3d/Parameters.h>
 #include <ezc3d/ezc3d.h>
 
-std::shared_ptr<smplpp::SMPL> g_smpl;
-
-class IkTask
-{
-public:
-  IkTask(int64_t faceIdx) : faceIdx_(faceIdx)
-  {
-    targetPos_ = torch::zeros({3});
-    targetNormal_ = torch::empty({3});
-    targetNormal_.index_put_({0}, 0.0);
-    targetNormal_.index_put_({1}, 0.0);
-    targetNormal_.index_put_({2}, 1.0);
-  }
-
-  IkTask(int64_t faceIdx, torch::Tensor targetPos, torch::Tensor targetNormal)
-  : faceIdx_(faceIdx), targetPos_(targetPos), targetNormal_(targetNormal)
-  {
-  }
-
-  void calcTangents()
-  {
-    torch::Tensor faceVertexIdxs = g_smpl->getFaceIndexRaw(faceIdx_).to(torch::kCPU) - 1;
-    // Clone and detach vertex tensors to separate tangents from the computation graph
-    torch::Tensor faceVertices =
-        g_smpl->getVertexRaw(faceVertexIdxs.to(torch::kInt64)).to(torch::kCPU).clone().detach();
-
-    torch::Tensor tangent1 = faceVertices.index({1}) - faceVertices.index({0});
-    torch::Tensor normal = at::cross(tangent1, faceVertices.index({2}) - faceVertices.index({0}));
-    torch::Tensor tangent2 = at::cross(normal, tangent1);
-    tangent1 = torch::nn::functional::normalize(tangent1, torch::nn::functional::NormalizeFuncOptions().dim(-1));
-    tangent2 = torch::nn::functional::normalize(tangent2, torch::nn::functional::NormalizeFuncOptions().dim(-1));
-    tangents_.index_put_({at::indexing::Slice(), 0}, tangent1);
-    tangents_.index_put_({at::indexing::Slice(), 1}, tangent2);
-    tangents_ = tangents_.clone().detach();
-  }
-
-  void calcVertexWeights(const torch::Tensor & actualPos)
-  {
-    torch::Tensor faceVertexIdxs = g_smpl->getFaceIndexRaw(faceIdx_).to(torch::kCPU) - 1;
-    // Clone and detach vertex tensors to separate tangents from the computation graph
-    torch::Tensor faceVertices =
-        g_smpl->getVertexRaw(faceVertexIdxs.to(torch::kInt64)).to(torch::kCPU).clone().detach();
-
-    torch::Tensor pos = actualPos + torch::matmul(tangents_, phi_);
-    vertexWeights_ = smplpp::calcTriangleVertexWeights(pos, faceVertices).to(g_smpl->getDevice());
-  }
-
-  torch::Tensor calcActualPos() const
-  {
-    torch::Tensor faceVertexIdxs = g_smpl->getFaceIndexRaw(faceIdx_).to(torch::kCPU) - 1;
-    torch::Tensor faceVertices = g_smpl->getVertexRaw(faceVertexIdxs.to(torch::kInt64));
-
-    torch::Tensor actualPos = torch::matmul(torch::transpose(faceVertices, 0, 1), vertexWeights_);
-
-    if(normalOffset_ > 0.0)
-    {
-      actualPos += normalOffset_ * calcActualNormal();
-    }
-
-    return actualPos;
-  }
-
-  torch::Tensor calcActualNormal() const
-  {
-    torch::Tensor faceVertexIdxs = g_smpl->getFaceIndexRaw(faceIdx_).to(torch::kCPU) - 1;
-
-    torch::Tensor actualNormal = torch::zeros({3}, g_smpl->getDevice());
-    for(int32_t i = 0; i < 3; i++)
-    {
-      int32_t faceVertexIdx = faceVertexIdxs.index({i}).item<int32_t>();
-      actualNormal += vertexWeights_.index({i}) * g_smpl->calcVertexNormal(faceVertexIdx);
-    }
-
-    return torch::nn::functional::normalize(actualNormal, torch::nn::functional::NormalizeFuncOptions().dim(-1));
-  }
-
-  torch::Tensor calcPosError() const
-  {
-    return posTaskWeight_ * (calcActualPos() - targetPos_);
-  }
-
-  torch::Tensor calcNormalError() const
-  {
-    return normalTaskWeight_ * (at::dot(calcActualNormal(), targetNormal_) + 1.0);
-  }
-
-  void to(const torch::Device & device)
-  {
-    vertexWeights_ = vertexWeights_.to(device);
-    targetPos_ = targetPos_.to(device);
-    targetNormal_ = targetNormal_.to(device);
-  }
-
-public:
-  int64_t faceIdx_;
-
-  double posTaskWeight_ = 1.0;
-
-  double normalTaskWeight_ = 1.0;
-
-  double phiLimit_ = 0.04; // [m]
-
-  double normalOffset_ = 0.0; // [m]
-
-  torch::Tensor vertexWeights_ = torch::empty({3}).fill_(1.0 / 3.0);
-
-  torch::Tensor targetPos_;
-
-  torch::Tensor targetNormal_;
-
-  torch::Tensor tangents_ = torch::zeros({3, 2});
-
-  torch::Tensor phi_ = torch::zeros({2});
-};
-
-// Necessary for std::unordered_map
-namespace std
-{
-template<>
-struct hash<Eigen::Vector3i>
-{
-  size_t operator()(const Eigen::Vector3i & v) const
-  {
-    size_t seed = 0;
-    for(int i = 0; i < 3; i++)
-    {
-      seed ^= v[i] + 0x9e3779b9 + (seed << 6) + (seed >> 2);
-    }
-    return seed;
-  }
-};
-} // namespace std
-
 constexpr int64_t LATENT_POSE_DIM = smplpp::LATENT_DIM + 12;
 
-constexpr double GRID_SCALE = 0.025; // [m]
-
+std::shared_ptr<smplpp::SMPL> g_smpl;
 torch::Tensor g_theta;
 torch::Tensor g_beta;
-std::map<std::string, IkTask> g_ikTaskList;
+std::map<std::string, smplpp::IkTask> g_ikTaskList;
 std::unordered_map<Eigen::Vector3i, double> g_sweepGridList;
 ros::Publisher g_clickedMarkerArrPub;
-
-template<typename Scalar = float>
-Eigen::Matrix<Scalar, 3, 1> getGridPos(const Eigen::Vector3i & gridIdx)
-{
-  return GRID_SCALE * gridIdx.cast<Scalar>();
-}
-
-template<typename Scalar = float>
-Eigen::Vector3i getGridIdx(const Eigen::Matrix<Scalar, 3, 1> & gridPos)
-{
-  return (gridPos / GRID_SCALE).array().round().matrix().template cast<int>();
-}
-
-template<typename Scalar = float>
-Eigen::Vector3i getGridIdxFloor(const Eigen::Matrix<Scalar, 3, 1> & gridPos)
-{
-  return (gridPos / GRID_SCALE).array().floor().matrix().template cast<int>();
-}
-
-template<typename Scalar = float>
-Eigen::Vector3i getGridIdxCeil(const Eigen::Matrix<Scalar, 3, 1> & gridPos)
-{
-  return (gridPos / GRID_SCALE).array().ceil().matrix().template cast<int>();
-}
 
 void latentPoseParamCallback(const std_msgs::Float64MultiArray::ConstPtr & msg)
 {
@@ -402,8 +246,7 @@ void clickedPointCallback(const geometry_msgs::PointStamped::ConstPtr & msg)
     normalMarkerMsg.color.g = 0.0;
     normalMarkerMsg.color.b = 0.5;
     normalMarkerMsg.color.a = 1.0;
-    IkTask ikTask(0);
-    ikTask.to(g_smpl->getDevice());
+    smplpp::IkTask ikTask(g_smpl, 0);
     for(const auto & adjacentFaceKV : g_smpl->getAdjacentFaces(vertexIdx))
     {
       ikTask.faceIdx_ = adjacentFaceKV.first;
@@ -558,126 +401,6 @@ int main(int argc, char * argv[])
     }
   }
 
-  // Setup IK task list
-  if(enableIk || loadMotion)
-  {
-    if(solveMocapBody)
-    {
-      // Ref. https://docs.optitrack.com/markersets/full-body/baseline-41
-      g_ikTaskList.emplace("HeadTop", IkTask(7324));
-      g_ikTaskList.emplace("HeadFront", IkTask(7194));
-      g_ikTaskList.emplace("HeadSide", IkTask(13450));
-
-      g_ikTaskList.emplace("Chest", IkTask(6842));
-      g_ikTaskList.emplace("WaistLFront", IkTask(2162));
-      g_ikTaskList.emplace("WaistRFront", IkTask(13026));
-      g_ikTaskList.emplace("WaistLBack", IkTask(5117));
-      g_ikTaskList.emplace("WaistRBack", IkTask(12007));
-      g_ikTaskList.emplace("BackTop", IkTask(8914));
-      g_ikTaskList.emplace("BackRight", IkTask(11433));
-      g_ikTaskList.emplace("BackLeft", IkTask(4309));
-
-      g_ikTaskList.emplace("LShoulderTop", IkTask(2261));
-      g_ikTaskList.emplace("LShoulderBack", IkTask(4599));
-      g_ikTaskList.emplace("LUArmHigh", IkTask(4249));
-      g_ikTaskList.emplace("LElbowOut", IkTask(4913));
-      g_ikTaskList.emplace("LWristIn", IkTask(4091));
-      g_ikTaskList.emplace("LWristOut", IkTask(2567));
-      g_ikTaskList.emplace("LHandOut", IkTask(2636));
-
-      g_ikTaskList.emplace("RShoulderTop", IkTask(13583));
-      g_ikTaskList.emplace("RShoulderBack", IkTask(11491));
-      g_ikTaskList.emplace("RUArmHigh", IkTask(11137));
-      g_ikTaskList.emplace("RElbowOut", IkTask(11802));
-      g_ikTaskList.emplace("RWristIn", IkTask(9712));
-      g_ikTaskList.emplace("RWristOut", IkTask(9590));
-      g_ikTaskList.emplace("RHandOut", IkTask(9733));
-
-      g_ikTaskList.emplace("LThigh", IkTask(1122));
-      g_ikTaskList.emplace("LKneeOut", IkTask(1165));
-      g_ikTaskList.emplace("LShin", IkTask(1247));
-      g_ikTaskList.emplace("LAnkleOut", IkTask(5742));
-      g_ikTaskList.emplace("LToeIn", IkTask(5758));
-      g_ikTaskList.emplace("LToeOut", IkTask(6000));
-      g_ikTaskList.emplace("LToeTip", IkTask(5591));
-      g_ikTaskList.emplace("LHeel", IkTask(5815));
-
-      g_ikTaskList.emplace("RThigh", IkTask(8523));
-      g_ikTaskList.emplace("RKneeOut", IkTask(8053));
-      g_ikTaskList.emplace("RShin", IkTask(12108));
-      g_ikTaskList.emplace("RAnkleOut", IkTask(12630));
-      g_ikTaskList.emplace("RToeIn", IkTask(12896));
-      g_ikTaskList.emplace("RToeOut", IkTask(12889));
-      g_ikTaskList.emplace("RToeTip", IkTask(12478));
-      g_ikTaskList.emplace("RHeel", IkTask(12705));
-    }
-    else if(solveMocapMotion)
-    {
-      auto getDoubleValue = [](const XmlRpc::XmlRpcValue & param) -> double {
-        return param.getType() == XmlRpc::XmlRpcValue::TypeInt ? static_cast<double>(static_cast<int>(param))
-                                                               : static_cast<double>(param);
-      };
-
-      std::vector<double> betaVec;
-      pnh.getParam("beta", betaVec);
-      if(betaVec.size() != smplpp::SHAPE_BASIS_DIM)
-      {
-        throw smplpp::smpl_error("node", "Size of beta must be " + std::to_string(smplpp::SHAPE_BASIS_DIM) + " but "
-                                             + std::to_string(betaVec.size()));
-      }
-      g_beta = torch::from_blob(std::vector<float>(betaVec.begin(), betaVec.end()).data(),
-                                {static_cast<int64_t>(betaVec.size())})
-                   .clone();
-
-      XmlRpc::XmlRpcValue ikTaskListParam;
-      pnh.getParam("ikTaskList", ikTaskListParam);
-      for(int32_t paramIdx = 0; paramIdx < ikTaskListParam.size(); paramIdx++)
-      {
-        const XmlRpc::XmlRpcValue & ikTaskParam = ikTaskListParam[paramIdx];
-        std::string name = static_cast<std::string>(ikTaskParam["name"]);
-        int64_t faceIdx = static_cast<int>(ikTaskParam["faceIdx"]);
-        const XmlRpc::XmlRpcValue & vertexWeightsParam = ikTaskParam["vertexWeights"];
-        Eigen::Vector3d vertexWeightsVec;
-        vertexWeightsVec << getDoubleValue(vertexWeightsParam[0]), getDoubleValue(vertexWeightsParam[1]),
-            getDoubleValue(vertexWeightsParam[2]);
-        IkTask ikTask(faceIdx);
-        ikTask.vertexWeights_ = smplpp::toTorchTensor<float>(vertexWeightsVec.cast<float>(), true);
-        g_ikTaskList.emplace(name, ikTask);
-      }
-    }
-    else
-    {
-      g_ikTaskList.emplace("LeftHand", IkTask(2581, smplpp::toTorchTensor<float>(Eigen::Vector3f(0.5, 0.5, 1.0), true),
-                                              smplpp::toTorchTensor<float>(Eigen::Vector3f::UnitZ(), true)));
-      g_ikTaskList.emplace("RightHand",
-                           IkTask(9469, smplpp::toTorchTensor<float>(Eigen::Vector3f(0.5, -0.5, 1.0), true),
-                                  smplpp::toTorchTensor<float>(Eigen::Vector3f::UnitZ(), true)));
-      g_ikTaskList.emplace("LeftFoot", IkTask(5925, smplpp::toTorchTensor<float>(Eigen::Vector3f(0.0, 0.2, 0.0), true),
-                                              smplpp::toTorchTensor<float>(Eigen::Vector3f::UnitZ(), true)));
-      g_ikTaskList.emplace("RightFoot",
-                           IkTask(12812, smplpp::toTorchTensor<float>(Eigen::Vector3f(0.0, -0.2, 0.0), true),
-                                  smplpp::toTorchTensor<float>(Eigen::Vector3f::UnitZ(), true)));
-    }
-
-    if(solveMocap)
-    {
-      for(auto & ikTaskKV : g_ikTaskList)
-      {
-        auto & ikTask = ikTaskKV.second;
-        ikTask.normalTaskWeight_ = 0.0;
-        // Add offset of mocap marker thickness
-        ikTask.normalOffset_ = 0.015; // [mm]
-      }
-    }
-
-    for(auto & ikTaskKV : g_ikTaskList)
-    {
-      // ikTaskKV.second.normalTaskWeight_ = 0.0; // \todo Temporary
-      ikTaskKV.second.phiLimit_ = 0.0; // \todo Temporary
-      ikTaskKV.second.to(*device);
-    }
-  }
-
   // Load SMPL model
   {
     auto startTime = std::chrono::system_clock::now();
@@ -720,6 +443,128 @@ int main(int argc, char * argv[])
                                                          std::chrono::system_clock::now() - startTime)
                                                          .count()
                                                   << " [s]");
+    }
+  }
+
+  // Setup IK task list
+  if(enableIk || loadMotion)
+  {
+    if(solveMocapBody)
+    {
+      // Ref. https://docs.optitrack.com/markersets/full-body/baseline-41
+      g_ikTaskList.emplace("HeadTop", smplpp::IkTask(g_smpl, 7324));
+      g_ikTaskList.emplace("HeadFront", smplpp::IkTask(g_smpl, 7194));
+      g_ikTaskList.emplace("HeadSide", smplpp::IkTask(g_smpl, 13450));
+
+      g_ikTaskList.emplace("Chest", smplpp::IkTask(g_smpl, 6842));
+      g_ikTaskList.emplace("WaistLFront", smplpp::IkTask(g_smpl, 2162));
+      g_ikTaskList.emplace("WaistRFront", smplpp::IkTask(g_smpl, 13026));
+      g_ikTaskList.emplace("WaistLBack", smplpp::IkTask(g_smpl, 5117));
+      g_ikTaskList.emplace("WaistRBack", smplpp::IkTask(g_smpl, 12007));
+      g_ikTaskList.emplace("BackTop", smplpp::IkTask(g_smpl, 8914));
+      g_ikTaskList.emplace("BackRight", smplpp::IkTask(g_smpl, 11433));
+      g_ikTaskList.emplace("BackLeft", smplpp::IkTask(g_smpl, 4309));
+
+      g_ikTaskList.emplace("LShoulderTop", smplpp::IkTask(g_smpl, 2261));
+      g_ikTaskList.emplace("LShoulderBack", smplpp::IkTask(g_smpl, 4599));
+      g_ikTaskList.emplace("LUArmHigh", smplpp::IkTask(g_smpl, 4249));
+      g_ikTaskList.emplace("LElbowOut", smplpp::IkTask(g_smpl, 4913));
+      g_ikTaskList.emplace("LWristIn", smplpp::IkTask(g_smpl, 4091));
+      g_ikTaskList.emplace("LWristOut", smplpp::IkTask(g_smpl, 2567));
+      g_ikTaskList.emplace("LHandOut", smplpp::IkTask(g_smpl, 2636));
+
+      g_ikTaskList.emplace("RShoulderTop", smplpp::IkTask(g_smpl, 13583));
+      g_ikTaskList.emplace("RShoulderBack", smplpp::IkTask(g_smpl, 11491));
+      g_ikTaskList.emplace("RUArmHigh", smplpp::IkTask(g_smpl, 11137));
+      g_ikTaskList.emplace("RElbowOut", smplpp::IkTask(g_smpl, 11802));
+      g_ikTaskList.emplace("RWristIn", smplpp::IkTask(g_smpl, 9712));
+      g_ikTaskList.emplace("RWristOut", smplpp::IkTask(g_smpl, 9590));
+      g_ikTaskList.emplace("RHandOut", smplpp::IkTask(g_smpl, 9733));
+
+      g_ikTaskList.emplace("LThigh", smplpp::IkTask(g_smpl, 1122));
+      g_ikTaskList.emplace("LKneeOut", smplpp::IkTask(g_smpl, 1165));
+      g_ikTaskList.emplace("LShin", smplpp::IkTask(g_smpl, 1247));
+      g_ikTaskList.emplace("LAnkleOut", smplpp::IkTask(g_smpl, 5742));
+      g_ikTaskList.emplace("LToeIn", smplpp::IkTask(g_smpl, 5758));
+      g_ikTaskList.emplace("LToeOut", smplpp::IkTask(g_smpl, 6000));
+      g_ikTaskList.emplace("LToeTip", smplpp::IkTask(g_smpl, 5591));
+      g_ikTaskList.emplace("LHeel", smplpp::IkTask(g_smpl, 5815));
+
+      g_ikTaskList.emplace("RThigh", smplpp::IkTask(g_smpl, 8523));
+      g_ikTaskList.emplace("RKneeOut", smplpp::IkTask(g_smpl, 8053));
+      g_ikTaskList.emplace("RShin", smplpp::IkTask(g_smpl, 12108));
+      g_ikTaskList.emplace("RAnkleOut", smplpp::IkTask(g_smpl, 12630));
+      g_ikTaskList.emplace("RToeIn", smplpp::IkTask(g_smpl, 12896));
+      g_ikTaskList.emplace("RToeOut", smplpp::IkTask(g_smpl, 12889));
+      g_ikTaskList.emplace("RToeTip", smplpp::IkTask(g_smpl, 12478));
+      g_ikTaskList.emplace("RHeel", smplpp::IkTask(g_smpl, 12705));
+    }
+    else if(solveMocapMotion)
+    {
+      auto getDoubleValue = [](const XmlRpc::XmlRpcValue & param) -> double {
+        return param.getType() == XmlRpc::XmlRpcValue::TypeInt ? static_cast<double>(static_cast<int>(param))
+                                                               : static_cast<double>(param);
+      };
+
+      std::vector<double> betaVec;
+      pnh.getParam("beta", betaVec);
+      if(betaVec.size() != smplpp::SHAPE_BASIS_DIM)
+      {
+        throw smplpp::smpl_error("node", "Size of beta must be " + std::to_string(smplpp::SHAPE_BASIS_DIM) + " but "
+                                             + std::to_string(betaVec.size()));
+      }
+      g_beta = torch::from_blob(std::vector<float>(betaVec.begin(), betaVec.end()).data(),
+                                {static_cast<int64_t>(betaVec.size())})
+                   .clone();
+
+      XmlRpc::XmlRpcValue ikTaskListParam;
+      pnh.getParam("ikTaskList", ikTaskListParam);
+      for(int32_t paramIdx = 0; paramIdx < ikTaskListParam.size(); paramIdx++)
+      {
+        const XmlRpc::XmlRpcValue & ikTaskParam = ikTaskListParam[paramIdx];
+        std::string name = static_cast<std::string>(ikTaskParam["name"]);
+        int64_t faceIdx = static_cast<int>(ikTaskParam["faceIdx"]);
+        const XmlRpc::XmlRpcValue & vertexWeightsParam = ikTaskParam["vertexWeights"];
+        Eigen::Vector3d vertexWeightsVec;
+        vertexWeightsVec << getDoubleValue(vertexWeightsParam[0]), getDoubleValue(vertexWeightsParam[1]),
+            getDoubleValue(vertexWeightsParam[2]);
+        smplpp::IkTask ikTask(g_smpl, faceIdx);
+        ikTask.vertexWeights_ = smplpp::toTorchTensor<float>(vertexWeightsVec.cast<float>(), true);
+        g_ikTaskList.emplace(name, ikTask);
+      }
+    }
+    else
+    {
+      g_ikTaskList.emplace(
+          "LeftHand", smplpp::IkTask(g_smpl, 2581, smplpp::toTorchTensor<float>(Eigen::Vector3f(0.5, 0.5, 1.0), true),
+                                     smplpp::toTorchTensor<float>(Eigen::Vector3f::UnitZ(), true)));
+      g_ikTaskList.emplace(
+          "RightHand", smplpp::IkTask(g_smpl, 9469, smplpp::toTorchTensor<float>(Eigen::Vector3f(0.5, -0.5, 1.0), true),
+                                      smplpp::toTorchTensor<float>(Eigen::Vector3f::UnitZ(), true)));
+      g_ikTaskList.emplace(
+          "LeftFoot", smplpp::IkTask(g_smpl, 5925, smplpp::toTorchTensor<float>(Eigen::Vector3f(0.0, 0.2, 0.0), true),
+                                     smplpp::toTorchTensor<float>(Eigen::Vector3f::UnitZ(), true)));
+      g_ikTaskList.emplace("RightFoot",
+                           smplpp::IkTask(g_smpl, 12812,
+                                          smplpp::toTorchTensor<float>(Eigen::Vector3f(0.0, -0.2, 0.0), true),
+                                          smplpp::toTorchTensor<float>(Eigen::Vector3f::UnitZ(), true)));
+    }
+
+    if(solveMocap)
+    {
+      for(auto & ikTaskKV : g_ikTaskList)
+      {
+        auto & ikTask = ikTaskKV.second;
+        ikTask.normalTaskWeight_ = 0.0;
+        // Add offset of mocap marker thickness
+        ikTask.normalOffset_ = 0.015; // [mm]
+      }
+    }
+
+    for(auto & ikTaskKV : g_ikTaskList)
+    {
+      // ikTaskKV.second.normalTaskWeight_ = 0.0; // \todo Temporary
+      ikTaskKV.second.phiLimit_ = 0.0; // \todo Temporary
     }
   }
 
@@ -958,13 +803,14 @@ int main(int argc, char * argv[])
           ikTask.calcVertexWeights(ikTask.calcActualPos().to(torch::kCPU).clone().detach());
 
           // Set task value
-          torch::Tensor posError = ikTask.calcPosError().to(torch::kCPU);
+          torch::Tensor posError = ikTask.posTaskWeight_ * (ikTask.calcActualPos() - ikTask.targetPos_).to(torch::kCPU);
           e.segment<3>(rowIdx) = smplpp::toEigenMatrix(posError).cast<double>();
 
           torch::Tensor normalError;
           if(ikTask.normalTaskWeight_ > 0.0)
           {
-            normalError = ikTask.calcNormalError().to(torch::kCPU);
+            normalError = ikTask.normalTaskWeight_
+                          * (at::dot(ikTask.calcActualNormal(), ikTask.targetNormal_).to(torch::kCPU) + 1.0);
             e.segment<1>(rowIdx + 3) = smplpp::toEigenMatrix(normalError.view({1})).cast<double>();
           }
           else
@@ -1184,8 +1030,8 @@ int main(int argc, char * argv[])
       torch::Tensor faceIdxTensor = g_smpl->getFaceIndex().to(torch::kCPU) - 1;
       Eigen::MatrixXi faceIdxMat = smplpp::toEigenMatrix<int>(faceIdxTensor);
 
-      Eigen::Vector3i gridIdxMin = getGridIdxFloor<float>(vertexMat.colwise().minCoeff());
-      Eigen::Vector3i gridIdxMax = getGridIdxCeil<float>(vertexMat.colwise().maxCoeff());
+      Eigen::Vector3i gridIdxMin = smplpp::getGridIdxFloor<float>(vertexMat.colwise().minCoeff());
+      Eigen::Vector3i gridIdxMax = smplpp::getGridIdxCeil<float>(vertexMat.colwise().maxCoeff());
       Eigen::Vector3i gridNum = gridIdxMax - gridIdxMin + Eigen::Vector3i::Ones();
       Eigen::MatrixXi gridIdxMat(gridNum[0] * gridNum[1] * gridNum[2], 3);
       int gridTotalIdx = 0;
@@ -1201,7 +1047,7 @@ int main(int argc, char * argv[])
           }
         }
       }
-      Eigen::MatrixXf gridPosMat = GRID_SCALE * gridIdxMat.cast<float>();
+      Eigen::MatrixXf gridPosMat = smplpp::GRID_SCALE * gridIdxMat.cast<float>();
 
       Eigen::VectorXi windingNumbers;
       igl::winding_number(vertexMat, faceIdxMat, gridPosMat, windingNumbers);
@@ -1482,7 +1328,7 @@ int main(int argc, char * argv[])
 
       for(const auto & sweepGridKV : g_sweepGridList)
       {
-        Eigen::Vector3f gridPos = getGridPos(sweepGridKV.first);
+        Eigen::Vector3f gridPos = smplpp::getGridPos(sweepGridKV.first);
         geometry_msgs::Point32 pointMsg;
         pointMsg.x = gridPos.x();
         pointMsg.y = gridPos.y();

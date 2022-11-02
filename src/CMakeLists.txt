@@ -4,6 +4,7 @@ add_library(smplpp SHARED
   LinearBlendSkinning.cpp
   SMPL.cpp
   VPoser.cpp
+  IkTask.cpp
   WorldTransformation.cpp
   toolbox/Exception.cpp
   # \todo Move Tester.cpp to tests directory
