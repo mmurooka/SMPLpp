@@ -127,8 +127,6 @@ public:
 
     torch::Tensor actualPos = torch::matmul(torch::transpose(faceVertices, 0, 1), vertexWeights_);
 
-    actualPos += torch::matmul(tangents_, phi_).to(SINGLE_SMPL::get()->getDevice());
-
     if(normalOffset_ > 0.0)
     {
       actualPos += normalOffset_ * calcActualNormal();
@@ -1144,11 +1142,10 @@ int main(int argc, char * argv[])
           auto & ikTask = ikTaskKV.second;
 
           ikTask.phi_.set_requires_grad(false);
-          ikTask.phi_ =
+          torch::Tensor phi =
               smplpp::toTorchTensor<float>(deltaConfig.segment<2>(thetaDim + 2 * ikTaskIdx).cast<float>(), true);
-
-          actualPosList.row(ikTaskIdx) = smplpp::toEigenMatrix(ikTask.calcActualPos().to(torch::kCPU)).transpose();
-          ikTask.phi_.zero_(); // Set phi zero after calculating actual pos
+          torch::Tensor actualPos = ikTask.calcActualPos().to(torch::kCPU) + torch::matmul(ikTask.tangents_, phi);
+          actualPosList.row(ikTaskIdx) = smplpp::toEigenMatrix(actualPos).transpose();
 
           ikTaskIdx++;
         }
