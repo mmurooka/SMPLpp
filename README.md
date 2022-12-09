@@ -191,12 +191,19 @@ Animation of the SMPL model fitted to motion capture data is displayed at real s
 #### Note on vertex-colored meshes in Rviz
 If you set `enable_vertex_color:=true` instead of `enable_vertex_color:=false` in the `roslaunch` arguments, the color of each vertex is determined by its Z-position. However, Rviz on the default branch does not provide good visualization for vertex-colored meshes. Building Rviz from source code with [this patch](https://github.com/mmurooka/rviz/commit/ad4ac3206c2e72c073498b4568edeeff0c256f82) solves this problem.
 
-#### Interactive retrieval of vertex and face indices
+## Utilities
+### Interactive retrieval of vertex and face indices
 When you click the `Publish Point` button in Rviz and then click on the SMPL model, the indices of the vertex and face closest to the clicked point are printed in the terminal as follows. This is useful for determining the inverse-kinematics target on the SMPL model.
 ```bash
 [ INFO][/smplpp]: Vertex idx closest to clicked point: 6875
 [ INFO][/smplpp]: Face idx closest to clicked point: 13353
 ```
+
+### Dump SMPL pose parameters (`theta`) to text file
+```bash
+$ rosrun smplpp convertRosbagToText.py <input_rosbag_path> <output_text_path>
+```
+`Theta` (25 x 3 matrix) is flattened by row-major.
 
 ## Technical details
 For more information on the technical details, please see the following papers:
