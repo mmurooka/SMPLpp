@@ -16,4 +16,4 @@ with rosbag.Bag(bag_path) as bag:
 text_path = sys.argv[2]
 with open(text_path, mode='w') as f:
     for data in msg.data_list:
-        f.write("{}\n".format(list(data.theta)))
+        f.write("{}\n".format(' '.join(map(str, (data.theta)))))
