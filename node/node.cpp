@@ -1405,7 +1405,7 @@ int main(int argc, char * argv[])
 
         mocapFrameIdx += mocapFrameInterval;
       }
-      if(mocapFrameIdx == c3d->header().nbFrames())
+      if(mocapFrameIdx >= c3d->header().nbFrames())
       {
         break;
       }
